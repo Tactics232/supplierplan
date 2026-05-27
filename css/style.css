@@ -537,6 +537,7 @@ footer {
     padding: 0 var(--pad-x);
     background: var(--c-surface);
     border-top: 1px solid var(--c-border);
+    position: relative;
 }
 
 .foot-l {
@@ -545,6 +546,17 @@ footer {
     color: var(--c-muted);
     letter-spacing: 0.05em;
     font-weight: 500;
+}
+
+.foot-c {
+    font-family: var(--font-d);
+    font-size: 11px;
+    color: var(--c-muted);
+    letter-spacing: 0.06em;
+    font-weight: 500;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
 }
 
 .foot-r {

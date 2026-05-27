@@ -83,6 +83,12 @@ class WebUntis:
     def get_teachers(self):
         return self._rpc("getTeachers")
 
+    def get_latest_import_time(self):
+        ms = self._rpc("getLatestImportTime")
+        if ms:
+            return datetime.fromtimestamp(ms / 1000)
+        return None
+
 # ── Zeitraster ────────────────────────────────────────
 def build_timegrid(days):
     seen = {}
@@ -316,9 +322,15 @@ def split_chunks(chunks):
     return "".join(left), "".join(right)
 
 def generate_html(groups_today, groups_tomorrow, tomorrow_date,
-                  teacher_lookup, period_nr, period_start, period_end, show_logo=False):
+                  teacher_lookup, period_nr, period_start, period_end,
+                  show_logo=False, import_time=None):
 
     logo_html = '<div class="logo"><img src="logo.png" alt="Logo"></div>\n            ' if show_logo else ''
+
+    if import_time:
+        import_block = f'<span class="foot-c">Stand Untis: {import_time.strftime("%d.%m.%Y %H:%M")} Uhr</span>'
+    else:
+        import_block = ''
 
     now      = datetime.now()
     date_str = f"{WEEKDAYS[now.weekday()]}, {now.day}. {MONTHS[now.month-1]} {now.year}"
@@ -411,6 +423,7 @@ def generate_html(groups_today, groups_tomorrow, tomorrow_date,
     </main>
     <footer>
         <span class="foot-l">Letzte Aktualisierung: {upd_str}</span>
+        {import_block}
         <span class="foot-r">MS Roda-Roda-Gasse · 1210 Wien</span>
     </footer>
 </div>
@@ -445,6 +458,7 @@ def main():
 
         grid_raw       = untis.get_timegrid()
         teachers       = untis.get_teachers()
+        import_time    = untis.get_latest_import_time()
         timegrid       = build_timegrid(grid_raw)
         break_lookup   = build_break_lookup(grid_raw)
         teacher_lookup = build_teacher_lookup(teachers)
@@ -491,6 +505,7 @@ def main():
             groups_today, groups_tomorrow, tomorrow_date,
             teacher_lookup, period_nr, p_start, p_end,
             show_logo=show_logo,
+            import_time=import_time,
         )
         out = BASE_DIR / "index.html"
         out.write_text(html, encoding="utf-8")
