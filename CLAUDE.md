@@ -96,6 +96,18 @@ supplierplan/
 
 ## Meine Umgebung
 - Ich arbeite mit Claude Code auf einem separaten Entwicklungs-PC
-- Server-PC läuft dauerhaft in der Schule
-- Deployment: Dateien werden manuell oder per Script übertragen
-- Netzwerk: Internes Schulnetzwerk
+- Server läuft auf Proxmox LXC (192.168.10.134), erreichbar via Cloudflare Tunnel
+- Deployment: `rsync` von WSL auf den LXC, danach Cron übernimmt
+- Webserver: `python3 -m http.server 8080` als systemd-Dienst
+
+## Sicherheitsregeln (IMMER einhalten)
+- **XSS:** Alle Werte aus der WebUntis API müssen mit `esc()` (=`html.escape()`) escaped werden bevor sie in HTML eingefügt werden. Das gilt auch für Fallback-Werte.
+- **Credentials:** `config.env` enthält das WebUntis-Passwort – niemals committen, niemals weitergeben. Ist in `.gitignore` eingetragen.
+- **Timeouts:** Alle HTTP-Requests an WebUntis haben `timeout=15` Sekunden.
+- **Neue API-Felder:** Wenn neue Felder aus der WebUntis API ins HTML eingefügt werden, immer `esc()` verwenden.
+- **Sicherheits-Check:** Bei jeder größeren Änderung am Script prüfen ob neue API-Daten unescaped ins HTML fließen.
+
+## Git-Workflow
+- Commit-Nachrichten immer mit `git commit -m "kurze Nachricht"` – kein Heredoc/EOF (funktioniert in WSL nicht intuitiv)
+- Nach jedem Commit: `git push`
+- Nach jedem Deployment: `rsync -avz --exclude='.claude' --exclude='Screenshot*' /mnt/c/Users/Admin/Onedrive/Programming/Claude/Supplier/ root@192.168.10.134:/var/www/supplierplan/`

@@ -268,7 +268,7 @@ def render_row(r):
         f'<td class="c-fach">{esc(r["fach"])}</td>'
         f'<td class="c-klasse">{esc(r["klasse"])}</td>'
         f'<td class="c-lehrer">{lehrer_html}</td>'
-        f'<td class="c-art"><span class="badge {badge_cls}">{label}</span></td>'
+        f'<td class="c-art"><span class="badge {badge_cls}">{esc(label)}</span></td>'
         f'<td class="c-raum">{esc(r["raum"])}</td>'
         f'<td class="c-text">{render_text(r["text"])}</td>'
         f'</tr>'
