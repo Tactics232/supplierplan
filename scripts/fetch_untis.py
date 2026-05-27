@@ -389,8 +389,8 @@ def generate_html(groups_today, groups_tomorrow, tomorrow_date,
             {period_block}
             <div class="header-divider"></div>
             <div class="clock">
-                <p class="clock-date">{date_str}</p>
-                <p class="clock-time">{time_str}</p>
+                <p class="clock-date" id="clock-date">{date_str}</p>
+                <p class="clock-time" id="clock-time">{time_str}</p>
             </div>
         </div>
     </header>
@@ -414,6 +414,18 @@ def generate_html(groups_today, groups_tomorrow, tomorrow_date,
         <span class="foot-r">MS Roda-Roda-Gasse · 1210 Wien</span>
     </footer>
 </div>
+<script>
+(function tick() {{
+    var n = new Date();
+    var days = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
+    var months = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+    document.getElementById('clock-time').textContent =
+        String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
+    document.getElementById('clock-date').textContent =
+        days[n.getDay()] + ', ' + n.getDate() + '. ' + months[n.getMonth()] + ' ' + n.getFullYear();
+    setTimeout(tick, 1000);
+}})();
+</script>
 </body>
 </html>"""
 

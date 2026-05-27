@@ -223,7 +223,7 @@ html, body {
 }
 
 .clock-date {
-    font-size: 13px;
+    font-size: 16px;
     color: var(--c-muted);
     font-weight: 400;
     letter-spacing: 0.04em;
