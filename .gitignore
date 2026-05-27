@@ -1,0 +1,6 @@
+config.env
+index.html
+.claude/
+Screenshot*
+__pycache__/
+*.pyc
