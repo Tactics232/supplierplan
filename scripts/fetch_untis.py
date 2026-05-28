@@ -196,9 +196,42 @@ def build_teacher_lookup(teachers):
     return lookup
 
 # ── Datenaufbereitung ─────────────────────────────────
+def _dedupe_names(items):
+    """Liste von dicts mit 'name' zu Liste eindeutiger Namen ohne '---' / leer."""
+    seen, out = set(), []
+    for it in items:
+        name = (it.get("name") or "").strip()
+        if not name or name == "---" or name in seen:
+            continue
+        seen.add(name)
+        out.append(name)
+    return out
+
+def _is_meaningful_subst(s):
+    """True wenn die Substitution überhaupt eine echte Änderung darstellt."""
+    typ = s.get("type", "subst")
+    if typ in ("cancel", "free"):
+        return True
+    if any(t.get("orgid") for t in s.get("te", [])):
+        return True
+    if any(r.get("orgid") for r in s.get("ro", [])):
+        return True
+    return False
+
+def _has_real_subst_teacher(s):
+    """True wenn ein echter Vertretungs-Lehrer im te[] steht (orgid + Name != '---')."""
+    return any(
+        t.get("orgid") and (t.get("name") or "").strip() not in SKIP_NAMES
+        for t in s.get("te", [])
+    )
+
 def process_substitutions(substs, timegrid, break_lookup, day="today"):
     rows = []
     for s in substs:
+        # ── Filter A: Substitutionen ohne echte Vertretung überspringen ──
+        if not _is_meaningful_subst(s):
+            continue
+
         start  = s.get("startTime", 0)
         end    = s.get("endTime", 0)
         lstype = s.get("lstype", "")
@@ -207,15 +240,17 @@ def process_substitutions(substs, timegrid, break_lookup, day="today"):
 
         is_break = lstype == "bs"
 
-        # Räume: neuer Raum + ursprünglicher (für Raumwechsel-Darstellung)
-        ro_list = [r for r in s.get("ro", []) if r.get("name") and r["name"] not in ("---", "")]
-        raum     = " · ".join(r["name"] for r in ro_list) or "—"
-        raum_org = " · ".join(
-            r.get("orgname", "").strip()
-            for r in ro_list
-            if r.get("orgid") and r.get("orgname", "").strip()
-            and r.get("orgname", "").strip() != r.get("name", "").strip()
-        )
+        # Räume: dedupliziert + Original-Raum für Raumwechsel-Darstellung
+        ro_raw   = [r for r in s.get("ro", []) if (r.get("name") or "").strip() not in ("---", "")]
+        raum     = " · ".join(_dedupe_names(ro_raw)) or "—"
+        raum_org_names = []
+        seen_org = set()
+        for r in ro_raw:
+            org = (r.get("orgname") or "").strip()
+            if r.get("orgid") and org and org != (r.get("name") or "").strip() and org not in seen_org:
+                seen_org.add(org)
+                raum_org_names.append(org)
+        raum_org = " · ".join(raum_org_names)
 
         if is_break:
             std_display = break_lookup.get(start, fmt_time(start))
@@ -225,17 +260,28 @@ def process_substitutions(substs, timegrid, break_lookup, day="today"):
         else:
             info        = timegrid.get(start)
             std_display = str(info[0]) if info else "?"
-            klasse      = " · ".join(k["name"] for k in s.get("kl", [])) or "—"
-            fach        = " · ".join(f["name"] for f in s.get("su", [])) or "—"
+            klasse      = " · ".join(_dedupe_names(s.get("kl", []))) or "—"
+            fach        = " · ".join(_dedupe_names(s.get("su", []))) or "—"
             # Raumwechsel ohne Lehrerwechsel: type=subst, aber raum_org gesetzt
-            art_out     = "roomchange" if (art == "subst" and raum_org and not any(t.get("orgid") for t in s.get("te", []))) else art
+            has_te_org = any(t.get("orgid") for t in s.get("te", []))
+            art_out    = "roomchange" if (art == "subst" and raum_org and not has_te_org) else art
 
+        has_real_vtr = _has_real_subst_teacher(s)
+        seen_kuerzel = set()
         for t in s.get("te", []):
-            kuerzel = t.get("name", "").strip()
+            kuerzel = (t.get("name") or "").strip()
             if kuerzel in SKIP_NAMES:
                 continue
-            orgname    = t.get("orgname", "").strip()
-            org_kuerzel = orgname if (t.get("orgid") and orgname) else ""
+            has_org = bool(t.get("orgid"))
+            # ── Filter B: Co-Lehrer ohne orgid bei echter Vertretung überspringen ──
+            if has_real_vtr and not has_org:
+                continue
+            if kuerzel in seen_kuerzel:
+                continue
+            seen_kuerzel.add(kuerzel)
+
+            orgname     = (t.get("orgname") or "").strip()
+            org_kuerzel = orgname if (has_org and orgname) else ""
 
             rows.append({
                 "kuerzel":     kuerzel,
