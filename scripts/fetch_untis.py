@@ -623,6 +623,7 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
         )
 
     tomorrow_section = ""
+    tomorrow_only_label = ""
     if show_tomorrow:
         tom_absent, tom_classes = compute_absent(groups_tomorrow)
         days_ahead = (tomorrow_date - today_date).days
@@ -634,9 +635,16 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
             day_label = f"Morgen · {date_str_tom}"
         else:
             day_label = f"Nächster Schultag · {date_str_tom}"
+        # Wenn nur Morgen sichtbar: Headline ins Plan-Tag oben verlegen
+        if not show_today:
+            tomorrow_only_label = day_label
+        title_bar_html = (
+            f'<div class="day-title-bar"><span class="day-title-text">{esc(day_label)}</span></div>'
+            if show_today else ''
+        )
         tomorrow_section = (
             f'<div class="plan-section tomorrow-section">'
-            f'<div class="day-title-bar"><span class="day-title-text">{day_label}</span></div>'
+            f'{title_bar_html}'
             f'{render_summary_bar(tom_absent, tom_classes)}'
             f'{build_day_content(groups_tomorrow, teacher_lookup, "tomorrow")}'
             f'</div>'
@@ -650,6 +658,12 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
         )
     else:
         main_content = today_section + tomorrow_section
+
+    # Plan-Tag im Header: 'Heute' normal, sonst Morgen-Label in blau
+    if tomorrow_only_label:
+        plan_tag_html = f'<span class="plan-tag tomorrow-only">{esc(tomorrow_only_label)}</span>'
+    else:
+        plan_tag_html = '<span class="plan-tag">Heute</span>'
 
     return f"""<!DOCTYPE html>
 <html lang="de">
@@ -684,7 +698,7 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
     </header>
     <div class="plan-header">
         <span class="plan-label">Supplierplan</span>
-        <span class="plan-tag">Heute</span>
+        {plan_tag_html}
         <div class="plan-sep"></div>
         <div class="legend">
             <span class="leg sup">Vertretung</span>

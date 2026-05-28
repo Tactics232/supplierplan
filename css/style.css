@@ -271,6 +271,11 @@ html, body {
     border-radius: 2px;
 }
 
+.plan-tag.tomorrow-only {
+    background: #6aacf0;
+    color: #fff;
+}
+
 .plan-sep {
     width: 1px;
     height: 16px;
