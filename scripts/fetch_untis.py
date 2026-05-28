@@ -771,6 +771,27 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
 </body>
 </html>"""
 
+# ── Cloudflare Cache-Purge ────────────────────────────
+def purge_cloudflare_cache(zone_id, token, host=None):
+    """Löscht den Cloudflare-Cache nach dem Generieren der index.html.
+       - Wenn `host` gesetzt: nur den angegebenen Hostname purgen (sicher).
+       - Sonst: gesamten Zone-Cache leeren (purge_everything).
+    """
+    url = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/purge_cache"
+    if host:
+        payload = json.dumps({"hosts": [host]}).encode()
+    else:
+        payload = json.dumps({"purge_everything": True}).encode()
+    req = urllib.request.Request(
+        url, data=payload,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type":  "application/json",
+        },
+    )
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        return json.loads(resp.read())
+
 # ── Daten-Dump (lesbare Übersicht + Roh-JSON) ─────────
 def write_data_dump(today_substs, tomorrow_substs, today_rows, tomorrow_rows,
                     holidays, import_time, today_date, tomorrow_date):
@@ -944,6 +965,21 @@ def main():
             today, tomorrow_date,
         )
         print(f"Daten-Dump -> {BASE_DIR / 'data'}", flush=True)
+
+        # Cloudflare Cache-Purge (optional, nur wenn konfiguriert)
+        cf_zone  = config.get("CLOUDFLARE_ZONE_ID", "").strip()
+        cf_token = config.get("CLOUDFLARE_API_TOKEN", "").strip()
+        cf_host  = config.get("CLOUDFLARE_HOST", "").strip() or None
+        if cf_zone and cf_token:
+            try:
+                result = purge_cloudflare_cache(cf_zone, cf_token, host=cf_host)
+                if result.get("success"):
+                    target = cf_host or "(alle Hosts)"
+                    print(f"Cloudflare Cache geleert: {target}", flush=True)
+                else:
+                    print(f"Cloudflare Purge fehlgeschlagen: {result.get('errors')}", flush=True)
+            except Exception as e:
+                print(f"Cloudflare Purge Fehler: {e}", flush=True)
 
     finally:
         untis.logout()

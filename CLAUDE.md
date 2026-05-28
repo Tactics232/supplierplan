@@ -198,10 +198,20 @@ Im generierten `index.html`:
     `?cb=<timestamp>` → Browser ignoriert Cache, lädt CSS/Bilder neu
 - HTTP-Header `Cache-Control: no-cache, no-store, must-revalidate`
 
-### ⚠️ Cloudflare-Caching
-Der Cloudflare Tunnel kann statische HTML *trotzdem* cachen, vor allem wenn eine
-Page Rule mit "Cache Everything" aktiv ist. Wenn nach einem Deployment keine
-Änderung sichtbar ist:
+### Cloudflare Auto-Purge (eingebaut)
+`fetch_untis.py` ruft nach jedem erfolgreichen Schreiben der `index.html`
+optional die Cloudflare-API auf, um den Cache zu leeren — sobald in `config.env`
+gesetzt:
+```
+CLOUDFLARE_ZONE_ID=...      # Dashboard → Domain → API → Zone ID
+CLOUDFLARE_API_TOKEN=...    # My Profile → API Tokens, Permission: Zone:Cache Purge
+CLOUDFLARE_HOST=...         # optional: nur diesen Hostname purgen (sicher)
+```
+Wenn `CLOUDFLARE_HOST` leer ist, wird die **ganze Zone** gepurged
+(`purge_everything: true`). Mit `CLOUDFLARE_HOST=supplierplan.example.tld`
+nur die eine Subdomain.
+
+### ⚠️ Manueller Cache-Purge (falls Token nicht konfiguriert)
 1. Cloudflare Dashboard → Caching → Configuration → *Purge Everything*
 2. Im Browser zusätzlich `Ctrl+Shift+R` (Hard-Reload)
 3. Falls Page Rule "Cache Everything" gesetzt → auf *Standard* oder *Bypass* ändern
@@ -278,8 +288,8 @@ Im Claude Code Prompt mit `!`-Präfix ausführen, dann landet Output direkt im C
    Lehrer fehlt aber gar nicht im Supplierplan auftaucht).
 4. **Sonder-Modi für `lstype`:** `ex` (Prüfung), `oh` (Sprechstunde), `sb` (Standby)
    sind im Code nicht behandelt — Verhalten unklar bis sie auftauchen.
-5. **Automatisches Cloudflare Cache-Purge** nach jedem Cron-Run (per API-Call).
-   Falls Caching-Probleme wiederkehren.
+5. ~~Automatisches Cloudflare Cache-Purge~~ ✅ implementiert (siehe oben).
+   Token + Zone-ID nur noch in `config.env` eintragen.
 
 ---
 
