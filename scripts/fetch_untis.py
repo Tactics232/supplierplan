@@ -276,6 +276,11 @@ def process_substitutions(substs, timegrid, break_lookup, day="today"):
             if t.get("orgid") and name in SKIP_NAMES and org and org not in absent_via_dash:
                 absent_via_dash.append(org)
 
+        real_teacher_names = [
+            (t.get("name") or "").strip() for t in s.get("te", [])
+            if (t.get("name") or "").strip() not in SKIP_NAMES
+        ]
+
         seen_kuerzel = set()
         for t in s.get("te", []):
             kuerzel = (t.get("name") or "").strip()
@@ -312,6 +317,28 @@ def process_substitutions(substs, timegrid, break_lookup, day="today"):
                 "raum_org":    raum_org,
                 "text":        txt,
             })
+
+        # Sonderfall FDKM-artig: te[] enthält NUR '---'-Marker, kein echter Lehrer
+        # → eine Zeile pro abwesendem Lehrer erzeugen (Entfall ohne Vertretung)
+        if not real_teacher_names and absent_via_dash:
+            for absent_name in absent_via_dash:
+                if absent_name in seen_kuerzel:
+                    continue
+                rows.append({
+                    "kuerzel":        absent_name,
+                    "org_kuerzel":    "",
+                    "kuerzel_absent": True,
+                    "std":            std_display,
+                    "sort_key":       start,
+                    "end_time":       end,
+                    "day":            day,
+                    "fach":           fach,
+                    "klasse":         klasse,
+                    "art":            "cancel",
+                    "raum":           raum,
+                    "raum_org":       raum_org,
+                    "text":           txt,
+                })
     return rows
 
 def group_by_teacher(rows):
@@ -329,7 +356,13 @@ def compute_absent(groups):
         for r in rows:
             if r.get("org_kuerzel"):
                 org = r["org_kuerzel"]
-                absent_periods.setdefault(org, set()).add(r.get("std", ""))
+                for o in org.split(" · "):
+                    o = o.strip()
+                    if o:
+                        absent_periods.setdefault(o, set()).add(r.get("std", ""))
+            elif r.get("kuerzel_absent"):
+                # FDKM-Fall: Lehrer in 'kuerzel' ist selbst abwesend (kein Vertreter)
+                absent_periods.setdefault(r["kuerzel"], set()).add(r.get("std", ""))
             if r.get("art") in ("cancel", "free"):
                 klasse = r.get("klasse", "")
                 if klasse and klasse != "—":
@@ -414,11 +447,17 @@ def render_row(r):
     day_cls = " tomorrow" if r.get("day") == "tomorrow" else ""
     org = r.get("org_kuerzel", "")
     if org:
+        # Bei "Vtr. ohne Lehrer": Bindestrich statt Pfeil (kein echter Vertreter)
+        is_vtr_ohne = (r.get("text") or "").strip().lower().startswith("vtr. ohne lehrer")
+        sep = " - " if is_vtr_ohne else "&rarr;"
         lehrer_html = (
             f'<s class="lehr-absent">{esc(org)}</s>'
-            f'<span class="lehr-arrow">&rarr;</span>'
+            f'<span class="lehr-arrow">{sep}</span>'
             f'{esc(r["kuerzel"])}'
         )
+    elif r.get("kuerzel_absent"):
+        # Entfall ohne Vertretung: nur der abwesende Lehrer, durchgestrichen
+        lehrer_html = f'<s class="lehr-absent">{esc(r["kuerzel"])}</s>'
     else:
         lehrer_html = esc(r["kuerzel"])
     raum_org = r.get("raum_org", "")
