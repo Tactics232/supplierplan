@@ -68,6 +68,7 @@ Format:
       "planned": "14:23",
       "actual": "14:23",
       "delay_minutes": 0,
+      "cancelled": false,
       "platform": "1"
     }
   ],
@@ -78,6 +79,7 @@ Format:
       "planned": "14:29",
       "actual": "14:31",
       "delay_minutes": 2,
+      "cancelled": false,
       "platform": "2"
     }
   ]
