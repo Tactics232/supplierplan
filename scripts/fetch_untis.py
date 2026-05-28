@@ -218,12 +218,13 @@ def compute_absent(groups):
         for r in rows:
             if r.get("org_kuerzel"):
                 absent.add(r["org_kuerzel"])
-            klasse = r.get("klasse", "")
-            if klasse and klasse != "—":
-                for k in klasse.split(" · "):
-                    k = k.strip()
-                    if k:
-                        classes.add(k)
+            if r.get("art") in ("cancel", "free"):
+                klasse = r.get("klasse", "")
+                if klasse and klasse != "—":
+                    for k in klasse.split(" · "):
+                        k = k.strip()
+                        if k:
+                            classes.add(k)
     return sorted(absent), sorted(classes)
 
 def render_summary_bar(teachers, classes):
