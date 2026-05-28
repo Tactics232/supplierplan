@@ -360,8 +360,8 @@ def compute_absent(groups):
                     o = o.strip()
                     if o:
                         absent_periods.setdefault(o, set()).add(r.get("std", ""))
-            elif r.get("kuerzel_absent"):
-                # FDKM-Fall: Lehrer in 'kuerzel' ist selbst abwesend (kein Vertreter)
+            elif r.get("kuerzel_absent") or r.get("art") == "cancel":
+                # FDKM-Fall oder type=cancel: Lehrer ist selbst abwesend (kein Vertreter)
                 absent_periods.setdefault(r["kuerzel"], set()).add(r.get("std", ""))
             if r.get("art") in ("cancel", "free"):
                 klasse = r.get("klasse", "")
@@ -455,8 +455,8 @@ def render_row(r):
             f'<span class="lehr-arrow">{sep}</span>'
             f'{esc(r["kuerzel"])}'
         )
-    elif r.get("kuerzel_absent"):
-        # Entfall ohne Vertretung: nur der abwesende Lehrer, durchgestrichen
+    elif r.get("kuerzel_absent") or r.get("art") == "cancel":
+        # Entfall: Lehrer ist abwesend (kein Vertreter), durchgestrichen
         lehrer_html = f'<s class="lehr-absent">{esc(r["kuerzel"])}</s>'
     else:
         lehrer_html = esc(r["kuerzel"])
