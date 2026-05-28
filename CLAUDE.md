@@ -239,8 +239,16 @@ nur die eine Subdomain.
 - Bei jeder Änderung am Render-Code prüfen: fließen unescaped API-Daten ins HTML?
 
 ### Credentials
-- `config.env` enthält WebUntis-Passwort → niemals committen
+- `config.env` enthält WebUntis-Passwort und Cloudflare-Token → niemals committen
 - Steht in `.gitignore`, daneben `config.env.example` als Vorlage
+- ⚠️ **Claude öffnet `config.env` NICHT** (kein `Read`, kein `cat`, kein `grep`).
+  Geheimnisse bleiben unter dem Radar des Assistenten.
+  - Wenn neue Variablen dokumentiert werden müssen → nur `config.env.example` editieren
+  - Wenn der User eine Variable ändern soll → ihm den Schlüssel + erwarteten Wert
+    nennen, er trägt selbst ein. Niemals Werte aus `config.env` zitieren oder vorschlagen
+    sie an einer anderen Stelle einzusetzen.
+  - Ausnahme: der User bittet explizit darum, eine konkrete Zeile zu prüfen oder zu
+    ändern — dann gezielt mit `Edit` (alte → neue Zeichenkette), nicht mit `Read`.
 
 ### HTTP
 - Alle Untis-Requests haben `timeout=15` Sekunden
