@@ -57,16 +57,23 @@ def main():
     today_str = today.strftime("%Y-%m-%d")
     school_year_start = f"{today.year}-09-01" if today.month >= 9 else f"{today.year-1}-09-01"
 
+    today_int = today.strftime("%Y%m%d")
+
     endpoints = [
-        f"/WebUntis/api/public/timetable/weekly/data?elementType=1&elementId=1&date={today_str}&formatId=1",
-        f"/WebUntis/api/substitutions/v1/substitutions?schoolyearId=1&departmentId=0&startDate={today_str}&endDate={today_str}",
-        f"/WebUntis/api/classreg/absences/students?startDate={today_str}&endDate={today_str}",
-        f"/WebUntis/api/classreg/absences/teachers?startDate={today_str}&endDate={today_str}",
-        f"/WebUntis/api/absences/student?startDate={today_str}&endDate={today_str}",
-        f"/WebUntis/api/teachers/absent?startDate={today_str}&endDate={today_str}",
-        f"/WebUntis/api/schoolyears",
-        f"/WebUntis/api/timetable/weekly/config",
-        f"/WebUntis/api/daytimetable?date={today_str}",
+        # Abwesenheiten – verschiedene Datums-Formate
+        f"/WebUntis/api/classreg/absences/teachers?startDate={today_int}&endDate={today_int}",
+        f"/WebUntis/api/classreg/absences/teachers?startDate={today_int}&endDate={today_int}&schoolyearId=1",
+        f"/WebUntis/api/classreg/absences/students?startDate={today_int}&endDate={today_int}",
+        f"/WebUntis/api/classreg/absences/students?startDate={today_int}&endDate={today_int}&schoolyearId=1",
+        # Ohne Parameter – vielleicht gibt es eine Liste
+        "/WebUntis/api/classreg/absences/teachers",
+        "/WebUntis/api/classreg/absences/students",
+        # Andere mögliche Endpoints
+        f"/WebUntis/api/classreg/events?startDate={today_int}&endDate={today_int}",
+        f"/WebUntis/api/classreg/absences?startDate={today_int}&endDate={today_int}",
+        f"/WebUntis/api/substitutions?startDate={today_int}&endDate={today_int}",
+        "/WebUntis/api/classreg",
+        "/WebUntis/api/v1/absences",
     ]
 
     for path in endpoints:
