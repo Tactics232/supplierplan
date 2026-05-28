@@ -529,14 +529,39 @@ def build_day_content(groups, teacher_lookup, day):
     if not groups:
         msg = "Kein Supplierplan für heute" if day == "today" else "Kein Supplierplan für morgen"
         return f'<div class="empty-state"><p>{msg}</p></div>'
-    chunks = []
+
+    # Trenne Entfall-Zeilen (art=cancel) aus den Lehrer-Gruppen heraus
+    cancel_rows    = []
+    regular_groups = {}
     for kuerzel, rows in groups.items():
+        regs = [r for r in rows if r.get("art") != "cancel"]
+        cans = [r for r in rows if r.get("art") == "cancel"]
+        if regs:
+            regular_groups[kuerzel] = regs
+        cancel_rows.extend(cans)
+
+    chunks = []
+    for kuerzel, rows in regular_groups.items():
         h = render_teacher_header(kuerzel, teacher_lookup, day)
         h += "".join(render_row(r) for r in rows)
         chunks.append((h, 1 + len(rows)))
+
+    # Cancel-Section als ein zusammenhängender Block, der ans Ende kommt
+    cancel_html = ""
+    if cancel_rows:
+        cancel_rows.sort(key=lambda r: (r["sort_key"], r["kuerzel"]))
+        day_tom = " tomorrow" if day == "tomorrow" else ""
+        cancel_html = (
+            f'<tr class="cancel-header{day_tom}">'
+            f'<td colspan="8"><span class="ch-label">Entfallende Stunden</span></td>'
+            f'</tr>'
+            + "".join(render_row(r) for r in cancel_rows)
+        )
+
     total = sum(w for _, w in chunks)
     if total > TWO_COL_THRESHOLD:
         left_html, right_html = split_chunks(chunks)
+        right_html += cancel_html  # Cancel ans Ende der rechten Spalte
         return (
             f'<div class="columns">'
             f'<div class="col"><table>{COLGROUP}{THEAD}<tbody>{left_html}</tbody></table></div>'
@@ -544,7 +569,7 @@ def build_day_content(groups, teacher_lookup, day):
             f'</div>'
         )
     else:
-        all_html = "".join(h for h, _ in chunks)
+        all_html = "".join(h for h, _ in chunks) + cancel_html
         return (
             f'<div class="columns single">'
             f'<div class="col"><table>{COLGROUP}{THEAD}<tbody>{all_html}</tbody></table></div>'

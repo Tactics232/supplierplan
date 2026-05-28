@@ -272,8 +272,12 @@ html, body {
 }
 
 .plan-tag.tomorrow-only {
-    background: #6aacf0;
-    color: #fff;
+    background: transparent;
+    color: #6aacf0;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    padding: 2px 0;
 }
 
 .plan-sep {
@@ -592,6 +596,27 @@ tr.teacher-header:first-child td {
     font-weight: 600;
     color: var(--c-text);
     letter-spacing: 0.01em;
+}
+
+/* ── Cancel-Sektion (gesammelte Entfälle) ───────────── */
+tr.cancel-header td {
+    background: rgba(192, 48, 48, 0.08);
+    border-top: 1px solid rgba(192, 48, 48, 0.35);
+    padding: 11px 12px 8px;
+    border-left: none !important;
+}
+
+tr.cancel-header.tomorrow td {
+    background: rgba(192, 48, 48, 0.10);
+}
+
+.ch-label {
+    font-family: var(--font-d);
+    font-size: 14px;
+    font-weight: 800;
+    color: #e05050;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
 }
 
 /* ── Art badges ─────────────────────────────────────── */
