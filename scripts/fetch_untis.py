@@ -267,6 +267,15 @@ def process_substitutions(substs, timegrid, break_lookup, day="today"):
             art_out    = "roomchange" if (art == "subst" and raum_org and not has_te_org) else art
 
         has_real_vtr = _has_real_subst_teacher(s)
+
+        # Abwesende Lehrer aus '---'-Markern sammeln (Teamteacher fehlt etc.)
+        absent_via_dash = []
+        for t in s.get("te", []):
+            name = (t.get("name") or "").strip()
+            org  = (t.get("orgname") or "").strip()
+            if t.get("orgid") and name in SKIP_NAMES and org and org not in absent_via_dash:
+                absent_via_dash.append(org)
+
         seen_kuerzel = set()
         for t in s.get("te", []):
             kuerzel = (t.get("name") or "").strip()
@@ -280,8 +289,14 @@ def process_substitutions(substs, timegrid, break_lookup, day="today"):
                 continue
             seen_kuerzel.add(kuerzel)
 
-            orgname     = (t.get("orgname") or "").strip()
-            org_kuerzel = orgname if (has_org and orgname) else ""
+            orgname = (t.get("orgname") or "").strip()
+            if has_org and orgname:
+                org_kuerzel = orgname
+            elif absent_via_dash and not has_real_vtr:
+                # Pattern te=[---/SaF, BuL]: SaF fehlt, BuL übernimmt → 'SaF→BuL'
+                org_kuerzel = " · ".join(absent_via_dash)
+            else:
+                org_kuerzel = ""
 
             rows.append({
                 "kuerzel":     kuerzel,
