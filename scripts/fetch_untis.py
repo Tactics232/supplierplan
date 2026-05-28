@@ -160,27 +160,22 @@ def process_substitutions(substs, timegrid, break_lookup, day="today"):
 
         is_break = lstype == "bs"
 
+        raum = " · ".join(
+            r["name"] for r in s.get("ro", [])
+            if r.get("name") and r["name"] not in ("---", "")
+        ) or "—"
+
         if is_break:
             std_display = break_lookup.get(start, fmt_time(start))
-            klasse = "—"
-            fach   = "Aufsicht"
-            raum   = " · ".join(
-                r["name"] for r in s.get("ro", [])
-                if r.get("name") and r["name"] not in ("---", "")
-            ) or "—"
+            klasse  = "—"
+            fach    = "Aufsicht"
             art_out = "pause"
         else:
-            if not s.get("kl"):
-                continue
-            info = timegrid.get(start)
+            info        = timegrid.get(start)
             std_display = str(info[0]) if info else "?"
-            klasse = " · ".join(k["name"] for k in s.get("kl", []))
-            fach   = " · ".join(f["name"] for f in s.get("su", [])) or "—"
-            raum   = " · ".join(
-                r["name"] for r in s.get("ro", [])
-                if r.get("name") and r["name"] not in ("---", "")
-            ) or "—"
-            art_out = art
+            klasse      = " · ".join(k["name"] for k in s.get("kl", [])) or "—"
+            fach        = " · ".join(f["name"] for f in s.get("su", [])) or "—"
+            art_out     = art
 
         for t in s.get("te", []):
             kuerzel = t.get("name", "").strip()
