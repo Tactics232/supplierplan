@@ -371,7 +371,33 @@ def compute_absent(groups):
                         if k:
                             classes_periods.setdefault(k, set()).add(r.get("std", ""))
 
+    # Globaler Maximalwert über alle abwesenden Lehrer dieses Tages
+    all_nums = set()
+    for stds in absent_periods.values():
+        for s in stds:
+            if str(s).lstrip("-").isdigit():
+                all_nums.add(int(s))
+    global_max = max(all_nums) if all_nums else 0
+
     def period_range(stds):
+        nums = sorted({int(s) for s in stds if str(s).lstrip("-").isdigit()})
+        if not nums:
+            return ""
+        min_p, max_p = nums[0], nums[-1]
+        if min_p == max_p:
+            return str(min_p)
+        is_consec    = all(nums[i+1] - nums[i] == 1 for i in range(len(nums)-1))
+        reaches_end  = max_p >= global_max
+        if is_consec and reaches_end:
+            if min_p <= 1:
+                return ""           # Ganzer Tag → nur Kürzel
+            return f"ab {min_p}"    # Lehrer fehlt ab Stunde X bis Tagesende
+        return f"{min_p}–{max_p}"
+
+    absent  = [(k, period_range(v)) for k, v in sorted(absent_periods.items())]
+
+    def classes_range(stds):
+        # Klassen: simple Range (Logik wie ursprünglich, ohne 'ab'-Heuristik)
         nums = sorted({int(s) for s in stds if str(s).lstrip("-").isdigit()})
         if not nums:
             return ""
@@ -379,8 +405,7 @@ def compute_absent(groups):
             return str(nums[0])
         return f"{nums[0]}–{nums[-1]}"
 
-    absent  = [(k, period_range(v)) for k, v in sorted(absent_periods.items())]
-    classes = [(k, period_range(v)) for k, v in sorted(classes_periods.items())]
+    classes = [(k, classes_range(v)) for k, v in sorted(classes_periods.items())]
     return absent, classes
 
 def render_summary_bar(teachers, classes):
