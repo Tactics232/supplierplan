@@ -213,23 +213,41 @@ def group_by_teacher(rows):
     return dict(sorted(groups.items()))
 
 def compute_absent(groups):
-    absent, classes = set(), set()
+    absent_periods  = {}
+    classes_periods = {}
     for rows in groups.values():
         for r in rows:
             if r.get("org_kuerzel"):
-                absent.add(r["org_kuerzel"])
+                org = r["org_kuerzel"]
+                absent_periods.setdefault(org, set()).add(r.get("std", ""))
             if r.get("art") in ("cancel", "free"):
                 klasse = r.get("klasse", "")
                 if klasse and klasse != "—":
                     for k in klasse.split(" · "):
                         k = k.strip()
                         if k:
-                            classes.add(k)
-    return sorted(absent), sorted(classes)
+                            classes_periods.setdefault(k, set()).add(r.get("std", ""))
+
+    def period_range(stds):
+        nums = sorted({int(s) for s in stds if str(s).lstrip("-").isdigit()})
+        if not nums:
+            return ""
+        if len(nums) == 1:
+            return str(nums[0])
+        return f"{nums[0]}–{nums[-1]}"
+
+    absent  = [(k, period_range(v)) for k, v in sorted(absent_periods.items())]
+    classes = [(k, period_range(v)) for k, v in sorted(classes_periods.items())]
+    return absent, classes
 
 def render_summary_bar(teachers, classes):
-    teachers_str = ", ".join(esc(t) for t in teachers) if teachers else "—"
-    classes_str  = ", ".join(esc(c) for c in classes)  if classes  else "—"
+    def fmt(name, periods):
+        s = esc(name)
+        if periods:
+            s += f'<span class="sum-period"> ({esc(periods)})</span>'
+        return s
+    teachers_str = ", ".join(fmt(n, p) for n, p in teachers) if teachers else "—"
+    classes_str  = ", ".join(fmt(n, p) for n, p in classes)  if classes  else "—"
     return (
         f'<div class="summary-bar">'
         f'<span class="sum-item"><span class="sum-label">Abwesende Lehrer:</span> {teachers_str}</span>'
