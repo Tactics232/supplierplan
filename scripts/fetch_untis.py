@@ -186,21 +186,21 @@ def process_substitutions(substs, timegrid, break_lookup, day="today"):
             kuerzel = t.get("name", "").strip()
             if kuerzel in SKIP_NAMES:
                 continue
-            orgname = t.get("orgname", "").strip()
-            lehrer  = f"{orgname} → {kuerzel}" if (t.get("orgid") and orgname) else kuerzel
+            orgname    = t.get("orgname", "").strip()
+            org_kuerzel = orgname if (t.get("orgid") and orgname) else ""
 
             rows.append({
-                "kuerzel":  kuerzel,
-                "std":      std_display,
-                "sort_key": start,
-                "end_time": end,
-                "day":      day,
-                "fach":     fach,
-                "klasse":   klasse,
-                "lehrer":   lehrer,
-                "art":      art_out,
-                "raum":     raum,
-                "text":     txt,
+                "kuerzel":     kuerzel,
+                "org_kuerzel": org_kuerzel,
+                "std":         std_display,
+                "sort_key":    start,
+                "end_time":    end,
+                "day":         day,
+                "fach":        fach,
+                "klasse":      klasse,
+                "art":         art_out,
+                "raum":        raum,
+                "text":        txt,
             })
     return rows
 
@@ -211,6 +211,30 @@ def group_by_teacher(rows):
     for key in groups:
         groups[key].sort(key=lambda r: r["sort_key"])
     return dict(sorted(groups.items()))
+
+def compute_absent(groups):
+    absent, classes = set(), set()
+    for rows in groups.values():
+        for r in rows:
+            if r.get("org_kuerzel"):
+                absent.add(r["org_kuerzel"])
+            klasse = r.get("klasse", "")
+            if klasse and klasse != "—":
+                for k in klasse.split(" · "):
+                    k = k.strip()
+                    if k:
+                        classes.add(k)
+    return sorted(absent), sorted(classes)
+
+def render_summary_bar(teachers, classes):
+    teachers_str = ", ".join(esc(t) for t in teachers) if teachers else "—"
+    classes_str  = ", ".join(esc(c) for c in classes)  if classes  else "—"
+    return (
+        f'<div class="summary-bar">'
+        f'<span class="sum-item"><span class="sum-label">Abwesende Lehrer:</span> {teachers_str}</span>'
+        f'<span class="sum-item"><span class="sum-label">Abwesende Klassen:</span> {classes_str}</span>'
+        f'</div>'
+    )
 
 # ── HTML Generierung ──────────────────────────────────
 ART_MAP = {
@@ -258,9 +282,16 @@ def render_day_separator(d):
 
 def render_row(r):
     row_cls, badge_cls, label = ART_MAP.get(r["art"], ("s-sup", "b-sup", r["art"]))
-    day_cls     = " tomorrow" if r.get("day") == "tomorrow" else ""
-    # esc() first, then replace the → character (html.escape does not touch it)
-    lehrer_html = esc(r["lehrer"]).replace("→", '<span class="lehr-arrow">&rarr;</span>')
+    day_cls = " tomorrow" if r.get("day") == "tomorrow" else ""
+    org = r.get("org_kuerzel", "")
+    if org:
+        lehrer_html = (
+            f'<s class="lehr-absent">{esc(org)}</s>'
+            f'<span class="lehr-arrow">&rarr;</span>'
+            f'{esc(r["kuerzel"])}'
+        )
+    else:
+        lehrer_html = esc(r["kuerzel"])
     return (
         f'<tr class="{row_cls}{day_cls}">'
         f'<td class="c-kuerzel"></td>'
@@ -290,23 +321,33 @@ THEAD = """<thead><tr>
                 <th class="c-text">Text</th>
             </tr></thead>"""
 
-def build_chunks(groups_today, groups_tomorrow, tomorrow_date, teacher_lookup):
-    """Gibt Liste von (html, gewicht) Tupeln zurück für die Zwei-Spalten-Aufteilung."""
+TWO_COL_THRESHOLD = 30
+
+def build_day_content(groups, teacher_lookup, day):
+    if not groups:
+        msg = "Kein Supplierplan für heute" if day == "today" else "Kein Supplierplan für morgen"
+        return f'<div class="empty-state"><p>{msg}</p></div>'
     chunks = []
-
-    for kuerzel, rows in groups_today.items():
-        html = render_teacher_header(kuerzel, teacher_lookup, "today")
-        html += "".join(render_row(r) for r in rows)
-        chunks.append((html, 1 + len(rows)))
-
-    if groups_tomorrow and tomorrow_date:
-        chunks.append((render_day_separator(tomorrow_date), 2))
-        for kuerzel, rows in groups_tomorrow.items():
-            html = render_teacher_header(kuerzel, teacher_lookup, "tomorrow")
-            html += "".join(render_row(r) for r in rows)
-            chunks.append((html, 1 + len(rows)))
-
-    return chunks
+    for kuerzel, rows in groups.items():
+        h = render_teacher_header(kuerzel, teacher_lookup, day)
+        h += "".join(render_row(r) for r in rows)
+        chunks.append((h, 1 + len(rows)))
+    total = sum(w for _, w in chunks)
+    if total > TWO_COL_THRESHOLD:
+        left_html, right_html = split_chunks(chunks)
+        return (
+            f'<div class="columns">'
+            f'<div class="col"><table>{COLGROUP}{THEAD}<tbody>{left_html}</tbody></table></div>'
+            f'<div class="col"><table>{COLGROUP}{THEAD}<tbody>{right_html}</tbody></table></div>'
+            f'</div>'
+        )
+    else:
+        all_html = "".join(h for h, _ in chunks)
+        return (
+            f'<div class="columns single">'
+            f'<div class="col"><table>{COLGROUP}{THEAD}<tbody>{all_html}</tbody></table></div>'
+            f'</div>'
+        )
 
 def split_chunks(chunks):
     total = sum(w for _, w in chunks)
@@ -354,29 +395,30 @@ def generate_html(groups_today, groups_tomorrow, tomorrow_date,
             '</div>'
         )
 
-    chunks = build_chunks(groups_today, groups_tomorrow, tomorrow_date, teacher_lookup)
+    today_absent, today_classes = compute_absent(groups_today)
+    today_section = (
+        f'<div class="plan-section">'
+        f'{render_summary_bar(today_absent, today_classes)}'
+        f'{build_day_content(groups_today, teacher_lookup, "today")}'
+        f'</div>'
+    )
 
-    TWO_COL_THRESHOLD = 30  # ab dieser Zeilenzahl zwei Spalten
+    tomorrow_section = ""
+    if groups_tomorrow and tomorrow_date:
+        tom_absent, tom_classes = compute_absent(groups_tomorrow)
+        day_label = (
+            f"Morgen · {WEEKDAYS[tomorrow_date.weekday()]}, "
+            f"{tomorrow_date.day}. {MONTHS[tomorrow_date.month-1]} {tomorrow_date.year}"
+        )
+        tomorrow_section = (
+            f'<div class="plan-section tomorrow-section">'
+            f'<div class="day-title-bar"><span class="day-title-text">{day_label}</span></div>'
+            f'{render_summary_bar(tom_absent, tom_classes)}'
+            f'{build_day_content(groups_tomorrow, teacher_lookup, "tomorrow")}'
+            f'</div>'
+        )
 
-    if chunks:
-        total_weight = sum(w for _, w in chunks)
-        if total_weight > TWO_COL_THRESHOLD:
-            left_html, right_html = split_chunks(chunks)
-            main_content = (
-                f'<div class="columns">'
-                f'<div class="col"><table>{COLGROUP}{THEAD}<tbody>{left_html}</tbody></table></div>'
-                f'<div class="col"><table>{COLGROUP}{THEAD}<tbody>{right_html}</tbody></table></div>'
-                f'</div>'
-            )
-        else:
-            all_html = "".join(h for h, _ in chunks)
-            main_content = (
-                f'<div class="columns single">'
-                f'<div class="col"><table>{COLGROUP}{THEAD}<tbody>{all_html}</tbody></table></div>'
-                f'</div>'
-            )
-    else:
-        main_content = '<div class="empty-state"><p>Kein Supplierplan für heute</p></div>'
+    main_content = today_section + tomorrow_section
 
     return f"""<!DOCTYPE html>
 <html lang="de">

@@ -315,14 +315,68 @@ html, body {
     flex: 1;
     overflow: hidden;
     padding: 14px var(--pad-x);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* ── Plan sections (today / tomorrow) ───────────────── */
+.plan-section {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.summary-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 0 2px 6px;
+    flex-shrink: 0;
+}
+
+.sum-item {
+    font-family: var(--font-d);
+    font-size: 13px;
+    color: var(--c-text);
+    letter-spacing: 0.02em;
+}
+
+.sum-label {
+    font-weight: 700;
+    color: var(--c-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.10em;
+    font-size: 10px;
+    margin-right: 6px;
+}
+
+.day-title-bar {
+    flex-shrink: 0;
+    padding: 5px 2px 4px;
+    border-top: 1px solid rgba(80, 140, 220, 0.4);
+    margin-bottom: 2px;
+}
+
+.day-title-text {
+    font-family: var(--font-d);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #6aacf0;
 }
 
 /* ── Two-column layout ──────────────────────────────── */
 .columns {
     display: flex;
     gap: 20px;
-    height: 100%;
+    flex: 1;
+    min-height: 0;
     align-items: flex-start;
+    overflow: hidden;
 }
 
 .col {
@@ -425,6 +479,12 @@ td.c-lehrer {
     color: var(--c-muted);
     margin: 0 2px;
     font-size: 11px;
+}
+
+.lehr-absent {
+    text-decoration: line-through;
+    color: var(--c-muted);
+    opacity: 0.75;
 }
 
 td.c-raum {
