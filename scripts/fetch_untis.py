@@ -13,6 +13,22 @@ import http.cookiejar
 from datetime import datetime, date, timedelta
 from pathlib import Path
 from collections import defaultdict
+try:
+    from zoneinfo import ZoneInfo
+    try:
+        TZ = ZoneInfo("Europe/Vienna")
+    except Exception:
+        # Windows: TZ-Datenbank fehlt (pip install tzdata)
+        TZ = None
+except ImportError:
+    TZ = None  # Python <3.9
+
+def now_local():
+    """Aktuelle Wien-Zeit (oder System-Zeit falls ZoneInfo nicht verfügbar)."""
+    return datetime.now(TZ) if TZ else datetime.now()
+
+def today_local():
+    return now_local().date()
 
 
 def esc(s):
@@ -83,9 +99,14 @@ class WebUntis:
     def get_teachers(self):
         return self._rpc("getTeachers")
 
+    def get_holidays(self):
+        return self._rpc("getHolidays")
+
     def get_latest_import_time(self):
         ms = self._rpc("getLatestImportTime")
         if ms:
+            if TZ:
+                return datetime.fromtimestamp(ms / 1000, tz=TZ)
             return datetime.fromtimestamp(ms / 1000)
         return None
 
@@ -121,15 +142,41 @@ def fmt_time(t):
     return f"{h:02d}:{m:02d}"
 
 def find_current_period(timegrid):
-    now_t = datetime.now().hour * 100 + datetime.now().minute
+    n = now_local()
+    now_t = n.hour * 100 + n.minute
     for start, (nr, s, e) in sorted(timegrid.items()):
         if s <= now_t <= e:
             return nr, fmt_time(s), fmt_time(e)
     return None, None, None
 
 def now_hhmm():
-    n = datetime.now()
+    n = now_local()
     return n.hour * 100 + n.minute
+
+# ── Ferien-Logik ──────────────────────────────────────
+def parse_holidays(holidays):
+    """Wandelt die Untis-Ferienliste in ein Set von date-Objekten."""
+    days = set()
+    if not holidays:
+        return days
+    for h in holidays:
+        try:
+            start = datetime.strptime(str(h["startDate"]), "%Y%m%d").date()
+            end   = datetime.strptime(str(h["endDate"]),   "%Y%m%d").date()
+        except (KeyError, ValueError):
+            continue
+        d = start
+        while d <= end:
+            days.add(d)
+            d += timedelta(days=1)
+    return days
+
+def next_school_day(start, holiday_set):
+    """Erster Werktag nach `start`, der kein Ferien-/Feiertag ist."""
+    d = start + timedelta(days=1)
+    while d.weekday() >= 5 or d in holiday_set:
+        d += timedelta(days=1)
+    return d
 
 # ── Lehrer-Lookup ─────────────────────────────────────
 SKIP_NAMES = {"---", "Z Entfall", ""}
@@ -160,10 +207,15 @@ def process_substitutions(substs, timegrid, break_lookup, day="today"):
 
         is_break = lstype == "bs"
 
-        raum = " · ".join(
-            r["name"] for r in s.get("ro", [])
-            if r.get("name") and r["name"] not in ("---", "")
-        ) or "—"
+        # Räume: neuer Raum + ursprünglicher (für Raumwechsel-Darstellung)
+        ro_list = [r for r in s.get("ro", []) if r.get("name") and r["name"] not in ("---", "")]
+        raum     = " · ".join(r["name"] for r in ro_list) or "—"
+        raum_org = " · ".join(
+            r.get("orgname", "").strip()
+            for r in ro_list
+            if r.get("orgid") and r.get("orgname", "").strip()
+            and r.get("orgname", "").strip() != r.get("name", "").strip()
+        )
 
         if is_break:
             std_display = break_lookup.get(start, fmt_time(start))
@@ -175,7 +227,8 @@ def process_substitutions(substs, timegrid, break_lookup, day="today"):
             std_display = str(info[0]) if info else "?"
             klasse      = " · ".join(k["name"] for k in s.get("kl", [])) or "—"
             fach        = " · ".join(f["name"] for f in s.get("su", [])) or "—"
-            art_out     = art
+            # Raumwechsel ohne Lehrerwechsel: type=subst, aber raum_org gesetzt
+            art_out     = "roomchange" if (art == "subst" and raum_org and not any(t.get("orgid") for t in s.get("te", []))) else art
 
         for t in s.get("te", []):
             kuerzel = t.get("name", "").strip()
@@ -195,6 +248,7 @@ def process_substitutions(substs, timegrid, break_lookup, day="today"):
                 "klasse":      klasse,
                 "art":         art_out,
                 "raum":        raum,
+                "raum_org":    raum_org,
                 "text":        txt,
             })
     return rows
@@ -306,6 +360,15 @@ def render_row(r):
         )
     else:
         lehrer_html = esc(r["kuerzel"])
+    raum_org = r.get("raum_org", "")
+    if raum_org:
+        raum_html = (
+            f'<s class="room-absent">{esc(raum_org)}</s>'
+            f'<span class="lehr-arrow">&rarr;</span>'
+            f'{esc(r["raum"])}'
+        )
+    else:
+        raum_html = esc(r["raum"])
     return (
         f'<tr class="{row_cls}{day_cls}">'
         f'<td class="c-kuerzel"></td>'
@@ -314,7 +377,7 @@ def render_row(r):
         f'<td class="c-klasse">{esc(r["klasse"])}</td>'
         f'<td class="c-lehrer">{lehrer_html}</td>'
         f'<td class="c-art"><span class="badge {badge_cls}">{esc(label)}</span></td>'
-        f'<td class="c-raum">{esc(r["raum"])}</td>'
+        f'<td class="c-raum">{raum_html}</td>'
         f'<td class="c-text">{render_text(r["text"])}</td>'
         f'</tr>'
     )
@@ -376,7 +439,7 @@ def split_chunks(chunks):
         count += weight
     return "".join(left), "".join(right)
 
-def generate_html(groups_today, groups_tomorrow, tomorrow_date,
+def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
                   teacher_lookup, period_nr, period_start, period_end,
                   show_logo=False, import_time=None):
 
@@ -387,7 +450,7 @@ def generate_html(groups_today, groups_tomorrow, tomorrow_date,
     else:
         import_block = ''
 
-    now      = datetime.now()
+    now      = now_local()
     date_str = f"{WEEKDAYS[now.weekday()]}, {now.day}. {MONTHS[now.month-1]} {now.year}"
     time_str = now.strftime("%H:%M")
     upd_str  = now.strftime("%H:%M Uhr")
@@ -409,21 +472,43 @@ def generate_html(groups_today, groups_tomorrow, tomorrow_date,
             '</div>'
         )
 
-    today_absent, today_classes = compute_absent(groups_today)
-    today_section = (
-        f'<div class="plan-section">'
-        f'{render_summary_bar(today_absent, today_classes)}'
-        f'{build_day_content(groups_today, teacher_lookup, "today")}'
-        f'</div>'
-    )
+    show_today    = bool(groups_today)
+    show_tomorrow = bool(groups_tomorrow) and bool(tomorrow_date)
+    both_visible  = show_today and show_tomorrow
+
+    today_section = ""
+    if show_today:
+        today_absent, today_classes = compute_absent(groups_today)
+        date_str_today = (
+            f"{WEEKDAYS[today_date.weekday()]}, "
+            f"{today_date.day}. {MONTHS[today_date.month-1]} {today_date.year}"
+        )
+        today_title = (
+            f'<div class="day-title-bar today">'
+            f'<span class="day-title-text">Heute · {date_str_today}</span>'
+            f'</div>' if both_visible else ''
+        )
+        section_cls = "plan-section today-section" if both_visible else "plan-section"
+        today_section = (
+            f'<div class="{section_cls}">'
+            f'{today_title}'
+            f'{render_summary_bar(today_absent, today_classes)}'
+            f'{build_day_content(groups_today, teacher_lookup, "today")}'
+            f'</div>'
+        )
 
     tomorrow_section = ""
-    if groups_tomorrow and tomorrow_date:
+    if show_tomorrow:
         tom_absent, tom_classes = compute_absent(groups_tomorrow)
-        day_label = (
-            f"Morgen · {WEEKDAYS[tomorrow_date.weekday()]}, "
+        days_ahead = (tomorrow_date - today_date).days
+        date_str_tom = (
+            f"{WEEKDAYS[tomorrow_date.weekday()]}, "
             f"{tomorrow_date.day}. {MONTHS[tomorrow_date.month-1]} {tomorrow_date.year}"
         )
+        if days_ahead == 1:
+            day_label = f"Morgen · {date_str_tom}"
+        else:
+            day_label = f"Nächster Schultag · {date_str_tom}"
         tomorrow_section = (
             f'<div class="plan-section tomorrow-section">'
             f'<div class="day-title-bar"><span class="day-title-text">{day_label}</span></div>'
@@ -432,7 +517,14 @@ def generate_html(groups_today, groups_tomorrow, tomorrow_date,
             f'</div>'
         )
 
-    main_content = today_section + tomorrow_section
+    if not show_today and not show_tomorrow:
+        main_content = (
+            '<div class="plan-section">'
+            '<div class="empty-state"><p>Kein Supplierplan verfügbar</p></div>'
+            '</div>'
+        )
+    else:
+        main_content = today_section + tomorrow_section
 
     return f"""<!DOCTYPE html>
 <html lang="de">
@@ -440,6 +532,9 @@ def generate_html(groups_today, groups_tomorrow, tomorrow_date,
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="refresh" content="300">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Supplierplan – MS Roda-Roda-Gasse</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
@@ -494,9 +589,117 @@ def generate_html(groups_today, groups_tomorrow, tomorrow_date,
         days[n.getDay()] + ', ' + n.getDate() + '. ' + months[n.getMonth()] + ' ' + n.getFullYear();
     setTimeout(tick, 1000);
 }})();
+
+// Auto-Refresh: 60s soft-reload, alle 5 min Hard-Reload mit Cache-Bust
+(function () {{
+    var tick = 0;
+    setInterval(function () {{
+        tick++;
+        if (tick % 5 === 0) {{
+            // Cache-Bust: erzwingt Neuladen aller Ressourcen
+            window.location.href = window.location.pathname + '?cb=' + Date.now();
+        }} else {{
+            window.location.reload();
+        }}
+    }}, 60 * 1000);
+}})();
 </script>
 </body>
 </html>"""
+
+# ── Daten-Dump (lesbare Übersicht + Roh-JSON) ─────────
+def write_data_dump(today_substs, tomorrow_substs, today_rows, tomorrow_rows,
+                    holidays, import_time, today_date, tomorrow_date):
+    """Schreibt zwei Dateien ins data/-Verzeichnis:
+       - last_raw.json:     unveränderte Roh-Daten von WebUntis
+       - last_overview.html: formatierte Übersicht für Browser
+    """
+    data_dir = BASE_DIR / "data"
+    data_dir.mkdir(exist_ok=True)
+
+    fetched_at = now_local().strftime("%Y-%m-%d %H:%M:%S %Z")
+    untis_stand = import_time.strftime("%Y-%m-%d %H:%M:%S %Z") if import_time else None
+
+    raw = {
+        "metadata": {
+            "fetched_at": fetched_at,
+            "import_time_untis": untis_stand,
+            "today_date": today_date.isoformat(),
+            "tomorrow_date": tomorrow_date.isoformat() if tomorrow_date else None,
+        },
+        "today_substitutions_raw":    today_substs,
+        "tomorrow_substitutions_raw": tomorrow_substs,
+        "holidays":                   holidays,
+    }
+    (data_dir / "last_raw.json").write_text(
+        json.dumps(raw, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+
+    def row_html(r):
+        lehrer = esc(r["kuerzel"])
+        if r.get("org_kuerzel"):
+            lehrer = f'<s>{esc(r["org_kuerzel"])}</s> &rarr; {esc(r["kuerzel"])}'
+        raum = esc(r["raum"])
+        if r.get("raum_org"):
+            raum = f'<s>{esc(r["raum_org"])}</s> &rarr; {esc(r["raum"])}'
+        return (
+            f'<tr>'
+            f'<td>{esc(r["std"])}</td>'
+            f'<td>{lehrer}</td>'
+            f'<td>{esc(r["klasse"])}</td>'
+            f'<td>{esc(r["fach"])}</td>'
+            f'<td>{raum}</td>'
+            f'<td>{esc(r["art"])}</td>'
+            f'<td>{esc(r["text"])}</td>'
+            f'</tr>'
+        )
+
+    def day_section(title, rows):
+        if not rows:
+            return f"<h2>{esc(title)}</h2><p><em>Keine Einträge</em></p>"
+        body = "".join(
+            row_html(r)
+            for r in sorted(rows, key=lambda x: (x["sort_key"], x["kuerzel"]))
+        )
+        return (
+            f'<h2>{esc(title)} <small>({len(rows)} Zeilen)</small></h2>'
+            f'<table><thead><tr>'
+            f'<th>Std</th><th>Lehrer</th><th>Klasse</th>'
+            f'<th>Fach</th><th>Raum</th><th>Art</th><th>Text</th>'
+            f'</tr></thead><tbody>{body}</tbody></table>'
+        )
+
+    html_out = f"""<!DOCTYPE html>
+<html lang="de">
+<head><meta charset="UTF-8"><title>Supplierplan — API-Dump</title>
+<style>
+body {{ font-family: -apple-system, Segoe UI, sans-serif; margin: 24px; background: #f5f5f7; color: #222; }}
+h1   {{ font-size: 22px; margin-bottom: 8px; }}
+h2   {{ font-size: 18px; margin-top: 28px; border-bottom: 1px solid #ccc; padding-bottom: 4px; }}
+table {{ border-collapse: collapse; width: 100%; margin-top: 8px; font-size: 13px; background: #fff; }}
+th, td {{ padding: 6px 10px; border-bottom: 1px solid #e2e2e6; text-align: left; vertical-align: top; }}
+th    {{ background: #e8e8ed; font-weight: 600; }}
+tr:hover td {{ background: #fafafd; }}
+s     {{ color: #888; }}
+.meta {{ background: #fff; padding: 12px 16px; border-radius: 6px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }}
+.meta p {{ margin: 4px 0; font-size: 14px; }}
+.links a {{ color: #2a66d6; text-decoration: none; margin-right: 14px; font-size: 13px; }}
+.links a:hover {{ text-decoration: underline; }}
+</style></head>
+<body>
+<h1>Supplierplan — API-Daten-Dump</h1>
+<div class="meta">
+  <p><strong>Abruf:</strong> {esc(fetched_at)}</p>
+  <p><strong>Untis Stand:</strong> {esc(untis_stand or "—")}</p>
+  <p><strong>Heute:</strong> {esc(today_date.isoformat())}</p>
+  <p><strong>Nächster Schultag:</strong> {esc(tomorrow_date.isoformat() if tomorrow_date else "—")}</p>
+  <p class="links"><a href="last_raw.json">→ Roh-JSON ansehen</a><a href="../index.html">→ zurück zur Anzeige</a></p>
+</div>
+{day_section("Heute (verarbeitete Zeilen)", today_rows)}
+{day_section("Nächster Schultag (verarbeitete Zeilen)", tomorrow_rows)}
+</body></html>"""
+
+    (data_dir / "last_overview.html").write_text(html_out, encoding="utf-8")
 
 # ── Main ──────────────────────────────────────────────
 def main():
@@ -514,13 +717,15 @@ def main():
 
         grid_raw       = untis.get_timegrid()
         teachers       = untis.get_teachers()
+        holidays_raw   = untis.get_holidays()
         import_time    = untis.get_latest_import_time()
         timegrid       = build_timegrid(grid_raw)
         break_lookup   = build_break_lookup(grid_raw)
         teacher_lookup = build_teacher_lookup(teachers)
+        holiday_set    = parse_holidays(holidays_raw)
 
         now_t   = now_hhmm()
-        today   = date.today()
+        today   = today_local()
         today_int = int(today.strftime("%Y%m%d"))
 
         # Heute: vergangene Stunden herausfiltern
@@ -530,22 +735,22 @@ def main():
         today_rows   = [r for r in today_rows if r["end_time"] >= now_t]
         groups_today = group_by_teacher(today_rows)
 
-        # Morgen: ab konfigurierter Uhrzeit laden
+        # Morgen: ab konfigurierter Uhrzeit ODER wenn heute schon leer ist
         threshold_str = config.get("SHOW_TOMORROW_AFTER", "14:00")
         th, tm     = map(int, threshold_str.split(":"))
         threshold  = th * 100 + tm
-        show_tomorrow = now_t >= threshold
+        show_tomorrow = now_t >= threshold or not groups_today
 
         groups_tomorrow = {}
         tomorrow_date   = None
+        tom_substs      = []
+        tom_rows        = []
 
         if show_tomorrow:
-            tomorrow = today + timedelta(days=1)
-            while tomorrow.weekday() >= 5:   # Wochenende überspringen
-                tomorrow += timedelta(days=1)
+            tomorrow      = next_school_day(today, holiday_set)
             tomorrow_int  = int(tomorrow.strftime("%Y%m%d"))
             tomorrow_date = tomorrow
-            print(f"Hole Morgen ({tomorrow_int}) ...", flush=True)
+            print(f"Hole nächsten Schultag ({tomorrow_int}) ...", flush=True)
             tom_substs    = untis.get_substitutions(tomorrow_int)
             tom_rows      = process_substitutions(tom_substs, timegrid, break_lookup, day="tomorrow")
             groups_tomorrow = group_by_teacher(tom_rows)
@@ -558,7 +763,7 @@ def main():
 
         show_logo = config.get("SHOW_LOGO", "false").lower() == "true"
         html = generate_html(
-            groups_today, groups_tomorrow, tomorrow_date,
+            groups_today, groups_tomorrow, today, tomorrow_date,
             teacher_lookup, period_nr, p_start, p_end,
             show_logo=show_logo,
             import_time=import_time,
@@ -566,6 +771,15 @@ def main():
         out = BASE_DIR / "index.html"
         out.write_text(html, encoding="utf-8")
         print(f"Fertig -> {out}", flush=True)
+
+        # Lesbare Datenübersicht in data/ ablegen
+        write_data_dump(
+            today_substs, tom_substs,
+            today_rows, tom_rows,
+            holidays_raw, import_time,
+            today, tomorrow_date,
+        )
+        print(f"Daten-Dump -> {BASE_DIR / 'data'}", flush=True)
 
     finally:
         untis.logout()

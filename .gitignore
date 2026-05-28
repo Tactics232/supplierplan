@@ -4,3 +4,6 @@ index.html
 Screenshot*
 __pycache__/
 *.pyc
+data/
+scripts/api_dump/
+scripts/debug_*.json

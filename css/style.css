@@ -324,10 +324,15 @@ html, body {
 .plan-section {
     display: flex;
     flex-direction: column;
-    flex: 1;
+    flex: 1 1 auto;
     overflow: hidden;
     min-height: 0;
 }
+
+/* Wenn beide Tage sichtbar: heute nimmt nur seinen Content-Platz,
+   morgen wächst auf den Rest. So rutscht morgen hoch wenn heute schrumpft. */
+.plan-section.today-section { flex: 0 1 auto; }
+.plan-section.tomorrow-section { flex: 1 1 auto; }
 
 .summary-bar {
     display: flex;
@@ -363,18 +368,26 @@ html, body {
 
 .day-title-bar {
     flex-shrink: 0;
-    padding: 5px 2px 4px;
+    padding: 6px 2px 5px;
     border-top: 1px solid rgba(80, 140, 220, 0.4);
     margin-bottom: 2px;
 }
 
+.day-title-bar.today {
+    border-top: 1px solid rgba(200, 16, 46, 0.5);
+}
+
 .day-title-text {
     font-family: var(--font-d);
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.16em;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
     color: #6aacf0;
+}
+
+.day-title-bar.today .day-title-text {
+    color: #ff6b80;
 }
 
 /* ── Two-column layout ──────────────────────────────── */
@@ -489,7 +502,8 @@ td.c-lehrer {
     font-size: 11px;
 }
 
-.lehr-absent {
+.lehr-absent,
+.room-absent {
     text-decoration: line-through;
     color: var(--c-muted);
     opacity: 0.75;
@@ -550,7 +564,7 @@ tr.day-separator td {
 tr.teacher-header td {
     background: rgba(255,255,255,0.03);
     border-top: 1px solid var(--c-border);
-    padding: 8px 12px 5px;
+    padding: 10px 12px 7px;
     border-left: none !important;
 }
 
@@ -560,19 +574,19 @@ tr.teacher-header:first-child td {
 
 .th-kuerzel {
     font-family: var(--font-d);
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 800;
     color: var(--c-text);
-    margin-right: 10px;
+    margin-right: 12px;
     letter-spacing: 0.04em;
 }
 
 .th-name {
     font-family: var(--font-d);
-    font-size: 13px;
-    font-weight: 400;
-    color: var(--c-muted);
-    letter-spacing: 0.02em;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--c-text);
+    letter-spacing: 0.01em;
 }
 
 /* ── Art badges ─────────────────────────────────────── */
