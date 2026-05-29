@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 from scripts.fetch_trains import classify_direction
 from scripts.fetch_trains import extract_departure
+from scripts.fetch_trains import split_by_direction
 
 
 class _FakeLeg:
@@ -85,6 +86,44 @@ class TestClassifyDirection(unittest.TestCase):
             classify_direction("Wien Hbf", []),
             "away",
         )
+
+
+class TestSplitByDirection(unittest.TestCase):
+    def setUp(self):
+        self.tz = timezone(timedelta(hours=2))
+        base = datetime(2026, 5, 28, 14, 0, tzinfo=self.tz)
+        # 5 Abfahrten: 3 Richtung Wien, 2 weg
+        self.legs = [
+            _FakeLeg("S 50", "Wien Hauptbahnhof", base.replace(minute=10)),  # towards
+            _FakeLeg("S 50", "St. Pölten Hbf",    base.replace(minute=15)),  # away (no "Wien")
+            _FakeLeg("S 50", "Wien Westbahnhof",  base.replace(minute=20)),  # towards
+            _FakeLeg("S 50", "Tulln",             base.replace(minute=25)),  # away
+            _FakeLeg("REX", "Salzburg",           base.replace(minute=30)),  # away
+        ]
+
+    def test_split_mit_n1_pro_richtung(self):
+        towards_list = ["Wien"]
+        result = split_by_direction(self.legs, towards_list, n_per_direction=1)
+        self.assertEqual(len(result["towards"]), 1)
+        self.assertEqual(len(result["away"]), 1)
+        self.assertEqual(result["towards"][0]["destination"], "Wien Hauptbahnhof")
+        self.assertEqual(result["away"][0]["destination"], "St. Pölten Hbf")
+
+    def test_split_mit_n2_pro_richtung(self):
+        towards_list = ["Wien"]
+        result = split_by_direction(self.legs, towards_list, n_per_direction=2)
+        self.assertEqual(len(result["towards"]), 2)
+        self.assertEqual(len(result["away"]), 2)
+
+    def test_split_ueberspringt_cancelled(self):
+        cancelled = _FakeLeg("S 50", "Wien Hauptbahnhof",
+                             datetime(2026, 5, 28, 14, 5, tzinfo=self.tz),
+                             cancelled=True)
+        legs = [cancelled] + self.legs
+        result = split_by_direction(legs, ["Wien"], n_per_direction=1)
+        # Cancelled at 14:05 should NOT be taken; next towards is Wien Hauptbahnhof at 14:10
+        self.assertNotEqual(result["towards"][0]["planned"], "14:05")
+        self.assertEqual(result["towards"][0]["planned"], "14:10")
 
 
 if __name__ == "__main__":

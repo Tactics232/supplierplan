@@ -39,3 +39,23 @@ def extract_departure(leg: Any) -> dict:
         "cancelled":     bool(leg.cancelled),
         "platform":      leg.platform,
     }
+
+
+def split_by_direction(legs: Iterable[Any], towards_substrings: Iterable[str],
+                       n_per_direction: int = 1) -> dict:
+    """Iteriert über pyhafas-Legs (oder Duck-Typ), klassifiziert nach Richtung,
+    überspringt cancelled-Stunden und limitiert pro Richtung auf n_per_direction.
+    Reihenfolge im Input wird beibehalten (Annahme: bereits chronologisch sortiert).
+    """
+    towards, away = [], []
+    for leg in legs:
+        if bool(getattr(leg, "cancelled", False)):
+            continue
+        dep = extract_departure(leg)
+        bucket = classify_direction(dep["destination"], towards_substrings)
+        target = towards if bucket == "towards" else away
+        if len(target) < n_per_direction:
+            target.append(dep)
+        if len(towards) >= n_per_direction and len(away) >= n_per_direction:
+            break
+    return {"towards": towards, "away": away}
