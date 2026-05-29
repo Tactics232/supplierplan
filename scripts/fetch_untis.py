@@ -589,11 +589,29 @@ def split_chunks(chunks):
         count += weight
     return "".join(left), "".join(right)
 
+def render_train_widget(enabled: bool) -> str:
+    """Liefert den HTML-Stub für das Zug-Widget im Header.
+    Inhalt wird zur Laufzeit per JavaScript aus data/trains.json befüllt.
+    Bei enabled=False → leerer String (Widget wird nicht ins DOM eingebaut)."""
+    if not enabled:
+        return ""
+    return (
+        '<div class="train-widget" id="train-widget" data-state="loading">'
+        '<div class="tw-station" id="tw-station">— Zugdaten werden geladen —</div>'
+        '<div class="tw-rows">'
+        '<div class="tw-bucket" id="tw-towards-row"></div>'
+        '<div class="tw-bucket" id="tw-away-row"></div>'
+        '</div>'
+        '<div class="tw-foot" id="tw-foot"></div>'
+        '</div>'
+    )
+
 def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
                   teacher_lookup, period_nr, period_start, period_end,
-                  show_logo=False, import_time=None):
+                  show_logo=False, import_time=None, train_enabled=False):
 
     logo_html = '<div class="logo"><img src="logo.png" alt="Logo"></div>\n            ' if show_logo else ''
+    train_widget_html = render_train_widget(train_enabled)
 
     if import_time:
         import_block = f'<span class="foot-c">Stand Untis: {import_time.strftime("%d.%m.%Y %H:%M")} Uhr</span>'
@@ -712,6 +730,7 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
                 <p class="school-sub">Mittelschule · 1210 Wien</p>
             </div>
         </div>
+        {train_widget_html}
         <div class="header-right">
             {period_block}
             <div class="header-divider"></div>
@@ -947,11 +966,16 @@ def main():
         print(f"Heute: {today_count} Zeilen | Morgen: {tomorrow_count} Zeilen", flush=True)
 
         show_logo = config.get("SHOW_LOGO", "false").lower() == "true"
+        train_enabled = (
+            config.get("TRAIN_STATION", "").strip()
+            and config.get("TRAIN_DISABLED", "").strip().lower() != "true"
+        )
         html = generate_html(
             groups_today, groups_tomorrow, today, tomorrow_date,
             teacher_lookup, period_nr, p_start, p_end,
             show_logo=show_logo,
             import_time=import_time,
+            train_enabled=bool(train_enabled),
         )
         out = BASE_DIR / "index.html"
         out.write_text(html, encoding="utf-8")
