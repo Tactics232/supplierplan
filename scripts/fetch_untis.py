@@ -786,6 +786,69 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
         }}
     }}, 60 * 1000);
 }})();
+
+// ── Train-Widget Updater ──
+(function () {{
+    var widget = document.getElementById('train-widget');
+    if (!widget) return;
+
+    var ARROW_SVG = '<svg viewBox="0 0 20 14"><path d="M2 7h13M11 3l5 4-5 4" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+    function fmtRow(dep, klass) {{
+        var row = document.createElement('div');
+        var cancelled = dep.cancelled ? ' tw-cancelled' : '';
+        row.className = 'tw-row ' + klass + cancelled;
+        // Skelett aufbauen (SVG ist statisch + sicher)
+        row.innerHTML =
+            '<span class="tw-dot"></span>' +
+            '<span class="tw-arrow">' + ARROW_SVG + '</span>' +
+            '<span class="tw-line"></span>' +
+            '<span class="tw-time"></span>' +
+            '<span class="tw-dest"></span>';
+        // Werte aus der API via textContent setzen (XSS-safe):
+        row.querySelector('.tw-line').textContent = dep.line || '';
+        row.querySelector('.tw-time').textContent = dep.actual || dep.planned || '';
+        row.querySelector('.tw-dest').textContent = dep.destination || '';
+        if (dep.delay_minutes > 0) {{
+            var d = document.createElement('span');
+            d.className = 'tw-delay';
+            d.textContent = '+' + dep.delay_minutes;
+            row.appendChild(d);
+        }}
+        return row;
+    }}
+
+    function update(data) {{
+        document.getElementById('tw-station').textContent = data.station || '';
+        var tCell = document.getElementById('tw-towards-row');
+        var aCell = document.getElementById('tw-away-row');
+        tCell.innerHTML = '';
+        aCell.innerHTML = '';
+        (data.towards || []).forEach(function (dep) {{ tCell.appendChild(fmtRow(dep, 'tw-towards')); }});
+        (data.away    || []).forEach(function (dep) {{ aCell.appendChild(fmtRow(dep, 'tw-away')); }});
+
+        var foot = document.getElementById('tw-foot');
+        var fetched = data.fetched_at ? new Date(data.fetched_at) : null;
+        if (fetched && !isNaN(fetched.getTime())) {{
+            var ageMin = Math.floor((Date.now() - fetched.getTime()) / 60000);
+            foot.textContent = 'Stand: ' + (ageMin <= 0 ? 'jetzt' : 'vor ' + ageMin + ' min');
+            foot.className = 'tw-foot' + (ageMin > 5 ? ' stale' : '');
+        }} else {{
+            foot.textContent = '';
+        }}
+        widget.setAttribute('data-state', 'ok');
+    }}
+
+    function load() {{
+        fetch('data/trains.json?cb=' + Date.now(), {{cache: 'no-store'}})
+            .then(function (r) {{ return r.ok ? r.json() : null; }})
+            .then(function (data) {{ if (data) update(data); }})
+            .catch(function () {{ /* JSON nicht erreichbar → DOM unverändert */ }});
+    }}
+
+    load();
+    setInterval(load, 60 * 1000);
+}})();
 </script>
 </body>
 </html>"""
