@@ -100,6 +100,40 @@ class TestClassifyDirection(unittest.TestCase):
         )
 
 
+class TestFilterByProductPrefix(unittest.TestCase):
+    def setUp(self):
+        self.tz = timezone(timedelta(hours=2))
+        self.planned = datetime(2026, 5, 29, 14, 0, tzinfo=self.tz)
+        self.legs = [
+            _FakeLeg("S 3", "Wien Meidling", self.planned),
+            _FakeLeg("Bus 34A", "Wien Floridsdorf", self.planned),
+            _FakeLeg("REX 1", "St. Pölten", self.planned),
+            _FakeLeg("S 50", "Wien Hbf", self.planned),
+        ]
+
+    def test_filter_nur_s_bahn(self):
+        from scripts.fetch_trains import filter_by_product_prefix
+        result = filter_by_product_prefix(self.legs, ["S "])
+        names = [leg.name for leg in result]
+        self.assertEqual(names, ["S 3", "S 50"])
+
+    def test_filter_leere_liste_unveraendert(self):
+        from scripts.fetch_trains import filter_by_product_prefix
+        result = filter_by_product_prefix(self.legs, [])
+        self.assertEqual(len(result), 4)
+
+    def test_filter_mehrere_prefixe(self):
+        from scripts.fetch_trains import filter_by_product_prefix
+        result = filter_by_product_prefix(self.legs, ["S ", "REX "])
+        names = [leg.name for leg in result]
+        self.assertEqual(names, ["S 3", "REX 1", "S 50"])
+
+    def test_filter_case_insensitive(self):
+        from scripts.fetch_trains import filter_by_product_prefix
+        result = filter_by_product_prefix(self.legs, ["s "])
+        self.assertEqual(len(result), 2)
+
+
 class TestSplitByDirection(unittest.TestCase):
     def setUp(self):
         self.tz = timezone(timedelta(hours=2))

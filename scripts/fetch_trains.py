@@ -76,6 +76,20 @@ def extract_departure(leg: Any) -> dict:
     }
 
 
+def filter_by_product_prefix(legs: Iterable[Any], prefixes: Iterable[str]) -> list:
+    """Behält nur Legs, deren `name` mit einem der `prefixes` beginnt (case-insensitive).
+    Wenn `prefixes` leer ist, wird die Liste unverändert zurückgegeben.
+    Convention: Prefixes enden meist mit einem Leerzeichen (z.B. 'S ') damit 'S 3'
+    matcht, aber 'SR 1' nicht."""
+    plist = [p.lower() for p in prefixes if p]
+    if not plist:
+        return list(legs)
+    return [
+        leg for leg in legs
+        if any((leg.name or "").lower().startswith(p) for p in plist)
+    ]
+
+
 def split_by_direction(legs: Iterable[Any], towards_substrings: Iterable[str],
                        n_per_direction: int = 1) -> dict:
     """Iteriert über Legs (oder Duck-Typ), klassifiziert nach Richtung,
@@ -272,11 +286,18 @@ def main():
     except ValueError:
         n_per_dir = 1
 
+    # Produkt-Filter: z.B. "S" matcht "S 3", "S 50". Leer = alle Produkte (inkl. Bus).
+    products_raw = config.get("TRAIN_PRODUCTS", "").strip()
+    product_prefixes = [p.strip() + " " for p in products_raw.split(",") if p.strip()]
+
     try:
         resolved_name, lid = _resolve_station_lid(station_name)
         print(f"Station: {resolved_name} (lid={lid})", flush=True)
-        legs = _fetch_departures(lid, max_jny=12)
+        legs = _fetch_departures(lid, max_jny=24)
         print(f"Departures geholt: {len(legs)}", flush=True)
+        if product_prefixes:
+            legs = filter_by_product_prefix(legs, product_prefixes)
+            print(f"Nach Produkt-Filter ({products_raw}): {len(legs)}", flush=True)
         result = split_by_direction(legs, towards_list, n_per_dir)
     except Exception as e:
         print(f"ÖBB-Fehler ({type(e).__name__}): {e}", flush=True)
