@@ -5,8 +5,20 @@ und schreibt sie in data/trains.json.
 Läuft per Cron jede Minute (separater Job vom Untis-Cron).
 """
 
+import json
+import os
 from datetime import timedelta
+from pathlib import Path
 from typing import Iterable, Any
+
+
+def atomic_write_json(path: Path, data: dict) -> None:
+    """Schreibt JSON atomar: erst .tmp, dann os.replace.
+    So sieht der Leser nie eine halbgeschriebene Datei."""
+    path = Path(path)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    os.replace(tmp, path)
 
 
 def classify_direction(destination: str, towards_substrings: Iterable[str]) -> str:

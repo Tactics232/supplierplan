@@ -1,6 +1,10 @@
+import json
+import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
+from scripts.fetch_trains import atomic_write_json
 from scripts.fetch_trains import classify_direction
 from scripts.fetch_trains import extract_departure
 from scripts.fetch_trains import split_by_direction
@@ -124,6 +128,30 @@ class TestSplitByDirection(unittest.TestCase):
         # Cancelled at 14:05 should NOT be taken; next towards is Wien Hauptbahnhof at 14:10
         self.assertNotEqual(result["towards"][0]["planned"], "14:05")
         self.assertEqual(result["towards"][0]["planned"], "14:10")
+
+
+class TestAtomicWriteJson(unittest.TestCase):
+    def test_schreibt_und_liest_korrekt_zurueck(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "trains.json"
+            data = {"station": "Test", "towards": [], "away": []}
+            atomic_write_json(path, data)
+            loaded = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(loaded, data)
+
+    def test_hinterlaesst_kein_tmp_file_nach_erfolg(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "trains.json"
+            atomic_write_json(path, {"k": "v"})
+            self.assertFalse((Path(tmp) / "trains.json.tmp").exists())
+
+    def test_ueberschreibt_bestehende_datei(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "trains.json"
+            atomic_write_json(path, {"version": 1})
+            atomic_write_json(path, {"version": 2})
+            loaded = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(loaded["version"], 2)
 
 
 if __name__ == "__main__":
