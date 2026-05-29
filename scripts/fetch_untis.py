@@ -803,6 +803,15 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
     <meta http-equiv="Expires" content="0">
     <title>Supplierplan – MS Roda-Roda-Gasse</title>
     <link rel="stylesheet" href="css/style.css">
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#c8102e">
+    <meta name="application-name" content="Supplierplan">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Supplierplan">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="logo.png">
 </head>
 <body>
 <div class="layout">
@@ -846,6 +855,13 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
     </footer>
 </div>
 <script>
+// ── PWA: Service-Worker registrieren ──
+if ('serviceWorker' in navigator) {{
+    window.addEventListener('load', function () {{
+        navigator.serviceWorker.register('sw.js').catch(function () {{ /* silent */ }});
+    }});
+}}
+
 (function tick() {{
     var n = new Date();
     var days = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
