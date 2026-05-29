@@ -71,3 +71,99 @@ def split_by_direction(legs: Iterable[Any], towards_substrings: Iterable[str],
         if len(towards) >= n_per_direction and len(away) >= n_per_direction:
             break
     return {"towards": towards, "away": away}
+
+
+def load_config(path: Path) -> dict:
+    """Liest .env-style key=value-Paare. Kommentare (#) und Leerzeilen werden ignoriert."""
+    config = {}
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, _, val = line.partition("=")
+                config[key.strip()] = val.strip()
+    return config
+
+
+from datetime import datetime
+try:
+    from zoneinfo import ZoneInfo
+    try:
+        TZ = ZoneInfo("Europe/Vienna")
+    except Exception:
+        TZ = None
+except ImportError:
+    TZ = None
+
+
+BASE_DIR    = Path(__file__).resolve().parent.parent
+CONFIG_FILE = BASE_DIR / "config.env"
+DATA_DIR    = BASE_DIR / "data"
+OUTPUT      = DATA_DIR / "trains.json"
+
+
+def _now_local():
+    return datetime.now(TZ) if TZ else datetime.now()
+
+
+def main():
+    config = load_config(CONFIG_FILE)
+    if config.get("TRAIN_DISABLED", "").strip().lower() == "true":
+        print("Train-Widget disabled via TRAIN_DISABLED=true", flush=True)
+        return
+
+    station_name = config.get("TRAIN_STATION", "").strip()
+    if not station_name:
+        print("TRAIN_STATION nicht gesetzt - kein fetch", flush=True)
+        return
+
+    towards_list = [s.strip() for s in config.get("TRAIN_DIR_TOWARDS", "").split(",") if s.strip()]
+    try:
+        n_per_dir = int(config.get("TRAIN_PER_DIRECTION", "1"))
+    except ValueError:
+        n_per_dir = 1
+
+    # Lazy import: pyhafas wird nur im Hauptpfad geladen,
+    # so dass tests/ keine pyhafas-Installation benötigen.
+    from pyhafas import HafasClient
+    from pyhafas.profile import OEBBProfile
+
+    client = HafasClient(OEBBProfile())
+
+    try:
+        locations = client.locations(station_name)
+        if not locations:
+            print(f"Station '{station_name}' nicht gefunden", flush=True)
+            return
+        station = locations[0]
+        print(f"Station: {station.name} (id={station.id})", flush=True)
+
+        legs = client.departures(
+            station=station.id,
+            date=_now_local(),
+            max_trips=20,
+        )
+        print(f"Departures geholt: {len(legs)}", flush=True)
+
+        result = split_by_direction(legs, towards_list, n_per_dir)
+    except Exception as e:
+        print(f"pyhafas-Fehler ({type(e).__name__}): {e}", flush=True)
+        print("data/trains.json wird NICHT überschrieben - alte Daten bleiben.", flush=True)
+        return
+
+    DATA_DIR.mkdir(exist_ok=True)
+    payload = {
+        "station":     station.name,
+        "fetched_at":  _now_local().isoformat(timespec="seconds"),
+        "towards":     result["towards"],
+        "away":        result["away"],
+    }
+    atomic_write_json(OUTPUT, payload)
+    print(
+        f"Fertig: {len(result['towards'])} towards, {len(result['away'])} away → {OUTPUT}",
+        flush=True,
+    )
+
+
+if __name__ == "__main__":
+    main()

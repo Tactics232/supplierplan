@@ -8,6 +8,7 @@ from scripts.fetch_trains import atomic_write_json
 from scripts.fetch_trains import classify_direction
 from scripts.fetch_trains import extract_departure
 from scripts.fetch_trains import split_by_direction
+from scripts.fetch_trains import load_config
 
 
 class _FakeLeg:
@@ -152,6 +153,24 @@ class TestAtomicWriteJson(unittest.TestCase):
             atomic_write_json(path, {"version": 2})
             loaded = json.loads(path.read_text(encoding="utf-8"))
             self.assertEqual(loaded["version"], 2)
+
+
+class TestLoadConfig(unittest.TestCase):
+    def test_liest_key_value_paare(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = Path(tmp) / "config.env"
+            cfg.write_text(
+                "# comment\n"
+                "TRAIN_STATION=Wien Hütteldorf\n"
+                "TRAIN_DIR_TOWARDS=Hbf,Westbf\n"
+                "TRAIN_PER_DIRECTION=2\n"
+                "\n",
+                encoding="utf-8",
+            )
+            config = load_config(cfg)
+            self.assertEqual(config["TRAIN_STATION"], "Wien Hütteldorf")
+            self.assertEqual(config["TRAIN_DIR_TOWARDS"], "Hbf,Westbf")
+            self.assertEqual(config["TRAIN_PER_DIRECTION"], "2")
 
 
 if __name__ == "__main__":
