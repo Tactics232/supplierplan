@@ -241,11 +241,12 @@ def _fetch_departures(lid: str, max_jny: int = 12) -> list:
                 real_dt = real_dt.replace(tzinfo=TZ)
             delay = real_dt - planned_dt
 
-        # Linien-/Produktname
+        # Linien-/Produktname (ohne den Zug-Nr.-Zusatz)
         line_name = ""
         prod_x = j.get("prodX")
         if prod_x is not None and 0 <= prod_x < len(prodL):
             line_name = prodL[prod_x].get("name", "").strip()
+            line_name = line_name.split(" (")[0]   # 'S 3 (Zug-Nr. 28589)' → 'S 3'
 
         direction = j.get("dirTxt", "").strip()
         cancelled = bool(stbStop.get("dCncl"))
