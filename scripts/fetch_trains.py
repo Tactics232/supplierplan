@@ -1,17 +1,41 @@
 #!/usr/bin/env python3
 """
-fetch_trains.py – holt die nächsten Abfahrten einer Bahnhaltestelle via pyhafas
-und schreibt sie in data/trains.json.
+fetch_trains.py – holt die nächsten Abfahrten einer Bahnhaltestelle direkt
+über die ÖBB HAFAS mgate.exe-API und schreibt sie in data/trains.json.
 Läuft per Cron jede Minute (separater Job vom Untis-Cron).
+
+Stdlib-only: nutzt urllib für die HTTP-Anfrage, keine externen Dependencies.
 """
 
 import json
 import os
-from datetime import timedelta
+import urllib.request
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Iterable, Any
 
 
+try:
+    from zoneinfo import ZoneInfo
+    try:
+        TZ = ZoneInfo("Europe/Vienna")
+    except Exception:
+        TZ = None
+except ImportError:
+    TZ = None
+
+
+BASE_DIR    = Path(__file__).resolve().parent.parent
+CONFIG_FILE = BASE_DIR / "config.env"
+DATA_DIR    = BASE_DIR / "data"
+OUTPUT      = DATA_DIR / "trains.json"
+
+
+def _now_local():
+    return datetime.now(TZ) if TZ else datetime.now()
+
+
+# ── Pure logic (testbar, ohne externe Calls) ──────────────────────
 def atomic_write_json(path: Path, data: dict) -> None:
     """Schreibt JSON atomar: erst .tmp, dann os.replace.
     So sieht der Leser nie eine halbgeschriebene Datei."""
@@ -34,9 +58,8 @@ def classify_direction(destination: str, towards_substrings: Iterable[str]) -> s
 
 
 def extract_departure(leg: Any) -> dict:
-    """Wandelt ein pyhafas StationBoardLeg (oder Duck-Typ) in ein JSON-konformes dict um.
-    Erwartet Attribute: name, direction, dateTime, delay, cancelled, platform.
-    """
+    """Wandelt ein Leg-Objekt (Duck-Typ mit name, direction, dateTime, delay,
+    cancelled, platform) in ein JSON-konformes dict um."""
     planned_dt = leg.dateTime
     delay = leg.delay or timedelta(0)
     delay_minutes = max(0, int(delay.total_seconds() // 60))
@@ -55,8 +78,8 @@ def extract_departure(leg: Any) -> dict:
 
 def split_by_direction(legs: Iterable[Any], towards_substrings: Iterable[str],
                        n_per_direction: int = 1) -> dict:
-    """Iteriert über pyhafas-Legs (oder Duck-Typ), klassifiziert nach Richtung,
-    überspringt cancelled-Stunden und limitiert pro Richtung auf n_per_direction.
+    """Iteriert über Legs (oder Duck-Typ), klassifiziert nach Richtung,
+    überspringt cancelled-Einträge und limitiert pro Richtung auf n_per_direction.
     Reihenfolge im Input wird beibehalten (Annahme: bereits chronologisch sortiert).
     """
     towards, away = [], []
@@ -85,27 +108,150 @@ def load_config(path: Path) -> dict:
     return config
 
 
-from datetime import datetime
-try:
-    from zoneinfo import ZoneInfo
-    try:
-        TZ = ZoneInfo("Europe/Vienna")
-    except Exception:
-        TZ = None
-except ImportError:
-    TZ = None
+# ── ÖBB HAFAS mgate Direct-Client ─────────────────────────────────
+OEBB_MGATE_URL    = "https://fahrplan.oebb.at/bin/mgate.exe"
+OEBB_CLIENT_CONF  = {"id": "OEBB", "v": "6030600", "type": "AND", "name": "oebbHAFAS"}
+OEBB_AUTH         = {"type": "AID", "aid": "OWDL4fE4ixNiPBBm"}
 
 
-BASE_DIR    = Path(__file__).resolve().parent.parent
-CONFIG_FILE = BASE_DIR / "config.env"
-DATA_DIR    = BASE_DIR / "data"
-OUTPUT      = DATA_DIR / "trains.json"
+def _mgate_request(svc_method: str, params: dict) -> dict:
+    """Sendet eine mgate.exe-Anfrage und liefert das svcResL[0].res-dict zurück."""
+    body = {
+        "id":        "supplierplan",
+        "ver":       "1.45",
+        "lang":      "deu",
+        "auth":      OEBB_AUTH,
+        "client":    OEBB_CLIENT_CONF,
+        "formatted": False,
+        "svcReqL":   [{"meth": svc_method, "req": params}],
+    }
+    data = json.dumps(body).encode("utf-8")
+    req = urllib.request.Request(
+        OEBB_MGATE_URL,
+        data=data,
+        headers={
+            "Content-Type": "application/json",
+            "User-Agent":   "Mozilla/5.0 supplierplan",
+        },
+    )
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        result = json.loads(resp.read())
+    if result.get("err") and result["err"] != "OK":
+        raise RuntimeError(f"mgate Fehler: {result.get('err')} {result.get('errTxt','')}")
+    svc = result["svcResL"][0]
+    if svc.get("err") and svc["err"] != "OK":
+        raise RuntimeError(f"mgate svc Fehler: {svc.get('err')} {svc.get('errTxt','')}")
+    return svc["res"]
 
 
-def _now_local():
-    return datetime.now(TZ) if TZ else datetime.now()
+def _resolve_station_lid(name: str) -> tuple:
+    """Findet eine Station per LocMatch. Liefert (resolved_name, lid)."""
+    res = _mgate_request("LocMatch", {
+        "input": {
+            "loc":    {"name": name, "type": "S"},
+            "maxLoc": 1,
+            "field":  "S",
+        }
+    })
+    matches = res.get("match", {}).get("locL", [])
+    if not matches:
+        raise RuntimeError(f"Keine Station gefunden für '{name}'")
+    m = matches[0]
+    return m["name"], m["lid"]
 
 
+def _parse_hafas_time(value: str) -> timedelta:
+    """HAFAS-Zeitformat HHMMSS (oder DHHMMSS für nächster Tag) → timedelta seit Tagesbeginn."""
+    s = str(value)
+    days = 0
+    if len(s) == 7:
+        days = int(s[0])
+        s = s[1:]
+    s = s.zfill(6)
+    h   = int(s[0:2])
+    m   = int(s[2:4])
+    sec = int(s[4:6])
+    return timedelta(days=days, hours=h, minutes=m, seconds=sec)
+
+
+class _OebbLeg:
+    """Duck-typed Leg-Objekt, identische Attribute wie _FakeLeg in den Tests.
+    extract_departure/split_by_direction arbeiten damit unverändert."""
+    def __init__(self, name, direction, dateTime, delay=None, cancelled=False, platform=None):
+        self.name      = name
+        self.direction = direction
+        self.dateTime  = dateTime
+        self.delay     = delay
+        self.cancelled = cancelled
+        self.platform  = platform
+
+
+def _fetch_departures(lid: str, max_jny: int = 12) -> list:
+    """Holt das StationBoard für die Location-ID und liefert _OebbLeg-Liste."""
+    res = _mgate_request("StationBoard", {
+        "type":     "DEP",
+        "stbLoc":   {"lid": lid},
+        "maxJny":   max_jny,
+        "jnyFltrL": [{"type": "PROD", "mode": "INC", "value": 511}],
+    })
+    common = res.get("common", {})
+    prodL  = common.get("prodL", [])
+
+    legs = []
+    today = _now_local().date()
+
+    for j in res.get("jnyL", []):
+        stbStop = j.get("stbStop", {})
+
+        # Plan-Abfahrtszeit erforderlich
+        d_time_s = stbStop.get("dTimeS")
+        if not d_time_s:
+            continue
+
+        # Datum (kann sich vom heute unterscheiden, z.B. Mitternacht-Übergang)
+        date_str = j.get("date", today.strftime("%Y%m%d"))
+        try:
+            base_date = datetime.strptime(date_str, "%Y%m%d").date()
+        except ValueError:
+            base_date = today
+
+        planned_dt = datetime.combine(base_date, datetime.min.time()) + _parse_hafas_time(d_time_s)
+        if TZ:
+            planned_dt = planned_dt.replace(tzinfo=TZ)
+
+        delay = None
+        d_time_r = stbStop.get("dTimeR")
+        if d_time_r:
+            real_dt = datetime.combine(base_date, datetime.min.time()) + _parse_hafas_time(d_time_r)
+            if TZ:
+                real_dt = real_dt.replace(tzinfo=TZ)
+            delay = real_dt - planned_dt
+
+        # Linien-/Produktname
+        line_name = ""
+        prod_x = j.get("prodX")
+        if prod_x is not None and 0 <= prod_x < len(prodL):
+            line_name = prodL[prod_x].get("name", "").strip()
+
+        direction = j.get("dirTxt", "").strip()
+        cancelled = bool(stbStop.get("dCncl"))
+
+        platform = stbStop.get("dPlatfR") or stbStop.get("dPlatfS")
+        if isinstance(platform, dict):
+            platform = platform.get("txt")
+
+        legs.append(_OebbLeg(
+            name=line_name,
+            direction=direction,
+            dateTime=planned_dt,
+            delay=delay,
+            cancelled=cancelled,
+            platform=platform,
+        ))
+    return legs
+
+
+# ── Main ──────────────────────────────────────────────────────────
 def main():
     if not CONFIG_FILE.exists():
         print(f"config.env nicht gefunden: {CONFIG_FILE}", flush=True)
@@ -126,44 +272,27 @@ def main():
     except ValueError:
         n_per_dir = 1
 
-    # Lazy import: pyhafas wird nur im Hauptpfad geladen,
-    # so dass tests/ keine pyhafas-Installation benötigen.
-    from pyhafas import HafasClient
-    from pyhafas.profile import OEBBProfile
-
-    client = HafasClient(OEBBProfile())
-
     try:
-        locations = client.locations(station_name)
-        if not locations:
-            print(f"Station '{station_name}' nicht gefunden", flush=True)
-            return
-        station = locations[0]
-        print(f"Station: {station.name} (id={station.id})", flush=True)
-
-        legs = client.departures(
-            station=station.id,
-            date=_now_local(),
-            max_trips=20,
-        )
+        resolved_name, lid = _resolve_station_lid(station_name)
+        print(f"Station: {resolved_name} (lid={lid})", flush=True)
+        legs = _fetch_departures(lid, max_jny=12)
         print(f"Departures geholt: {len(legs)}", flush=True)
-
         result = split_by_direction(legs, towards_list, n_per_dir)
     except Exception as e:
-        print(f"pyhafas-Fehler ({type(e).__name__}): {e}", flush=True)
+        print(f"ÖBB-Fehler ({type(e).__name__}): {e}", flush=True)
         print("data/trains.json wird NICHT überschrieben - alte Daten bleiben.", flush=True)
         return
 
     DATA_DIR.mkdir(exist_ok=True)
     payload = {
-        "station":     station.name,
-        "fetched_at":  _now_local().isoformat(timespec="seconds"),
-        "towards":     result["towards"],
-        "away":        result["away"],
+        "station":    resolved_name,
+        "fetched_at": _now_local().isoformat(timespec="seconds"),
+        "towards":    result["towards"],
+        "away":       result["away"],
     }
     atomic_write_json(OUTPUT, payload)
     print(
-        f"Fertig: {len(result['towards'])} towards, {len(result['away'])} away → {OUTPUT}",
+        f"Fertig: {len(result['towards'])} towards, {len(result['away'])} away -> {OUTPUT}",
         flush=True,
     )
 

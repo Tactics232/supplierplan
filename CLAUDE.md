@@ -34,7 +34,7 @@ Cloudflare Tunnel → Webserver (python3 -m http.server 8080)
 
 ```
 Cron jede Minute → scripts/fetch_trains.py
-    → pyhafas → ÖBB HAFAS API
+    → urllib POST → ÖBB HAFAS mgate.exe (Direct JSON-API, stdlib only)
     → data/trains.json (atomar geschrieben, alte Datei bleibt bei Fehler)
 
 Browser fetched data/trains.json alle 60s und befüllt #train-widget im Header.
@@ -42,6 +42,10 @@ Browser fetched data/trains.json alle 60s und befüllt #train-widget im Header.
 
 Konfiguration in `config.env` über `TRAIN_*`-Variablen. Wenn `TRAIN_STATION` leer oder
 `TRAIN_DISABLED=true`, wird das Widget nicht ins HTML eingebaut.
+
+**Keine externe Dependency** — `fetch_trains.py` nutzt nur stdlib (`urllib.request`,
+`json`, `datetime`). pyhafas hatte kein OEBBProfile, daher direkter Aufruf gegen
+`https://fahrplan.oebb.at/bin/mgate.exe` (das was die ÖBB-App selbst verwendet).
 
 ### Technischer Stack
 - **Frontend:** statisches HTML5 + CSS3, minimal JS (Uhr + Refresh-Loop)
@@ -251,7 +255,7 @@ nur die eine Subdomain.
 *    * * * *  cd /var/www/supplierplan && python3 scripts/fetch_trains.py >> /var/log/supplierplan-trains.log 2>&1
 ```
 
-Voraussetzung: `pip3 install -r requirements.txt` auf dem LXC.
+Voraussetzungen: nur Python 3.9+ (stdlib reicht, keine externen Packages mehr).
 
 ---
 

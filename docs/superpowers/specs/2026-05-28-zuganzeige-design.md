@@ -19,7 +19,7 @@ einer konfigurierten Wiener Bahnhaltestelle zeigt — getrennt nach „Richtung 
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │ Cron jede Minute → scripts/fetch_trains.py                    │
-│   ├─→ pyhafas.HafasClient(ÖBBProfile()).departures(station)  │
+│   ├─→ urllib POST → ÖBB mgate.exe (LocMatch + StationBoard)   │
 │   ├─→ Filtere & sortiere: ein nächster pro Richtung           │
 │   ├─→ Bei Erfolg: data/trains.json überschreiben              │
 │   └─→ Bei Fehler: alte data/trains.json bleibt — nicht touch  │
@@ -44,15 +44,15 @@ einer konfigurierten Wiener Bahnhaltestelle zeigt — getrennt nach „Richtung 
 ### 1. `scripts/fetch_trains.py` (neu)
 - **Input:** Konfigurations-Werte aus `config.env`
 - **Verarbeitung:**
-  1. `pyhafas.HafasClient(ÖBBProfile())`
-  2. `client.locations(TRAIN_STATION)` → erste Treffer-Station
-  3. `client.departures(station_id, when=now, max_journeys=20)`
+  1. `_mgate_request("LocMatch", ...)` → erste Treffer-Station inkl. `lid`
+  2. `_mgate_request("StationBoard", ...)` → bis zu 12 nächste Departures
+  3. Pro Departure: `_OebbLeg`-Objekt erzeugen (Plan-Zeit, Real-Zeit, cancelled etc.)
   4. Pro Departure: prüfen ob Endbahnhof in `TRAIN_DIR_TOWARDS` matched (substring, case-insensitive)
   5. Aufteilen in zwei Listen `towards` / `away`, je nach `TRAIN_PER_DIRECTION` viele behalten
-  6. Bei Erfolg: `data/trains.json` schreiben
+  6. Bei Erfolg: `data/trains.json` schreiben (atomar)
   7. Bei Exception (Network, Parse, …): log + exit ohne JSON-Update (alte Datei bleibt)
 - **Sicherheits-Regel:** Alle Untis-API-Texte werden in `fetch_untis.py` mit `esc()` escaped.
-  pyhafas-Outputs werden NIE direkt in HTML eingebettet — der Browser parsed das JSON
+  ÖBB-Outputs werden NIE direkt in HTML eingebettet — der Browser parsed das JSON
   und setzt es via `textContent` ins DOM. (Keine XSS-Lücke.)
 
 ### 2. `data/trains.json` (neu — bereits gitignored über `data/`-Eintrag)
@@ -131,10 +131,12 @@ Format:
 
 ## Dependencies & Setup
 
-### Neu: `pyhafas`
-- Erste externe Python-Dependency in diesem Projekt
-- Installation auf dem LXC: `pip3 install pyhafas`
-- `requirements.txt` wird angelegt mit fixierten Versionen
+**Keine externen Python-Dependencies** — `fetch_trains.py` nutzt nur stdlib
+(`urllib.request`, `json`, `datetime`, `zoneinfo`).
+
+Ursprünglich war `pyhafas` als Library vorgesehen — die hat aber kein OEBBProfile,
+darum greifen wir direkt auf das ÖBB HAFAS mgate.exe-API zu (das was die ÖBB-App
+selbst verwendet, `https://fahrplan.oebb.at/bin/mgate.exe`, POST + JSON).
 
 ### Cron-Setup auf dem LXC (nicht Teil dieses Branches, manuelle Schritte dokumentieren)
 ```cron
@@ -150,12 +152,14 @@ Format:
 5. **Verspätungs-Test:** JSON manuell mit `delay_minutes: 5` editieren → orange Markierung
 
 ## Risiken & Abwägungen
-- **Stationsname-Auflösung mehrdeutig** — `pyhafas.locations()` gibt mehrere Treffer.
+- **Stationsname-Auflösung mehrdeutig** — `LocMatch` gibt mehrere Treffer.
   Mitigation: ersten Treffer nehmen; im Log loggen welche Station tatsächlich gewählt wurde
 - **`TRAIN_DIR_TOWARDS` Substring-Matching zu greedy** — z.B. „Wien" matcht alles.
   Mitigation: Default-Liste verwendet eindeutige Bahnhofsnamen-Fragmente
-- **pyhafas-Maintainer-Risiko** — wenn das Paket nicht gepflegt wird und ÖBB ihr HAFAS umbaut,
-  müssen wir auf ÖBB-Legacy-XML migrieren (Plan B im Hinterkopf)
+- **Untokumentierte mgate.exe-API** — die ÖBB könnte das interne API umstellen.
+  Wir nutzen die exakt gleiche Schnittstelle wie die offizielle ÖBB-App, daher
+  recht stabil; falls doch ein Bruch: Migration auf das öffentliche scotty.oebb.at
+  oder legacy stboard.exe-XML.
 - **JSON-Datei-Race** — Cron schreibt, Browser liest. Schreibvorgang: erst `trains.json.tmp`,
   dann atomares `os.replace`. So liest der Browser nie eine halbgeschriebene Datei.
 
