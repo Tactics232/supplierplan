@@ -57,6 +57,13 @@ class TestExtractDeparture(unittest.TestCase):
         leg = _FakeLeg("S 50", "Wien Hbf", self.planned, platform=None)
         self.assertIsNone(extract_departure(leg)["platform"])
 
+    def test_negative_delay_geclampt_auf_null(self):
+        # Pyhafas kann eine frühe Abfahrt als negative timedelta zurückgeben.
+        # Wir möchten das nicht als "Verspätung -1 min" exportieren.
+        leg = _FakeLeg("S 50", "Wien Hbf", self.planned, delay=timedelta(minutes=-2))
+        result = extract_departure(leg)
+        self.assertEqual(result["delay_minutes"], 0)
+
 
 class TestClassifyDirection(unittest.TestCase):
     def setUp(self):

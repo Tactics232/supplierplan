@@ -39,7 +39,7 @@ def extract_departure(leg: Any) -> dict:
     """
     planned_dt = leg.dateTime
     delay = leg.delay or timedelta(0)
-    delay_minutes = int(delay.total_seconds() // 60)
+    delay_minutes = max(0, int(delay.total_seconds() // 60))
     actual_dt = planned_dt + delay
 
     return {
@@ -107,6 +107,9 @@ def _now_local():
 
 
 def main():
+    if not CONFIG_FILE.exists():
+        print(f"config.env nicht gefunden: {CONFIG_FILE}", flush=True)
+        return
     config = load_config(CONFIG_FILE)
     if config.get("TRAIN_DISABLED", "").strip().lower() == "true":
         print("Train-Widget disabled via TRAIN_DISABLED=true", flush=True)
