@@ -655,7 +655,8 @@ def render_train_widget(enabled: bool) -> str:
 def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
                   teacher_lookup, period_nr, period_start, period_end,
                   show_logo=False, import_time=None, train_enabled=False,
-                  today_classes_override=None, tomorrow_classes_override=None):
+                  today_classes_override=None, tomorrow_classes_override=None,
+                  compact_col_width=320):
 
     logo_html = '<div class="logo"><img src="logo.png" alt="Logo"></div>\n            ' if show_logo else ''
     train_widget_html = render_train_widget(train_enabled)
@@ -777,6 +778,7 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
     <meta name="apple-mobile-web-app-title" content="Supplierplan">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="logo.png">
+    <script>window.COMPACT_COL_WIDTH = {compact_col_width};</script>
 </head>
 <body>
 <div class="layout">
@@ -1234,6 +1236,10 @@ def main():
             config.get("TRAIN_STATION", "").strip()
             and config.get("TRAIN_DISABLED", "").strip().lower() != "true"
         )
+        try:
+            compact_col_width = int(config.get("COMPACT_COL_WIDTH_PX", "320"))
+        except ValueError:
+            compact_col_width = 320
         html = generate_html(
             groups_today, groups_tomorrow, today, tomorrow_date,
             teacher_lookup, period_nr, p_start, p_end,
@@ -1242,6 +1248,7 @@ def main():
             train_enabled=bool(train_enabled),
             today_classes_override=today_absent_classes_override,
             tomorrow_classes_override=tomorrow_absent_classes_override,
+            compact_col_width=compact_col_width,
         )
         out = BASE_DIR / "index.html"
         out.write_text(html, encoding="utf-8")
