@@ -841,7 +841,8 @@ footer {
     /* Plan-Tag Kurzform aktivieren */
     .plan-tag .tag-full  { display: none; }
     .plan-tag .tag-short { display: inline; }
-    .plan-tag {
+    .plan-tag,
+    .plan-tag.tomorrow-only {
         font-size: 11px;
         white-space: nowrap;
     }

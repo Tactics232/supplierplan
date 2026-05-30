@@ -1278,7 +1278,7 @@ def main():
             and config.get("TRAIN_DISABLED", "").strip().lower() != "true"
         )
         try:
-            compact_col_width = int(config.get("COMPACT_COL_WIDTH_PX", "320"))
+            compact_col_width = max(0, int(config.get("COMPACT_COL_WIDTH_PX", "320")))
         except ValueError:
             compact_col_width = 320
         html = generate_html(
