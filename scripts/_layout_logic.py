@@ -1,35 +1,49 @@
 """
-_layout_logic.py – Verteilung von Render-Blöcken in N Spalten (first-fit-min).
+_layout_logic.py – Verteilung von Render-Blöcken in N Spalten (Greedy-Fit).
 Dient als testbarer Python-Mirror der JS-Layout-Engine im Browser.
 """
 
 from typing import Iterable
 
 
-def distribute_blocks(blocks: Iterable[dict], n_cols: int) -> list:
-    """Verteilt `blocks` (jeweils mit `height` und `kind`) auf `n_cols` Buckets.
-    Algorithmus: First-fit-min — jeder Block kommt in das gerade kleinste Bucket.
-    Sonderfall: Block mit `kind == "cancel"` wird zwingend in das letzte Bucket
-    eingefügt (am Ende), egal welche Höhe die anderen haben.
+def distribute_blocks(blocks: Iterable[dict], n_cols: int,
+                       available_height_per_col: int = None) -> list:
+    """Verteilt Blöcke in n_cols Spalten per Greedy-Fit von links nach rechts.
+    Reihenfolge der Blöcke bleibt erhalten (top-down). Cancel-Blöcke
+    (`kind == "cancel"`) landen am Ende der letzten Spalte.
+
+    Wenn `available_height_per_col` None oder <= 0 ist, packt alles in Spalte 0
+    (degenerierter Fall, sollte nicht produktiv passieren).
     """
     if n_cols < 1:
         n_cols = 1
 
+    regular = [b for b in blocks if b.get("kind") != "cancel"]
+    cancels = [b for b in blocks if b.get("kind") == "cancel"]
+
     buckets = [[] for _ in range(n_cols)]
-    heights = [0] * n_cols
 
-    for block in blocks:
-        if block.get("kind") == "cancel":
-            # Cancel separat behandeln (am Ende anhängen)
-            continue
-        # Index des Buckets mit geringster aktueller Höhe
-        idx = heights.index(min(heights))
-        buckets[idx].append(block)
-        heights[idx] += block.get("height", 0)
+    if not available_height_per_col or available_height_per_col <= 0:
+        # Degeneriert: alles in Spalte 0
+        buckets[0] = regular[:]
+    else:
+        current_col = 0
+        current_height = 0
+        for block in regular:
+            block_h = block.get("height", 0)
+            # Würde dieser Block die aktuelle Spalte sprengen?
+            # Aber: nur wechseln, wenn die Spalte nicht leer ist (sonst hat ein
+            # Übergrößer-Block keinen Platz und würde übersprungen werden).
+            if (current_height + block_h > available_height_per_col
+                    and current_col < n_cols - 1
+                    and len(buckets[current_col]) > 0):
+                current_col += 1
+                current_height = 0
+            buckets[current_col].append(block)
+            current_height += block_h
 
-    # Cancel-Block(s) ans Ende der letzten Spalte
-    for block in blocks:
-        if block.get("kind") == "cancel":
-            buckets[-1].append(block)
+    # Cancel-Blöcke ans Ende der letzten Spalte
+    for block in cancels:
+        buckets[-1].append(block)
 
     return buckets
