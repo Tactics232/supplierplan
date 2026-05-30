@@ -877,9 +877,9 @@ if ('serviceWorker' in navigator) {{
     }}, 60 * 1000);
 }})();
 
-// ── Multi-Column Layout-Engine ──
+// ── Multi-Column Layout-Engine v2 ──
 (function () {{
-    var MIN_COL_WIDTH = 280;  // px
+    var MIN_COL_WIDTH = 280;  // für Spaltenzahl-Berechnung
     var MAX_COLS = 4;
 
     function getBlocks(wrapper) {{
@@ -888,44 +888,48 @@ if ('serviceWorker' in navigator) {{
         );
     }}
 
-    function chooseColCount(wrapper, blocks) {{
-        var tableWrap = wrapper.closest('.table-wrap');
-        if (!tableWrap) return 1;
-        var sectionCount = tableWrap.querySelectorAll('.plan-section').length || 1;
-        var available = Math.floor(tableWrap.clientHeight / sectionCount) - 60;
-        if (available <= 0) return 1;
-
+    function chooseColCount(wrapper, blocks, availablePerCol) {{
+        if (availablePerCol <= 0) return 1;
         var total = 0;
         for (var i = 0; i < blocks.length; i++) {{
             total += blocks[i].getBoundingClientRect().height;
         }}
-        var byHeight = Math.max(1, Math.ceil(total / available));
+        var byHeight = Math.max(1, Math.ceil(total / availablePerCol));
         var byWidth  = Math.max(1, Math.floor(wrapper.clientWidth / MIN_COL_WIDTH));
         return Math.min(MAX_COLS, byHeight, byWidth);
     }}
 
-    function distribute(blocks, cols) {{
+    function distributeGreedy(blocks, cols, availablePerCol) {{
         var buckets = [];
-        var heights = [];
-        for (var i = 0; i < cols; i++) {{ buckets.push([]); heights.push(0); }}
+        for (var i = 0; i < cols; i++) buckets.push([]);
 
-        // Reguläre Blöcke first-fit-min
+        var regular = [];
+        var cancels = [];
         for (var j = 0; j < blocks.length; j++) {{
-            var b = blocks[j];
-            if (b.getAttribute('data-block') === 'cancel') continue;
-            var minIdx = 0;
-            for (var k = 1; k < cols; k++) {{
-                if (heights[k] < heights[minIdx]) minIdx = k;
+            if (blocks[j].getAttribute('data-block') === 'cancel') {{
+                cancels.push(blocks[j]);
+            }} else {{
+                regular.push(blocks[j]);
             }}
-            buckets[minIdx].push(b);
-            heights[minIdx] += b.getBoundingClientRect().height;
         }}
 
-        // Cancel-Blöcke ans Ende des letzten Buckets
-        for (var l = 0; l < blocks.length; l++) {{
-            if (blocks[l].getAttribute('data-block') === 'cancel') {{
-                buckets[cols - 1].push(blocks[l]);
+        var currentCol = 0;
+        var currentHeight = 0;
+        for (var k = 0; k < regular.length; k++) {{
+            var b = regular[k];
+            var h = b.getBoundingClientRect().height;
+            if (currentHeight + h > availablePerCol
+                    && currentCol < cols - 1
+                    && buckets[currentCol].length > 0) {{
+                currentCol++;
+                currentHeight = 0;
             }}
+            buckets[currentCol].push(b);
+            currentHeight += h;
+        }}
+
+        for (var l = 0; l < cancels.length; l++) {{
+            buckets[cols - 1].push(cancels[l]);
         }}
 
         return buckets;
@@ -935,27 +939,37 @@ if ('serviceWorker' in navigator) {{
         var blocks = getBlocks(wrapper);
         if (blocks.length === 0) return;
 
-        // cols-N-Klasse zurücksetzen, dann neu setzen
+        var tableWrap = wrapper.closest('.table-wrap');
+        if (!tableWrap) return;
+        var sectionCount = tableWrap.querySelectorAll('.plan-section').length || 1;
+        var availablePerCol = Math.floor(tableWrap.clientHeight / sectionCount) - 60;
+        if (availablePerCol < 100) availablePerCol = 100;
+
+        // Reset für saubere Messung mit 1-Spalten-Layout
         wrapper.classList.remove('cols-1','cols-2','cols-3','cols-4');
-        // Erst messen ohne Multi-Column → cols=1 für saubere Messung
+        wrapper.classList.remove('compact-mode');
         wrapper.classList.add('cols-1');
 
-        var cols = chooseColCount(wrapper, blocks);
-        wrapper.classList.remove('cols-1');
-        wrapper.classList.add('cols-' + cols);
+        var cols = chooseColCount(wrapper, blocks, availablePerCol);
 
-        // Wenn cols=1 UND DOM bereits 1-spaltig: keine DOM-Manipulation nötig
+        // Early-Return: schon 1-spaltig und cols=1 → fertig (bis auf compact-Check)
         if (cols === 1 && wrapper.querySelectorAll('.col').length === 1) {{
+            var firstCol1 = wrapper.querySelector('.col');
+            if (firstCol1 && firstCol1.clientWidth < (window.COMPACT_COL_WIDTH || 320)) {{
+                wrapper.classList.add('compact-mode');
+            }}
             return;
         }}
 
-        // Original-COLGROUP + THEAD aus der bestehenden Tabelle entnehmen
+        wrapper.classList.remove('cols-1');
+        wrapper.classList.add('cols-' + cols);
+
         var origTable    = wrapper.querySelector('table');
         if (!origTable) return;
         var origColgroup = origTable.querySelector('colgroup');
         var origThead    = origTable.querySelector('thead');
 
-        var buckets = distribute(blocks, cols);
+        var buckets = distributeGreedy(blocks, cols, availablePerCol);
 
         // Container leeren und N neue Spalten/Tables anlegen
         wrapper.innerHTML = '';
@@ -971,6 +985,12 @@ if ('serviceWorker' in navigator) {{
             colDiv.appendChild(table);
             wrapper.appendChild(colDiv);
         }}
+
+        // Compact-Mode prüfen nach Spalten-Build
+        var firstCol = wrapper.querySelector('.col');
+        if (firstCol && firstCol.clientWidth < (window.COMPACT_COL_WIDTH || 320)) {{
+            wrapper.classList.add('compact-mode');
+        }}
     }}
 
     function layoutAll() {{
@@ -980,14 +1000,12 @@ if ('serviceWorker' in navigator) {{
         }}
     }}
 
-    // Initial nach DOMContentLoaded (oder sofort wenn schon geladen)
     if (document.readyState === 'loading') {{
         document.addEventListener('DOMContentLoaded', layoutAll);
     }} else {{
         layoutAll();
     }}
 
-    // Auf Resize 250 ms debounced
     var resizeTimer = null;
     window.addEventListener('resize', function () {{
         clearTimeout(resizeTimer);
