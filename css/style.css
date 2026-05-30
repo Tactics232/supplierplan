@@ -113,6 +113,89 @@ html, body {
     border-bottom: 1px solid var(--c-border);
 }
 
+/* ── Train-Widget im Header ──────────────────────── */
+.train-widget {
+    flex: 0 0 360px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--c-border);
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-family: var(--font-d);
+    margin: 0 16px;
+    max-height: calc(var(--h-header) - 16px);
+    overflow: hidden;
+}
+
+.tw-station {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--c-muted);
+    margin-bottom: 4px;
+}
+
+.tw-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.tw-bucket {
+    /* Container pro Richtung - wird per JS mit 0..n .tw-row gefüllt */
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.tw-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--c-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tw-row .tw-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.tw-towards .tw-dot { background: #3db060; }
+.tw-away .tw-dot    { background: #e05050; }
+
+.tw-row .tw-arrow svg {
+    width: 18px;
+    height: 14px;
+    display: block;
+}
+
+.tw-towards .tw-arrow svg { transform: scaleX(1); }
+.tw-away    .tw-arrow svg { transform: scaleX(-1); }
+
+.tw-row .tw-line        { font-weight: 700; min-width: 38px; }
+.tw-row .tw-time        { font-weight: 700; }
+.tw-row .tw-dest        { color: var(--c-text); opacity: 0.85; overflow: hidden; text-overflow: ellipsis; }
+.tw-row .tw-delay       { color: var(--c-amber); font-weight: 700; margin-left: auto; }
+.tw-row.tw-cancelled    { opacity: 0.5; text-decoration: line-through; }
+
+.tw-foot {
+    font-size: 10px;
+    color: var(--c-muted);
+    margin-top: 4px;
+    text-align: right;
+    letter-spacing: 0.06em;
+}
+.tw-foot.stale { color: var(--c-amber); }
+
 .header-left {
     display: flex;
     align-items: center;

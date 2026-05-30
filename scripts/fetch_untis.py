@@ -52,10 +52,11 @@ def load_config():
 # ── WebUntis JSON-RPC Client ──────────────────────────
 class WebUntis:
     def __init__(self, url, school_id, user, password):
-        self.endpoint = url.rstrip("/") + "/WebUntis/jsonrpc.do"
+        self.base_url  = url.rstrip("/")
+        self.endpoint  = self.base_url + "/WebUntis/jsonrpc.do"
         self.school_id = school_id
-        self.user = user
-        self.password = password
+        self.user      = user
+        self.password  = password
         jar = http.cookiejar.CookieJar()
         self.opener = urllib.request.build_opener(
             urllib.request.HTTPCookieProcessor(jar)
@@ -101,6 +102,31 @@ class WebUntis:
 
     def get_holidays(self):
         return self._rpc("getHolidays")
+
+    def get_klassen(self):
+        return self._rpc("getKlassen")
+
+    def get_weekly_class_absences(self, date_obj):
+        """REST weekly/data → {classId: set(startTime)} mit state=ABSENT für Klassen."""
+        date_str = date_obj.strftime("%Y-%m-%d")
+        url = (f"{self.base_url}/WebUntis/api/public/timetable/weekly/data"
+               f"?elementType=1&elementId=0&date={date_str}")
+        req = urllib.request.Request(url, headers={"Accept": "application/json"})
+        with self.opener.open(req, timeout=15) as resp:
+            data = json.loads(resp.read())
+        periods = data.get("data", {}).get("result", {}).get("data", {}).get("elementPeriods", {})
+        target_int = int(date_obj.strftime("%Y%m%d"))
+        absent = {}
+        for bucket in periods.values():
+            for p in bucket:
+                if p.get("date") != target_int:
+                    continue
+                for e in p.get("elements", []):
+                    if (e.get("type") == 1
+                            and e.get("state") == "ABSENT"
+                            and e.get("orgId", 0) > 0):
+                        absent.setdefault(e["orgId"], set()).add(p["startTime"])
+        return absent
 
     def get_latest_import_time(self):
         ms = self._rpc("getLatestImportTime")
@@ -180,6 +206,37 @@ def next_school_day(start, holiday_set):
 
 # ── Lehrer-Lookup ─────────────────────────────────────
 SKIP_NAMES = {"---", "Z Entfall", ""}
+
+def build_class_id_lookup(klassen):
+    """Klassen-ID → Klassen-Name."""
+    return {k["id"]: k.get("name", "").strip() for k in (klassen or []) if k.get("id")}
+
+
+def class_absences_to_list(absent_by_id, id_to_name, timegrid):
+    """Wandelt {classId: set(startTime)} in [(name, range_str), ...].
+    Range-Logik: einzelne Std → '7', sonst 'min–max'."""
+    def start_to_nr(start):
+        info = timegrid.get(start)
+        return info[0] if info else None
+
+    by_name = {}
+    for cid, starts in absent_by_id.items():
+        name = id_to_name.get(cid)
+        if not name:
+            continue
+        nrs = {start_to_nr(s) for s in starts}
+        nrs.discard(None)
+        if nrs:
+            by_name[name] = nrs
+
+    def period_range(nrs):
+        nums = sorted(nrs)
+        if len(nums) == 1:
+            return str(nums[0])
+        return f"{nums[0]}–{nums[-1]}"
+
+    return [(name, period_range(nrs)) for name, nrs in sorted(by_name.items())]
+
 
 def build_teacher_lookup(teachers):
     lookup = {}
@@ -589,11 +646,30 @@ def split_chunks(chunks):
         count += weight
     return "".join(left), "".join(right)
 
+def render_train_widget(enabled: bool) -> str:
+    """Liefert den HTML-Stub für das Zug-Widget im Header.
+    Inhalt wird zur Laufzeit per JavaScript aus data/trains.json befüllt.
+    Bei enabled=False → leerer String (Widget wird nicht ins DOM eingebaut)."""
+    if not enabled:
+        return ""
+    return (
+        '<div class="train-widget" id="train-widget" data-state="loading">'
+        '<div class="tw-station" id="tw-station">— Zugdaten werden geladen —</div>'
+        '<div class="tw-rows">'
+        '<div class="tw-bucket" id="tw-towards-row"></div>'
+        '<div class="tw-bucket" id="tw-away-row"></div>'
+        '</div>'
+        '<div class="tw-foot" id="tw-foot"></div>'
+        '</div>'
+    )
+
 def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
                   teacher_lookup, period_nr, period_start, period_end,
-                  show_logo=False, import_time=None):
+                  show_logo=False, import_time=None, train_enabled=False,
+                  today_classes_override=None, tomorrow_classes_override=None):
 
     logo_html = '<div class="logo"><img src="logo.png" alt="Logo"></div>\n            ' if show_logo else ''
+    train_widget_html = render_train_widget(train_enabled)
 
     if import_time:
         import_block = f'<span class="foot-c">Stand Untis: {import_time.strftime("%d.%m.%Y %H:%M")} Uhr</span>'
@@ -628,7 +704,8 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
 
     today_section = ""
     if show_today:
-        today_absent, today_classes = compute_absent(groups_today)
+        today_absent, today_classes_derived = compute_absent(groups_today)
+        today_classes = today_classes_override if today_classes_override is not None else today_classes_derived
         date_str_today = (
             f"{WEEKDAYS[today_date.weekday()]}, "
             f"{today_date.day}. {MONTHS[today_date.month-1]} {today_date.year}"
@@ -650,7 +727,8 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
     tomorrow_section = ""
     tomorrow_only_label = ""
     if show_tomorrow:
-        tom_absent, tom_classes = compute_absent(groups_tomorrow)
+        tom_absent, tom_classes_derived = compute_absent(groups_tomorrow)
+        tom_classes = tomorrow_classes_override if tomorrow_classes_override is not None else tom_classes_derived
         days_ahead = (tomorrow_date - today_date).days
         date_str_tom = (
             f"{WEEKDAYS[tomorrow_date.weekday()]}, "
@@ -701,6 +779,15 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
     <meta http-equiv="Expires" content="0">
     <title>Supplierplan – MS Roda-Roda-Gasse</title>
     <link rel="stylesheet" href="css/style.css">
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#c8102e">
+    <meta name="application-name" content="Supplierplan">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Supplierplan">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="logo.png">
 </head>
 <body>
 <div class="layout">
@@ -712,6 +799,7 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
                 <p class="school-sub">Mittelschule · 1210 Wien</p>
             </div>
         </div>
+        {train_widget_html}
         <div class="header-right">
             {period_block}
             <div class="header-divider"></div>
@@ -743,6 +831,13 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
     </footer>
 </div>
 <script>
+// ── PWA: Service-Worker registrieren ──
+if ('serviceWorker' in navigator) {{
+    window.addEventListener('load', function () {{
+        navigator.serviceWorker.register('sw.js').catch(function () {{ /* silent */ }});
+    }});
+}}
+
 (function tick() {{
     var n = new Date();
     var days = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
@@ -766,6 +861,69 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
             window.location.reload();
         }}
     }}, 60 * 1000);
+}})();
+
+// ── Train-Widget Updater ──
+(function () {{
+    var widget = document.getElementById('train-widget');
+    if (!widget) return;
+
+    var ARROW_SVG = '<svg viewBox="0 0 20 14"><path d="M2 7h13M11 3l5 4-5 4" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+    function fmtRow(dep, klass) {{
+        var row = document.createElement('div');
+        var cancelled = dep.cancelled ? ' tw-cancelled' : '';
+        row.className = 'tw-row ' + klass + cancelled;
+        // Skelett aufbauen (SVG ist statisch + sicher)
+        row.innerHTML =
+            '<span class="tw-dot"></span>' +
+            '<span class="tw-arrow">' + ARROW_SVG + '</span>' +
+            '<span class="tw-line"></span>' +
+            '<span class="tw-time"></span>' +
+            '<span class="tw-dest"></span>';
+        // Werte aus der API via textContent setzen (XSS-safe):
+        row.querySelector('.tw-line').textContent = dep.line || '';
+        row.querySelector('.tw-time').textContent = dep.actual || dep.planned || '';
+        row.querySelector('.tw-dest').textContent = dep.destination || '';
+        if (dep.delay_minutes > 0) {{
+            var d = document.createElement('span');
+            d.className = 'tw-delay';
+            d.textContent = '+' + dep.delay_minutes;
+            row.appendChild(d);
+        }}
+        return row;
+    }}
+
+    function update(data) {{
+        document.getElementById('tw-station').textContent = data.station || '';
+        var tCell = document.getElementById('tw-towards-row');
+        var aCell = document.getElementById('tw-away-row');
+        tCell.innerHTML = '';
+        aCell.innerHTML = '';
+        (data.towards || []).forEach(function (dep) {{ tCell.appendChild(fmtRow(dep, 'tw-towards')); }});
+        (data.away    || []).forEach(function (dep) {{ aCell.appendChild(fmtRow(dep, 'tw-away')); }});
+
+        var foot = document.getElementById('tw-foot');
+        var fetched = data.fetched_at ? new Date(data.fetched_at) : null;
+        if (fetched && !isNaN(fetched.getTime())) {{
+            var ageMin = Math.floor((Date.now() - fetched.getTime()) / 60000);
+            foot.textContent = 'Stand: ' + (ageMin <= 0 ? 'jetzt' : 'vor ' + ageMin + ' min');
+            foot.className = 'tw-foot' + (ageMin > 5 ? ' stale' : '');
+        }} else {{
+            foot.textContent = '';
+        }}
+        widget.setAttribute('data-state', 'ok');
+    }}
+
+    function load() {{
+        fetch('data/trains.json?cb=' + Date.now(), {{cache: 'no-store'}})
+            .then(function (r) {{ return r.ok ? r.json() : null; }})
+            .then(function (data) {{ if (data) update(data); }})
+            .catch(function () {{ /* JSON nicht erreichbar → DOM unverändert */ }});
+    }}
+
+    load();
+    setInterval(load, 60 * 1000);
 }})();
 </script>
 </body>
@@ -902,11 +1060,13 @@ def main():
 
         grid_raw       = untis.get_timegrid()
         teachers       = untis.get_teachers()
+        klassen_raw    = untis.get_klassen()
         holidays_raw   = untis.get_holidays()
         import_time    = untis.get_latest_import_time()
         timegrid       = build_timegrid(grid_raw)
         break_lookup   = build_break_lookup(grid_raw)
         teacher_lookup = build_teacher_lookup(teachers)
+        class_id_lk    = build_class_id_lookup(klassen_raw)
         holiday_set    = parse_holidays(holidays_raw)
 
         now_t   = now_hhmm()
@@ -920,6 +1080,14 @@ def main():
         today_rows   = [r for r in today_rows if r["end_time"] >= now_t]
         groups_today = group_by_teacher(today_rows)
 
+        # Echte Klassen-Abwesenheits-Liste aus weekly/data (statt aus cancel-Einträgen abgeleitet)
+        try:
+            today_abs_classes_raw = untis.get_weekly_class_absences(today)
+        except Exception as e:
+            print(f"Klassen-Abwesenheits-API Fehler (heute): {e}", flush=True)
+            today_abs_classes_raw = {}
+        today_absent_classes_override = class_absences_to_list(today_abs_classes_raw, class_id_lk, timegrid)
+
         # Morgen: ab konfigurierter Uhrzeit ODER wenn heute schon leer ist
         threshold_str = config.get("SHOW_TOMORROW_AFTER", "14:00")
         th, tm     = map(int, threshold_str.split(":"))
@@ -930,6 +1098,7 @@ def main():
         tomorrow_date   = None
         tom_substs      = []
         tom_rows        = []
+        tomorrow_absent_classes_override = []
 
         if show_tomorrow:
             tomorrow      = next_school_day(today, holiday_set)
@@ -940,6 +1109,13 @@ def main():
             tom_rows      = process_substitutions(tom_substs, timegrid, break_lookup, day="tomorrow")
             groups_tomorrow = group_by_teacher(tom_rows)
 
+            try:
+                tom_abs_classes_raw = untis.get_weekly_class_absences(tomorrow)
+            except Exception as e:
+                print(f"Klassen-Abwesenheits-API Fehler (morgen): {e}", flush=True)
+                tom_abs_classes_raw = {}
+            tomorrow_absent_classes_override = class_absences_to_list(tom_abs_classes_raw, class_id_lk, timegrid)
+
         period_nr, p_start, p_end = find_current_period(timegrid)
 
         today_count   = sum(len(v) for v in groups_today.values())
@@ -947,11 +1123,18 @@ def main():
         print(f"Heute: {today_count} Zeilen | Morgen: {tomorrow_count} Zeilen", flush=True)
 
         show_logo = config.get("SHOW_LOGO", "false").lower() == "true"
+        train_enabled = (
+            config.get("TRAIN_STATION", "").strip()
+            and config.get("TRAIN_DISABLED", "").strip().lower() != "true"
+        )
         html = generate_html(
             groups_today, groups_tomorrow, today, tomorrow_date,
             teacher_lookup, period_nr, p_start, p_end,
             show_logo=show_logo,
             import_time=import_time,
+            train_enabled=bool(train_enabled),
+            today_classes_override=today_absent_classes_override,
+            tomorrow_classes_override=tomorrow_absent_classes_override,
         )
         out = BASE_DIR / "index.html"
         out.write_text(html, encoding="utf-8")

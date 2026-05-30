@@ -30,6 +30,23 @@ Cloudflare Tunnel → Webserver (python3 -m http.server 8080)
              Auto-Refresh: 60s soft / alle 5 min hard (Cache-Bust)
 ```
 
+### Zug-Widget (separater Datenfluss)
+
+```
+Cron jede Minute → scripts/fetch_trains.py
+    → urllib POST → ÖBB HAFAS mgate.exe (Direct JSON-API, stdlib only)
+    → data/trains.json (atomar geschrieben, alte Datei bleibt bei Fehler)
+
+Browser fetched data/trains.json alle 60s und befüllt #train-widget im Header.
+```
+
+Konfiguration in `config.env` über `TRAIN_*`-Variablen. Wenn `TRAIN_STATION` leer oder
+`TRAIN_DISABLED=true`, wird das Widget nicht ins HTML eingebaut.
+
+**Keine externe Dependency** — `fetch_trains.py` nutzt nur stdlib (`urllib.request`,
+`json`, `datetime`). pyhafas hatte kein OEBBProfile, daher direkter Aufruf gegen
+`https://fahrplan.oebb.at/bin/mgate.exe` (das was die ÖBB-App selbst verwendet).
+
 ### Technischer Stack
 - **Frontend:** statisches HTML5 + CSS3, minimal JS (Uhr + Refresh-Loop)
 - **Backend:** Python 3.9+ (stdlib only), `scripts/fetch_untis.py`
@@ -228,6 +245,17 @@ nur die eine Subdomain.
 
 ⚠️ **Wenn der Server in UTC läuft und `tzdata` fehlt**, ist die „Heute"-Berechnung ab
 22:00 falsch. Im Zweifel `apt install tzdata` auf dem LXC ausführen.
+
+---
+
+## Cron-Setup auf dem LXC
+
+```cron
+*/5  * * * *  cd /var/www/supplierplan && python3 scripts/fetch_untis.py  >> /var/log/supplierplan-untis.log 2>&1
+*    * * * *  cd /var/www/supplierplan && python3 scripts/fetch_trains.py >> /var/log/supplierplan-trains.log 2>&1
+```
+
+Voraussetzungen: nur Python 3.9+ (stdlib reicht, keine externen Packages mehr).
 
 ---
 
