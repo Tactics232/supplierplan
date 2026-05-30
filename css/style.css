@@ -482,9 +482,10 @@ html, body {
     color: #ff6b80;
 }
 
-/* ── Two-column layout ──────────────────────────────── */
-.columns {
+/* ── Multi-Column Layout-Wrapper ───────────────────────── */
+.layout-wrapper {
     display: flex;
+    flex-direction: row;
     gap: 20px;
     flex: 1;
     min-height: 0;
@@ -492,9 +493,13 @@ html, body {
     overflow: hidden;
 }
 
-.col {
+.layout-wrapper > .col {
     flex: 1;
     min-width: 0;
+}
+
+.layout-wrapper > .col table {
+    width: 100%;
 }
 
 /* ── Table ──────────────────────────────────────────── */
@@ -720,6 +725,33 @@ tr.cancel-header.tomorrow td {
 .b-raum  { background: rgba( 44,125,208,.14); color: #5a9fe0; border: 1px solid rgba( 44,125,208,.26); }
 .b-frei  { background: rgba( 42,138,74,.14); color: #4ab870; border: 1px solid rgba( 42,138,74,.26); }
 .b-pause { background: rgba(140, 80,200,.14); color: #b090e8; border: 1px solid rgba(140, 80,200,.26); }
+
+/* ── Adaptive Badge-Form (Lang ↔ Kurz) ─────────────────── */
+.badge-short { display: none; }
+
+.layout-wrapper.cols-3 .badge-full,
+.layout-wrapper.cols-4 .badge-full {
+    display: none;
+}
+
+.layout-wrapper.cols-3 .badge-short,
+.layout-wrapper.cols-4 .badge-short {
+    display: inline-flex;
+}
+
+/* Bei 3+ Spalten: runde Kurz-Badges */
+.layout-wrapper.cols-3 .badge,
+.layout-wrapper.cols-4 .badge {
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    line-height: 1;
+}
 
 /* ── Footer ─────────────────────────────────────────── */
 footer {
