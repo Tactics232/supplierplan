@@ -172,6 +172,22 @@ wird **eine virtuelle Zeile pro abwesendem Lehrer** erzeugt:
   - Heute: rote Akzentlinie (`.day-title-bar.today`)
   - Morgen: blaue Akzentlinie
 
+### Multi-Column-Layout (Browser-seitig)
+
+Die Supplierliste wird server-seitig als **flache Tabelle** ausgegeben (eine
+`<tbody>`-Sektion pro Lehrer + eine für Cancel-Stunden, jeweils mit
+`data-block`-Attribut). Eine JavaScript-Layout-Engine im Browser misst nach
+DOMContentLoaded den verfügbaren Platz und verteilt die Blöcke per
+first-fit-min auf 1–4 Spalten. Setzt am `.layout-wrapper`-Container die Klasse
+`.cols-N` (1, 2, 3 oder 4).
+
+Ab `.cols-3` schaltet CSS die Art-Badges (Vertr./Entfall/…) auf runde
+Einbuchstaben-Form (V/E/R/F/P) um. Die Cancel-Sektion landet immer in der
+letzten Spalte.
+
+Re-Layout bei Browser-Resize (250 ms debounced) und bei jedem Page-Reload
+(60 s Auto-Refresh greift wie bisher).
+
 ### Lehrer-Gruppierung
 - Eine Tabellenzeile pro Vertretungs-Eintrag, gruppiert nach **aktuellem Lehrer-Kürzel**
 - Pro Gruppe ein Header `<KÜRZEL> Vor- und Nachname` (16px, kontrastreich)
