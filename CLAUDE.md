@@ -43,6 +43,9 @@ Browser fetched data/trains.json alle 60s und befüllt #train-widget im Header.
 Konfiguration in `config.env` über `TRAIN_*`-Variablen. Wenn `TRAIN_STATION` leer oder
 `TRAIN_DISABLED=true`, wird das Widget nicht ins HTML eingebaut.
 
+**Weitere Layout-Variablen:**
+- `COMPACT_COL_WIDTH_PX` (Default 320): Schwelle für Badge-Rundung + Aufs.-Kürzung
+
 **Keine externe Dependency** — `fetch_trains.py` nutzt nur stdlib (`urllib.request`,
 `json`, `datetime`). pyhafas hatte kein OEBBProfile, daher direkter Aufruf gegen
 `https://fahrplan.oebb.at/bin/mgate.exe` (das was die ÖBB-App selbst verwendet).
@@ -171,6 +174,35 @@ wird **eine virtuelle Zeile pro abwesendem Lehrer** erzeugt:
 - **Tag-Headlines:**
   - Heute: rote Akzentlinie (`.day-title-bar.today`)
   - Morgen: blaue Akzentlinie
+
+### Multi-Column-Layout (Browser-seitig)
+
+Die Supplierliste wird server-seitig als **flache Tabelle** ausgegeben (eine
+`<tbody>`-Sektion pro Lehrer + eine für Cancel-Stunden, jeweils mit
+`data-block`-Attribut). Eine JavaScript-Layout-Engine im Browser misst nach
+DOMContentLoaded den verfügbaren Platz und verteilt die Blöcke per
+first-fit-min auf 1–4 Spalten. Setzt am `.layout-wrapper`-Container die Klasse
+`.cols-N` (1, 2, 3 oder 4).
+
+Ab `.cols-3` schaltet CSS die Art-Badges (Vertr./Entfall/…) auf runde
+Einbuchstaben-Form (V/E/R/F/P) um. Die Cancel-Sektion landet immer in der
+letzten Spalte.
+
+Re-Layout bei Browser-Resize (250 ms debounced) und bei jedem Page-Reload
+(60 s Auto-Refresh greift wie bisher).
+
+**Verteilung:** Block-Reihenfolge + Greedy-Fit. Lehrer in alphabetischer Reihenfolge,
+aktuelle Spalte füllen bis Höhe-Limit, dann nächste Spalte. Lesefluss oben-links →
+unten-links → oben-rechts → unten-rechts.
+
+**Compact-Mode** (Badges rund, „Aufsicht" → „Aufs.", Raum-Spalte breiter) wird
+breite-basiert getriggert: wenn die tatsächliche Spaltenbreite kleiner ist als
+`COMPACT_COL_WIDTH_PX` (Default 320, konfigurierbar in `config.env`). Greift damit
+sowohl bei 3–4 Spalten am Desktop als auch in der Mobilansicht.
+
+**Mobile-Layout** (`@media (max-width: 600px)`): Logo, Schulname, Uhr, Datum,
+Legende werden ausgeblendet. Train-Widget rückt an den linken Rand, Plan-Tag
+zeigt Wochentag-Kurzform („Mo" statt „Montag").
 
 ### Lehrer-Gruppierung
 - Eine Tabellenzeile pro Vertretungs-Eintrag, gruppiert nach **aktuellem Lehrer-Kürzel**

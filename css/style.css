@@ -482,9 +482,10 @@ html, body {
     color: #ff6b80;
 }
 
-/* ── Two-column layout ──────────────────────────────── */
-.columns {
+/* ── Multi-Column Layout-Wrapper ───────────────────────── */
+.layout-wrapper {
     display: flex;
+    flex-direction: row;
     gap: 20px;
     flex: 1;
     min-height: 0;
@@ -492,9 +493,13 @@ html, body {
     overflow: hidden;
 }
 
-.col {
+.layout-wrapper > .col {
     flex: 1;
     min-width: 0;
+}
+
+.layout-wrapper > .col table {
+    width: 100%;
 }
 
 /* ── Table ──────────────────────────────────────────── */
@@ -721,6 +726,37 @@ tr.cancel-header.tomorrow td {
 .b-frei  { background: rgba( 42,138,74,.14); color: #4ab870; border: 1px solid rgba( 42,138,74,.26); }
 .b-pause { background: rgba(140, 80,200,.14); color: #b090e8; border: 1px solid rgba(140, 80,200,.26); }
 
+/* ── Compact-Mode (breite-basiert via JS) ───────────────── */
+.badge-short  { display: none; }
+.fach-short   { display: none; }
+.tag-short    { display: none; }
+
+.layout-wrapper.compact-mode .badge-full { display: none; }
+.layout-wrapper.compact-mode .badge-short { display: inline-flex; }
+.layout-wrapper.compact-mode .fach-full { display: none; }
+.layout-wrapper.compact-mode .fach-short { display: inline; }
+
+.layout-wrapper.compact-mode .badge {
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    line-height: 1;
+}
+
+/* Compact-Mode: Spalten-Breiten umverteilt */
+.layout-wrapper.compact-mode col.c-std     { width: 7%;  }
+.layout-wrapper.compact-mode col.c-fach    { width: 14%; }
+.layout-wrapper.compact-mode col.c-klasse  { width: 10%; }
+.layout-wrapper.compact-mode col.c-lehrer  { width: 24%; }
+.layout-wrapper.compact-mode col.c-art     { width: 5%;  }
+.layout-wrapper.compact-mode col.c-raum    { width: 13%; }
+.layout-wrapper.compact-mode col.c-text    { width: 24%; }
+
 /* ── Footer ─────────────────────────────────────────── */
 footer {
     height: var(--h-foot);
@@ -760,4 +796,99 @@ footer {
     letter-spacing: 0.1em;
     text-transform: uppercase;
     font-weight: 600;
+}
+
+/* ── Mobile-Layout (< 600px) ────────────────────────────── */
+@media (max-width: 600px) {
+    :root {
+        --h-header: 60px;
+    }
+
+    /* Header reduzieren */
+    .logo,
+    .school-name,
+    .school-sub,
+    .clock-date,
+    .clock-time,
+    .period-label,
+    .legend,
+    .day-title-bar {
+        display: none !important;
+    }
+
+    /* Header-Layout: Train links, Period rechts */
+    .header {
+        padding: 0 12px;
+    }
+    .header-left {
+        gap: 0;
+    }
+    .train-widget {
+        flex: 1 1 auto;
+        margin: 0 12px 0 0;
+        max-width: none;
+    }
+    .header-right {
+        gap: 8px;
+    }
+    .period-value {
+        font-size: 16px;
+    }
+    .period-time {
+        font-size: 11px;
+    }
+
+    /* Plan-Tag Kurzform aktivieren */
+    .plan-tag .tag-full  { display: none; }
+    .plan-tag .tag-short { display: inline; }
+    .plan-tag,
+    .plan-tag.tomorrow-only {
+        font-size: 11px;
+        white-space: nowrap;
+    }
+
+    /* Sub-Header (mit Plan-Tag) kompakter */
+    .plan-header {
+        padding: 0 12px;
+        gap: 8px;
+    }
+
+    /* Tabellen-Padding reduzieren */
+    .table-wrap {
+        padding: 8px 12px;
+    }
+
+    /* Tabellen-Text etwas kleiner */
+    tbody td {
+        font-size: 12px;
+        padding: 2px 6px;
+    }
+
+    /* Scrollbar machen (auf Desktop bleibt overflow:hidden für no-scroll-Monitor) */
+    html, body {
+        overflow: auto;
+        height: auto;
+    }
+    .layout {
+        height: auto;
+        overflow: visible;
+    }
+    .table-wrap,
+    .plan-section,
+    .layout-wrapper {
+        overflow: visible;
+        flex: none;
+    }
+
+    /* Header bleibt beim Scrollen sichtbar */
+    .header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    .plan-header {
+        position: sticky;
+        top: var(--h-header);
+        z-index: 9;
+    }
 }

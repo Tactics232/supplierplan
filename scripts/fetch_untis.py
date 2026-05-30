@@ -481,15 +481,17 @@ def render_summary_bar(teachers, classes):
     )
 
 # ── HTML Generierung ──────────────────────────────────
+# 4-Tupel: (Zeilen-CSS-Klasse, Badge-CSS-Klasse, Lang-Label, Kurz-Label)
 ART_MAP = {
-    "subst":      ("s-sup",   "b-sup",   "Vertr."),
-    "cancel":     ("s-ent",   "b-ent",   "Entfall"),
-    "roomchange": ("s-raum",  "b-raum",  "Raum"),
-    "free":       ("s-frei",  "b-frei",  "Freistunde"),
-    "pause":      ("s-pause", "b-pause", "Pause"),
+    "subst":      ("s-sup",   "b-sup",   "Vertr.",     "V"),
+    "cancel":     ("s-ent",   "b-ent",   "Entfall",    "E"),
+    "roomchange": ("s-raum",  "b-raum",  "Raum",       "R"),
+    "free":       ("s-frei",  "b-frei",  "Freistunde", "F"),
+    "pause":      ("s-pause", "b-pause", "Pause",      "P"),
 }
 
 WEEKDAYS = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"]
+WEEKDAYS_SHORT = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 MONTHS   = ["Januar","Februar","März","April","Mai","Juni",
             "Juli","August","September","Oktober","November","Dezember"]
 
@@ -524,8 +526,19 @@ def render_day_separator(d):
     label = f"Morgen · {WEEKDAYS[d.weekday()]}, {d.day}. {MONTHS[d.month-1]} {d.year}"
     return f'<tr class="day-separator"><td colspan="8">{label}</td></tr>'
 
+def _fach_html(fach: str) -> str:
+    """Liefert Fach mit Lang- und Kurz-Variante.
+    Kurzform für 'Aufsicht' → 'Aufs.', sonst gleich."""
+    short = "Aufs." if fach == "Aufsicht" else fach
+    return (
+        f'<span class="fach-full">{esc(fach)}</span>'
+        f'<span class="fach-short">{esc(short)}</span>'
+    )
+
 def render_row(r):
-    row_cls, badge_cls, label = ART_MAP.get(r["art"], ("s-sup", "b-sup", r["art"]))
+    row_cls, badge_cls, label_full, label_short = ART_MAP.get(
+        r["art"], ("s-sup", "b-sup", r["art"], r["art"][:1].upper())
+    )
     day_cls = " tomorrow" if r.get("day") == "tomorrow" else ""
     org = r.get("org_kuerzel", "")
     if org:
@@ -555,10 +568,13 @@ def render_row(r):
         f'<tr class="{row_cls}{day_cls}">'
         f'<td class="c-kuerzel"></td>'
         f'<td class="c-std">{esc(r["std"])}</td>'
-        f'<td class="c-fach">{esc(r["fach"])}</td>'
+        f'<td class="c-fach">{_fach_html(r["fach"])}</td>'
         f'<td class="c-klasse">{esc(r["klasse"])}</td>'
         f'<td class="c-lehrer">{lehrer_html}</td>'
-        f'<td class="c-art"><span class="badge {badge_cls}">{esc(label)}</span></td>'
+        f'<td class="c-art"><span class="badge {badge_cls}">'
+        f'<span class="badge-full">{esc(label_full)}</span>'
+        f'<span class="badge-short">{esc(label_short)}</span>'
+        f'</span></td>'
         f'<td class="c-raum">{raum_html}</td>'
         f'<td class="c-text">{render_text(r["text"])}</td>'
         f'</tr>'
@@ -580,9 +596,12 @@ THEAD = """<thead><tr>
                 <th class="c-text">Text</th>
             </tr></thead>"""
 
-TWO_COL_THRESHOLD = 30
-
 def build_day_content(groups, teacher_lookup, day):
+    """Rendert eine flache Tabelle pro Tag. Die Aufteilung in 1–4 Spalten
+    übernimmt der Browser zur Laufzeit (Layout-Engine in JavaScript).
+    Jede Lehrer-Gruppe ist als `data-block="teacher"` markiert, die
+    Cancel-Sektion als `data-block="cancel"`."""
+
     if not groups:
         msg = "Kein Supplierplan für heute" if day == "today" else "Kein Supplierplan für morgen"
         return f'<div class="empty-state"><p>{msg}</p></div>'
@@ -597,54 +616,34 @@ def build_day_content(groups, teacher_lookup, day):
             regular_groups[kuerzel] = regs
         cancel_rows.extend(cans)
 
-    chunks = []
+    # Flache HTML-Liste pro Lehrer-Gruppe; ein <tbody> pro Gruppe → data-block-Attribut
+    blocks_html = []
     for kuerzel, rows in regular_groups.items():
-        h = render_teacher_header(kuerzel, teacher_lookup, day)
-        h += "".join(render_row(r) for r in rows)
-        chunks.append((h, 1 + len(rows)))
+        body = render_teacher_header(kuerzel, teacher_lookup, day)
+        body += "".join(render_row(r) for r in rows)
+        blocks_html.append(
+            f'<tbody data-block="teacher" data-key="{esc(kuerzel)}">{body}</tbody>'
+        )
 
-    # Cancel-Section als ein zusammenhängender Block, der ans Ende kommt
-    cancel_html = ""
+    # Cancel-Section als eigenes tbody-Block
     if cancel_rows:
         cancel_rows.sort(key=lambda r: (r["sort_key"], r["kuerzel"]))
         day_tom = " tomorrow" if day == "tomorrow" else ""
-        cancel_html = (
+        cancel_body = (
             f'<tr class="cancel-header{day_tom}">'
             f'<td colspan="8"><span class="ch-label">Entfallende Stunden</span></td>'
             f'</tr>'
             + "".join(render_row(r) for r in cancel_rows)
         )
-
-    total = sum(w for _, w in chunks)
-    if total > TWO_COL_THRESHOLD:
-        left_html, right_html = split_chunks(chunks)
-        right_html += cancel_html  # Cancel ans Ende der rechten Spalte
-        return (
-            f'<div class="columns">'
-            f'<div class="col"><table>{COLGROUP}{THEAD}<tbody>{left_html}</tbody></table></div>'
-            f'<div class="col"><table>{COLGROUP}{THEAD}<tbody>{right_html}</tbody></table></div>'
-            f'</div>'
-        )
-    else:
-        all_html = "".join(h for h, _ in chunks) + cancel_html
-        return (
-            f'<div class="columns single">'
-            f'<div class="col"><table>{COLGROUP}{THEAD}<tbody>{all_html}</tbody></table></div>'
-            f'</div>'
+        blocks_html.append(
+            f'<tbody data-block="cancel">{cancel_body}</tbody>'
         )
 
-def split_chunks(chunks):
-    total = sum(w for _, w in chunks)
-    half  = total / 2
-    left, right = [], []
-    count = 0
-    for html, weight in chunks:
-        if count < half:
-            left.append(html)
-        else:
-            right.append(html)
-        count += weight
-    return "".join(left), "".join(right)
+    return (
+        f'<div class="layout-wrapper cols-1">'
+        f'<div class="col"><table>{COLGROUP}{THEAD}{"".join(blocks_html)}</table></div>'
+        f'</div>'
+    )
 
 def render_train_widget(enabled: bool) -> str:
     """Liefert den HTML-Stub für das Zug-Widget im Header.
@@ -666,7 +665,8 @@ def render_train_widget(enabled: bool) -> str:
 def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
                   teacher_lookup, period_nr, period_start, period_end,
                   show_logo=False, import_time=None, train_enabled=False,
-                  today_classes_override=None, tomorrow_classes_override=None):
+                  today_classes_override=None, tomorrow_classes_override=None,
+                  compact_col_width=320):
 
     logo_html = '<div class="logo"><img src="logo.png" alt="Logo"></div>\n            ' if show_logo else ''
     train_widget_html = render_train_widget(train_enabled)
@@ -725,7 +725,8 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
         )
 
     tomorrow_section = ""
-    tomorrow_only_label = ""
+    tomorrow_only_label_full = ""
+    tomorrow_only_label_short = ""
     if show_tomorrow:
         tom_absent, tom_classes_derived = compute_absent(groups_tomorrow)
         tom_classes = tomorrow_classes_override if tomorrow_classes_override is not None else tom_classes_derived
@@ -734,13 +735,20 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
             f"{WEEKDAYS[tomorrow_date.weekday()]}, "
             f"{tomorrow_date.day}. {MONTHS[tomorrow_date.month-1]} {tomorrow_date.year}"
         )
+        date_str_tom_short = (
+            f"{WEEKDAYS_SHORT[tomorrow_date.weekday()]}, "
+            f"{tomorrow_date.day}. {MONTHS[tomorrow_date.month-1]} {tomorrow_date.year}"
+        )
         if days_ahead == 1:
             day_label = f"Morgen · {date_str_tom}"
+            day_label_short = f"Morgen · {date_str_tom_short}"
         else:
             day_label = f"Nächster Schultag · {date_str_tom}"
+            day_label_short = f"Nä. Schultag · {date_str_tom_short}"
         # Wenn nur Morgen sichtbar: Headline ins Plan-Tag oben verlegen
         if not show_today:
-            tomorrow_only_label = day_label
+            tomorrow_only_label_full = day_label
+            tomorrow_only_label_short = day_label_short
         title_bar_html = (
             f'<div class="day-title-bar"><span class="day-title-text">{esc(day_label)}</span></div>'
             if show_today else ''
@@ -763,8 +771,13 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
         main_content = today_section + tomorrow_section
 
     # Plan-Tag im Header: 'Heute' normal, sonst Morgen-Label in blau
-    if tomorrow_only_label:
-        plan_tag_html = f'<span class="plan-tag tomorrow-only">{esc(tomorrow_only_label)}</span>'
+    if tomorrow_only_label_full:
+        plan_tag_html = (
+            f'<span class="plan-tag tomorrow-only">'
+            f'<span class="tag-full">{esc(tomorrow_only_label_full)}</span>'
+            f'<span class="tag-short">{esc(tomorrow_only_label_short)}</span>'
+            f'</span>'
+        )
     else:
         plan_tag_html = '<span class="plan-tag">Heute</span>'
 
@@ -788,6 +801,7 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
     <meta name="apple-mobile-web-app-title" content="Supplierplan">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="logo.png">
+    <script>window.COMPACT_COL_WIDTH = {compact_col_width};</script>
 </head>
 <body>
 <div class="layout">
@@ -861,6 +875,142 @@ if ('serviceWorker' in navigator) {{
             window.location.reload();
         }}
     }}, 60 * 1000);
+}})();
+
+// ── Multi-Column Layout-Engine v2 ──
+(function () {{
+    var MIN_COL_WIDTH = 280;  // für Spaltenzahl-Berechnung
+    var MAX_COLS = 4;
+
+    function getBlocks(wrapper) {{
+        return Array.prototype.slice.call(
+            wrapper.querySelectorAll('tbody[data-block]')
+        );
+    }}
+
+    function chooseColCount(wrapper, blocks, availablePerCol) {{
+        if (availablePerCol <= 0) return 1;
+        var total = 0;
+        for (var i = 0; i < blocks.length; i++) {{
+            total += blocks[i].getBoundingClientRect().height;
+        }}
+        var byHeight = Math.max(1, Math.ceil(total / availablePerCol));
+        var byWidth  = Math.max(1, Math.floor(wrapper.clientWidth / MIN_COL_WIDTH));
+        return Math.min(MAX_COLS, byHeight, byWidth);
+    }}
+
+    function distributeGreedy(blocks, cols, availablePerCol) {{
+        var buckets = [];
+        for (var i = 0; i < cols; i++) buckets.push([]);
+
+        var regular = [];
+        var cancels = [];
+        for (var j = 0; j < blocks.length; j++) {{
+            if (blocks[j].getAttribute('data-block') === 'cancel') {{
+                cancels.push(blocks[j]);
+            }} else {{
+                regular.push(blocks[j]);
+            }}
+        }}
+
+        var currentCol = 0;
+        var currentHeight = 0;
+        for (var k = 0; k < regular.length; k++) {{
+            var b = regular[k];
+            var h = b.getBoundingClientRect().height;
+            if (currentHeight + h > availablePerCol
+                    && currentCol < cols - 1
+                    && buckets[currentCol].length > 0) {{
+                currentCol++;
+                currentHeight = 0;
+            }}
+            buckets[currentCol].push(b);
+            currentHeight += h;
+        }}
+
+        for (var l = 0; l < cancels.length; l++) {{
+            buckets[cols - 1].push(cancels[l]);
+        }}
+
+        return buckets;
+    }}
+
+    function applyLayout(wrapper) {{
+        var blocks = getBlocks(wrapper);
+        if (blocks.length === 0) return;
+
+        var tableWrap = wrapper.closest('.table-wrap');
+        if (!tableWrap) return;
+        var sectionCount = tableWrap.querySelectorAll('.plan-section').length || 1;
+        var availablePerCol = Math.floor(tableWrap.clientHeight / sectionCount) - 60;
+        if (availablePerCol < 100) availablePerCol = 100;
+
+        // Reset für saubere Messung mit 1-Spalten-Layout
+        wrapper.classList.remove('cols-1','cols-2','cols-3','cols-4');
+        wrapper.classList.remove('compact-mode');
+        wrapper.classList.add('cols-1');
+
+        var cols = chooseColCount(wrapper, blocks, availablePerCol);
+
+        // Early-Return: schon 1-spaltig und cols=1 → fertig (bis auf compact-Check)
+        if (cols === 1 && wrapper.querySelectorAll('.col').length === 1) {{
+            var firstCol1 = wrapper.querySelector('.col');
+            if (firstCol1 && firstCol1.clientWidth < (window.COMPACT_COL_WIDTH || 320)) {{
+                wrapper.classList.add('compact-mode');
+            }}
+            return;
+        }}
+
+        wrapper.classList.remove('cols-1');
+        wrapper.classList.add('cols-' + cols);
+
+        var origTable    = wrapper.querySelector('table');
+        if (!origTable) return;
+        var origColgroup = origTable.querySelector('colgroup');
+        var origThead    = origTable.querySelector('thead');
+
+        var buckets = distributeGreedy(blocks, cols, availablePerCol);
+
+        // Container leeren und N neue Spalten/Tables anlegen
+        wrapper.innerHTML = '';
+        for (var c = 0; c < cols; c++) {{
+            var colDiv = document.createElement('div');
+            colDiv.className = 'col';
+            var table = document.createElement('table');
+            if (origColgroup) table.appendChild(origColgroup.cloneNode(true));
+            if (origThead)    table.appendChild(origThead.cloneNode(true));
+            for (var m = 0; m < buckets[c].length; m++) {{
+                table.appendChild(buckets[c][m]);
+            }}
+            colDiv.appendChild(table);
+            wrapper.appendChild(colDiv);
+        }}
+
+        // Compact-Mode prüfen nach Spalten-Build
+        var firstCol = wrapper.querySelector('.col');
+        if (firstCol && firstCol.clientWidth < (window.COMPACT_COL_WIDTH || 320)) {{
+            wrapper.classList.add('compact-mode');
+        }}
+    }}
+
+    function layoutAll() {{
+        var wrappers = document.querySelectorAll('.layout-wrapper');
+        for (var i = 0; i < wrappers.length; i++) {{
+            applyLayout(wrappers[i]);
+        }}
+    }}
+
+    if (document.readyState === 'loading') {{
+        document.addEventListener('DOMContentLoaded', layoutAll);
+    }} else {{
+        layoutAll();
+    }}
+
+    var resizeTimer = null;
+    window.addEventListener('resize', function () {{
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(layoutAll, 250);
+    }});
 }})();
 
 // ── Train-Widget Updater ──
@@ -1127,6 +1277,10 @@ def main():
             config.get("TRAIN_STATION", "").strip()
             and config.get("TRAIN_DISABLED", "").strip().lower() != "true"
         )
+        try:
+            compact_col_width = max(0, int(config.get("COMPACT_COL_WIDTH_PX", "320")))
+        except ValueError:
+            compact_col_width = 320
         html = generate_html(
             groups_today, groups_tomorrow, today, tomorrow_date,
             teacher_lookup, period_nr, p_start, p_end,
@@ -1135,6 +1289,7 @@ def main():
             train_enabled=bool(train_enabled),
             today_classes_override=today_absent_classes_override,
             tomorrow_classes_override=tomorrow_absent_classes_override,
+            compact_col_width=compact_col_width,
         )
         out = BASE_DIR / "index.html"
         out.write_text(html, encoding="utf-8")
