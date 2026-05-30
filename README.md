@@ -247,9 +247,7 @@ Schulanzeigen ist willkommen — aber: keine Garantien, eigenes Risiko.
 
 ## Hintergrund
 
-Entstanden als Ersatz für die schwer lesbare WebUntis-Monitor-Anzeige der
-[MS Roda-Roda-Gasse](https://www.ms-rodarodagasse.at) (1210 Wien). Die offizielle
-Anzeige zeigte Daten unsortiert, ohne Lehrer-Gruppierung und mit unklarer
-Abwesenheits-Information. Dieses Projekt sortiert nach Lehrer, gruppiert Cancels
+Entstanden als Ersatz für die schwer lesbare WebUntis-Monitor-Anzeige der. Die offizielle
+Dieses Projekt sortiert nach Lehrer, gruppiert Cancels
 am Tagesende, zeigt Abwesenheits-Stunden präzise (z.B. „ab 6", „Ganzer Tag")
 und ergänzt eine Live-Zuganzeige für die nahegelegene Bahnstation.
