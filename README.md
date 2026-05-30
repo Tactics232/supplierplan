@@ -1,9 +1,9 @@
-# Supplierplan-Anzeige – MS Roda-Roda-Gasse Wien
+# Supplierplan-Anzeige
 
-Selbstgehostete Live-Webanzeige für den Supplierplan einer Wiener Mittelschule.
+Selbstgehostete Live-Webanzeige für den Supplierplan einer Wiener Schule.
 Ersetzt die unübersichtliche WebUntis-Monitor-Ansicht durch ein eigenes, dunkles,
 auf große Bildschirme optimiertes Layout. Läuft auf einem Proxmox-LXC, wird im
-Schulgebäude auf einem Monitor (TV/Beamer) im Fullscreen angezeigt.
+Schulgebäude auf einem Monitor im Fullscreen Hochkant angezeigt.
 
 ---
 
@@ -19,7 +19,7 @@ Schulgebäude auf einem Monitor (TV/Beamer) im Fullscreen angezeigt.
   - „ab X", „Ganzer Tag" oder Range pro Person
 - **Echtzeit-Zuganzeige** im Header (optional)
   - ÖBB HAFAS `mgate.exe`-Direct-Call (stdlib only, keine externen Deps)
-  - 1 Zug pro Richtung (Wien Innenstadt / weg), 60s Auto-Refresh
+  - Anzahl der Züge über config.env pro Richtung einstellbar(Wien Innenstadt / weg), 60s Auto-Refresh
   - Verspätungs-Anzeige, Linienfilter (z.B. nur S-Bahnen)
 - **PWA-fähig** für Smart-TV-Vollbild-Installation
 - **Selbst-aktualisierend** im Browser
@@ -146,8 +146,8 @@ Crontab:
 
 | Variable | Pflicht? | Beispiel | Beschreibung |
 |---|---|---|---|
-| `UNTIS_URL` | ✅ | `https://s921092.webuntis.com` | WebUntis-Instanz der Schule |
-| `UNTIS_SCHOOL_ID` | ✅ | `s921092` | Schul-Subdomain-ID |
+| `UNTIS_URL` | ✅ | `https://s123456.webuntis.com` | WebUntis-Instanz der Schule |
+| `UNTIS_SCHOOL_ID` | ✅ | `s123456` | Schul-Subdomain-ID |
 | `UNTIS_USER` | ✅ | `Monitor` | Service-Account-User (mit Lese-Rechten) |
 | `UNTIS_PASSWORD` | ✅ | `…` | Passwort zum User |
 | `SHOW_TOMORROW_AFTER` | – | `12:30` | Ab welcher Uhrzeit der nächste Schultag angezeigt wird |
