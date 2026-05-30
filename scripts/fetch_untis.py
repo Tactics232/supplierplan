@@ -864,9 +864,10 @@ if ('serviceWorker' in navigator) {{
     }}
 
     function chooseColCount(wrapper, blocks) {{
-        var section = wrapper.closest('.plan-section');
-        if (!section) return 1;
-        var available = section.clientHeight - 40;  // grobe Reserve für headers
+        var tableWrap = wrapper.closest('.table-wrap');
+        if (!tableWrap) return 1;
+        var sectionCount = tableWrap.querySelectorAll('.plan-section').length || 1;
+        var available = Math.floor(tableWrap.clientHeight / sectionCount) - 60;
         if (available <= 0) return 1;
 
         var total = 0;
@@ -917,6 +918,11 @@ if ('serviceWorker' in navigator) {{
         var cols = chooseColCount(wrapper, blocks);
         wrapper.classList.remove('cols-1');
         wrapper.classList.add('cols-' + cols);
+
+        // Wenn cols=1 UND DOM bereits 1-spaltig: keine DOM-Manipulation nötig
+        if (cols === 1 && wrapper.querySelectorAll('.col').length === 1) {{
+            return;
+        }}
 
         // Original-COLGROUP + THEAD aus der bestehenden Tabelle entnehmen
         var origTable    = wrapper.querySelector('table');
