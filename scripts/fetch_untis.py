@@ -481,12 +481,13 @@ def render_summary_bar(teachers, classes):
     )
 
 # ── HTML Generierung ──────────────────────────────────
+# 4-Tupel: (Zeilen-CSS-Klasse, Badge-CSS-Klasse, Lang-Label, Kurz-Label)
 ART_MAP = {
-    "subst":      ("s-sup",   "b-sup",   "Vertr."),
-    "cancel":     ("s-ent",   "b-ent",   "Entfall"),
-    "roomchange": ("s-raum",  "b-raum",  "Raum"),
-    "free":       ("s-frei",  "b-frei",  "Freistunde"),
-    "pause":      ("s-pause", "b-pause", "Pause"),
+    "subst":      ("s-sup",   "b-sup",   "Vertr.",     "V"),
+    "cancel":     ("s-ent",   "b-ent",   "Entfall",    "E"),
+    "roomchange": ("s-raum",  "b-raum",  "Raum",       "R"),
+    "free":       ("s-frei",  "b-frei",  "Freistunde", "F"),
+    "pause":      ("s-pause", "b-pause", "Pause",      "P"),
 }
 
 WEEKDAYS = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"]
@@ -525,7 +526,9 @@ def render_day_separator(d):
     return f'<tr class="day-separator"><td colspan="8">{label}</td></tr>'
 
 def render_row(r):
-    row_cls, badge_cls, label = ART_MAP.get(r["art"], ("s-sup", "b-sup", r["art"]))
+    row_cls, badge_cls, label_full, label_short = ART_MAP.get(
+        r["art"], ("s-sup", "b-sup", r["art"], r["art"][:1].upper())
+    )
     day_cls = " tomorrow" if r.get("day") == "tomorrow" else ""
     org = r.get("org_kuerzel", "")
     if org:
@@ -558,7 +561,10 @@ def render_row(r):
         f'<td class="c-fach">{esc(r["fach"])}</td>'
         f'<td class="c-klasse">{esc(r["klasse"])}</td>'
         f'<td class="c-lehrer">{lehrer_html}</td>'
-        f'<td class="c-art"><span class="badge {badge_cls}">{esc(label)}</span></td>'
+        f'<td class="c-art"><span class="badge {badge_cls}">'
+        f'<span class="badge-full">{esc(label_full)}</span>'
+        f'<span class="badge-short">{esc(label_short)}</span>'
+        f'</span></td>'
         f'<td class="c-raum">{raum_html}</td>'
         f'<td class="c-text">{render_text(r["text"])}</td>'
         f'</tr>'
