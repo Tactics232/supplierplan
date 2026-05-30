@@ -863,4 +863,32 @@ footer {
         font-size: 12px;
         padding: 2px 6px;
     }
+
+    /* Scrollbar machen (auf Desktop bleibt overflow:hidden für no-scroll-Monitor) */
+    html, body {
+        overflow: auto;
+        height: auto;
+    }
+    .layout {
+        height: auto;
+        overflow: visible;
+    }
+    .table-wrap,
+    .plan-section,
+    .layout-wrapper {
+        overflow: visible;
+        flex: none;
+    }
+
+    /* Header bleibt beim Scrollen sichtbar */
+    .header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    .plan-header {
+        position: sticky;
+        top: var(--h-header);
+        z-index: 9;
+    }
 }
