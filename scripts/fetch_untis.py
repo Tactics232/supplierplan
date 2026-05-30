@@ -525,6 +525,15 @@ def render_day_separator(d):
     label = f"Morgen · {WEEKDAYS[d.weekday()]}, {d.day}. {MONTHS[d.month-1]} {d.year}"
     return f'<tr class="day-separator"><td colspan="8">{label}</td></tr>'
 
+def _fach_html(fach: str) -> str:
+    """Liefert Fach mit Lang- und Kurz-Variante.
+    Kurzform für 'Aufsicht' → 'Aufs.', sonst gleich."""
+    short = "Aufs." if fach == "Aufsicht" else fach
+    return (
+        f'<span class="fach-full">{esc(fach)}</span>'
+        f'<span class="fach-short">{esc(short)}</span>'
+    )
+
 def render_row(r):
     row_cls, badge_cls, label_full, label_short = ART_MAP.get(
         r["art"], ("s-sup", "b-sup", r["art"], r["art"][:1].upper())
@@ -558,7 +567,7 @@ def render_row(r):
         f'<tr class="{row_cls}{day_cls}">'
         f'<td class="c-kuerzel"></td>'
         f'<td class="c-std">{esc(r["std"])}</td>'
-        f'<td class="c-fach">{esc(r["fach"])}</td>'
+        f'<td class="c-fach">{_fach_html(r["fach"])}</td>'
         f'<td class="c-klasse">{esc(r["klasse"])}</td>'
         f'<td class="c-lehrer">{lehrer_html}</td>'
         f'<td class="c-art"><span class="badge {badge_cls}">'
