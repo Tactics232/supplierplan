@@ -797,3 +797,69 @@ footer {
     text-transform: uppercase;
     font-weight: 600;
 }
+
+/* ── Mobile-Layout (< 600px) ────────────────────────────── */
+@media (max-width: 600px) {
+    :root {
+        --h-header: 60px;
+    }
+
+    /* Header reduzieren */
+    .logo,
+    .school-name,
+    .school-sub,
+    .clock-date,
+    .clock-time,
+    .period-label,
+    .legend,
+    .day-title-bar {
+        display: none !important;
+    }
+
+    /* Header-Layout: Train links, Period rechts */
+    .header {
+        padding: 0 12px;
+    }
+    .header-left {
+        gap: 0;
+    }
+    .train-widget {
+        flex: 1 1 auto;
+        margin: 0 12px 0 0;
+        max-width: none;
+    }
+    .header-right {
+        gap: 8px;
+    }
+    .period-value {
+        font-size: 16px;
+    }
+    .period-time {
+        font-size: 11px;
+    }
+
+    /* Plan-Tag Kurzform aktivieren */
+    .plan-tag .tag-full  { display: none; }
+    .plan-tag .tag-short { display: inline; }
+    .plan-tag {
+        font-size: 11px;
+        white-space: nowrap;
+    }
+
+    /* Sub-Header (mit Plan-Tag) kompakter */
+    .plan-header {
+        padding: 0 12px;
+        gap: 8px;
+    }
+
+    /* Tabellen-Padding reduzieren */
+    .table-wrap {
+        padding: 8px 12px;
+    }
+
+    /* Tabellen-Text etwas kleiner */
+    tbody td {
+        font-size: 12px;
+        padding: 2px 6px;
+    }
+}
