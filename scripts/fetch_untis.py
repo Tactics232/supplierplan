@@ -491,6 +491,7 @@ ART_MAP = {
 }
 
 WEEKDAYS = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"]
+WEEKDAYS_SHORT = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 MONTHS   = ["Januar","Februar","März","April","Mai","Juni",
             "Juli","August","September","Oktober","November","Dezember"]
 
@@ -724,7 +725,8 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
         )
 
     tomorrow_section = ""
-    tomorrow_only_label = ""
+    tomorrow_only_label_full = ""
+    tomorrow_only_label_short = ""
     if show_tomorrow:
         tom_absent, tom_classes_derived = compute_absent(groups_tomorrow)
         tom_classes = tomorrow_classes_override if tomorrow_classes_override is not None else tom_classes_derived
@@ -733,13 +735,20 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
             f"{WEEKDAYS[tomorrow_date.weekday()]}, "
             f"{tomorrow_date.day}. {MONTHS[tomorrow_date.month-1]} {tomorrow_date.year}"
         )
+        date_str_tom_short = (
+            f"{WEEKDAYS_SHORT[tomorrow_date.weekday()]}, "
+            f"{tomorrow_date.day}. {MONTHS[tomorrow_date.month-1]} {tomorrow_date.year}"
+        )
         if days_ahead == 1:
             day_label = f"Morgen · {date_str_tom}"
+            day_label_short = f"Morgen · {date_str_tom_short}"
         else:
             day_label = f"Nächster Schultag · {date_str_tom}"
+            day_label_short = f"Nä. Schultag · {date_str_tom_short}"
         # Wenn nur Morgen sichtbar: Headline ins Plan-Tag oben verlegen
         if not show_today:
-            tomorrow_only_label = day_label
+            tomorrow_only_label_full = day_label
+            tomorrow_only_label_short = day_label_short
         title_bar_html = (
             f'<div class="day-title-bar"><span class="day-title-text">{esc(day_label)}</span></div>'
             if show_today else ''
@@ -762,8 +771,13 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
         main_content = today_section + tomorrow_section
 
     # Plan-Tag im Header: 'Heute' normal, sonst Morgen-Label in blau
-    if tomorrow_only_label:
-        plan_tag_html = f'<span class="plan-tag tomorrow-only">{esc(tomorrow_only_label)}</span>'
+    if tomorrow_only_label_full:
+        plan_tag_html = (
+            f'<span class="plan-tag tomorrow-only">'
+            f'<span class="tag-full">{esc(tomorrow_only_label_full)}</span>'
+            f'<span class="tag-short">{esc(tomorrow_only_label_short)}</span>'
+            f'</span>'
+        )
     else:
         plan_tag_html = '<span class="plan-tag">Heute</span>'
 
