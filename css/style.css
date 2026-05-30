@@ -726,22 +726,17 @@ tr.cancel-header.tomorrow td {
 .b-frei  { background: rgba( 42,138,74,.14); color: #4ab870; border: 1px solid rgba( 42,138,74,.26); }
 .b-pause { background: rgba(140, 80,200,.14); color: #b090e8; border: 1px solid rgba(140, 80,200,.26); }
 
-/* ── Adaptive Badge-Form (Lang ↔ Kurz) ─────────────────── */
-.badge-short { display: none; }
+/* ── Compact-Mode (breite-basiert via JS) ───────────────── */
+.badge-short  { display: none; }
+.fach-short   { display: none; }
+.tag-short    { display: none; }
 
-.layout-wrapper.cols-3 .badge-full,
-.layout-wrapper.cols-4 .badge-full {
-    display: none;
-}
+.layout-wrapper.compact-mode .badge-full { display: none; }
+.layout-wrapper.compact-mode .badge-short { display: inline-flex; }
+.layout-wrapper.compact-mode .fach-full { display: none; }
+.layout-wrapper.compact-mode .fach-short { display: inline; }
 
-.layout-wrapper.cols-3 .badge-short,
-.layout-wrapper.cols-4 .badge-short {
-    display: inline-flex;
-}
-
-/* Bei 3+ Spalten: runde Kurz-Badges */
-.layout-wrapper.cols-3 .badge,
-.layout-wrapper.cols-4 .badge {
+.layout-wrapper.compact-mode .badge {
     width: 20px;
     height: 20px;
     padding: 0;
@@ -752,6 +747,15 @@ tr.cancel-header.tomorrow td {
     font-size: 11px;
     line-height: 1;
 }
+
+/* Compact-Mode: Spalten-Breiten umverteilt */
+.layout-wrapper.compact-mode col.c-std     { width: 7%;  }
+.layout-wrapper.compact-mode col.c-fach    { width: 14%; }
+.layout-wrapper.compact-mode col.c-klasse  { width: 10%; }
+.layout-wrapper.compact-mode col.c-lehrer  { width: 24%; }
+.layout-wrapper.compact-mode col.c-art     { width: 5%;  }
+.layout-wrapper.compact-mode col.c-raum    { width: 13%; }
+.layout-wrapper.compact-mode col.c-text    { width: 24%; }
 
 /* ── Footer ─────────────────────────────────────────── */
 footer {
