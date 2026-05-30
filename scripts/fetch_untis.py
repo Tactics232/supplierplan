@@ -852,6 +852,118 @@ if ('serviceWorker' in navigator) {{
     }}, 60 * 1000);
 }})();
 
+// ── Multi-Column Layout-Engine ──
+(function () {{
+    var MIN_COL_WIDTH = 280;  // px
+    var MAX_COLS = 4;
+
+    function getBlocks(wrapper) {{
+        return Array.prototype.slice.call(
+            wrapper.querySelectorAll('tbody[data-block]')
+        );
+    }}
+
+    function chooseColCount(wrapper, blocks) {{
+        var section = wrapper.closest('.plan-section');
+        if (!section) return 1;
+        var available = section.clientHeight - 40;  // grobe Reserve für headers
+        if (available <= 0) return 1;
+
+        var total = 0;
+        for (var i = 0; i < blocks.length; i++) {{
+            total += blocks[i].getBoundingClientRect().height;
+        }}
+        var byHeight = Math.max(1, Math.ceil(total / available));
+        var byWidth  = Math.max(1, Math.floor(wrapper.clientWidth / MIN_COL_WIDTH));
+        return Math.min(MAX_COLS, byHeight, byWidth);
+    }}
+
+    function distribute(blocks, cols) {{
+        var buckets = [];
+        var heights = [];
+        for (var i = 0; i < cols; i++) {{ buckets.push([]); heights.push(0); }}
+
+        // Reguläre Blöcke first-fit-min
+        for (var j = 0; j < blocks.length; j++) {{
+            var b = blocks[j];
+            if (b.getAttribute('data-block') === 'cancel') continue;
+            var minIdx = 0;
+            for (var k = 1; k < cols; k++) {{
+                if (heights[k] < heights[minIdx]) minIdx = k;
+            }}
+            buckets[minIdx].push(b);
+            heights[minIdx] += b.getBoundingClientRect().height;
+        }}
+
+        // Cancel-Blöcke ans Ende des letzten Buckets
+        for (var l = 0; l < blocks.length; l++) {{
+            if (blocks[l].getAttribute('data-block') === 'cancel') {{
+                buckets[cols - 1].push(blocks[l]);
+            }}
+        }}
+
+        return buckets;
+    }}
+
+    function applyLayout(wrapper) {{
+        var blocks = getBlocks(wrapper);
+        if (blocks.length === 0) return;
+
+        // cols-N-Klasse zurücksetzen, dann neu setzen
+        wrapper.classList.remove('cols-1','cols-2','cols-3','cols-4');
+        // Erst messen ohne Multi-Column → cols=1 für saubere Messung
+        wrapper.classList.add('cols-1');
+
+        var cols = chooseColCount(wrapper, blocks);
+        wrapper.classList.remove('cols-1');
+        wrapper.classList.add('cols-' + cols);
+
+        // Original-COLGROUP + THEAD aus der bestehenden Tabelle entnehmen
+        var origTable    = wrapper.querySelector('table');
+        if (!origTable) return;
+        var origColgroup = origTable.querySelector('colgroup');
+        var origThead    = origTable.querySelector('thead');
+
+        var buckets = distribute(blocks, cols);
+
+        // Container leeren und N neue Spalten/Tables anlegen
+        wrapper.innerHTML = '';
+        for (var c = 0; c < cols; c++) {{
+            var colDiv = document.createElement('div');
+            colDiv.className = 'col';
+            var table = document.createElement('table');
+            if (origColgroup) table.appendChild(origColgroup.cloneNode(true));
+            if (origThead)    table.appendChild(origThead.cloneNode(true));
+            for (var m = 0; m < buckets[c].length; m++) {{
+                table.appendChild(buckets[c][m]);
+            }}
+            colDiv.appendChild(table);
+            wrapper.appendChild(colDiv);
+        }}
+    }}
+
+    function layoutAll() {{
+        var wrappers = document.querySelectorAll('.layout-wrapper');
+        for (var i = 0; i < wrappers.length; i++) {{
+            applyLayout(wrappers[i]);
+        }}
+    }}
+
+    // Initial nach DOMContentLoaded (oder sofort wenn schon geladen)
+    if (document.readyState === 'loading') {{
+        document.addEventListener('DOMContentLoaded', layoutAll);
+    }} else {{
+        layoutAll();
+    }}
+
+    // Auf Resize 250 ms debounced
+    var resizeTimer = null;
+    window.addEventListener('resize', function () {{
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(layoutAll, 250);
+    }});
+}})();
+
 // ── Train-Widget Updater ──
 (function () {{
     var widget = document.getElementById('train-widget');
