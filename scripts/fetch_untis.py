@@ -586,9 +586,12 @@ THEAD = """<thead><tr>
                 <th class="c-text">Text</th>
             </tr></thead>"""
 
-TWO_COL_THRESHOLD = 30
-
 def build_day_content(groups, teacher_lookup, day):
+    """Rendert eine flache Tabelle pro Tag. Die Aufteilung in 1–4 Spalten
+    übernimmt der Browser zur Laufzeit (Layout-Engine in JavaScript).
+    Jede Lehrer-Gruppe ist als `data-block="teacher"` markiert, die
+    Cancel-Sektion als `data-block="cancel"`."""
+
     if not groups:
         msg = "Kein Supplierplan für heute" if day == "today" else "Kein Supplierplan für morgen"
         return f'<div class="empty-state"><p>{msg}</p></div>'
@@ -603,54 +606,34 @@ def build_day_content(groups, teacher_lookup, day):
             regular_groups[kuerzel] = regs
         cancel_rows.extend(cans)
 
-    chunks = []
+    # Flache HTML-Liste pro Lehrer-Gruppe; ein <tbody> pro Gruppe → data-block-Attribut
+    blocks_html = []
     for kuerzel, rows in regular_groups.items():
-        h = render_teacher_header(kuerzel, teacher_lookup, day)
-        h += "".join(render_row(r) for r in rows)
-        chunks.append((h, 1 + len(rows)))
+        body = render_teacher_header(kuerzel, teacher_lookup, day)
+        body += "".join(render_row(r) for r in rows)
+        blocks_html.append(
+            f'<tbody data-block="teacher" data-key="{esc(kuerzel)}">{body}</tbody>'
+        )
 
-    # Cancel-Section als ein zusammenhängender Block, der ans Ende kommt
-    cancel_html = ""
+    # Cancel-Section als eigenes tbody-Block
     if cancel_rows:
         cancel_rows.sort(key=lambda r: (r["sort_key"], r["kuerzel"]))
         day_tom = " tomorrow" if day == "tomorrow" else ""
-        cancel_html = (
+        cancel_body = (
             f'<tr class="cancel-header{day_tom}">'
             f'<td colspan="8"><span class="ch-label">Entfallende Stunden</span></td>'
             f'</tr>'
             + "".join(render_row(r) for r in cancel_rows)
         )
-
-    total = sum(w for _, w in chunks)
-    if total > TWO_COL_THRESHOLD:
-        left_html, right_html = split_chunks(chunks)
-        right_html += cancel_html  # Cancel ans Ende der rechten Spalte
-        return (
-            f'<div class="columns">'
-            f'<div class="col"><table>{COLGROUP}{THEAD}<tbody>{left_html}</tbody></table></div>'
-            f'<div class="col"><table>{COLGROUP}{THEAD}<tbody>{right_html}</tbody></table></div>'
-            f'</div>'
-        )
-    else:
-        all_html = "".join(h for h, _ in chunks) + cancel_html
-        return (
-            f'<div class="columns single">'
-            f'<div class="col"><table>{COLGROUP}{THEAD}<tbody>{all_html}</tbody></table></div>'
-            f'</div>'
+        blocks_html.append(
+            f'<tbody data-block="cancel">{cancel_body}</tbody>'
         )
 
-def split_chunks(chunks):
-    total = sum(w for _, w in chunks)
-    half  = total / 2
-    left, right = [], []
-    count = 0
-    for html, weight in chunks:
-        if count < half:
-            left.append(html)
-        else:
-            right.append(html)
-        count += weight
-    return "".join(left), "".join(right)
+    return (
+        f'<div class="layout-wrapper cols-1">'
+        f'<div class="col"><table>{COLGROUP}{THEAD}{"".join(blocks_html)}</table></div>'
+        f'</div>'
+    )
 
 def render_train_widget(enabled: bool) -> str:
     """Liefert den HTML-Stub für das Zug-Widget im Header.
