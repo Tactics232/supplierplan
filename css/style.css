@@ -423,7 +423,7 @@ html, body {
 
 /* Wenn beide Tage sichtbar: heute nimmt nur seinen Content-Platz,
    morgen wächst auf den Rest. So rutscht morgen hoch wenn heute schrumpft. */
-.plan-section.today-section { flex: 0 1 auto; }
+.plan-section.today-section { flex: 0 0 auto; }  /* kein shrink → Inhalt nie clippen */
 .plan-section.tomorrow-section { flex: 1 1 auto; }
 
 .summary-bar {

@@ -1006,6 +1006,11 @@ if ('serviceWorker' in navigator) {{
         layoutAll();
     }}
 
+    // Nochmal nach window.load (Fonts/CSS final geladen)
+    window.addEventListener('load', function () {{
+        setTimeout(layoutAll, 50);
+    }});
+
     var resizeTimer = null;
     window.addEventListener('resize', function () {{
         clearTimeout(resizeTimer);
