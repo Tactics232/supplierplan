@@ -50,6 +50,11 @@ def esc(s):
 BASE_DIR    = Path(__file__).parent.parent
 CONFIG_FILE = BASE_DIR / "config.env"
 
+# Schul-spezifische Defaults — in main() aus config.env überschrieben
+# (PLAN_TITLE/LOGO_FILE). Als Modul-Globals, weil an mehreren Render-Stellen genutzt.
+PLAN_TITLE = "Supplierplan"
+LOGO_FILE  = "logo.png"
+
 # ── Config ────────────────────────────────────────────
 def load_config():
     config = {}
@@ -101,9 +106,9 @@ class WebUntis:
         except Exception:
             pass
 
-    def get_substitutions(self, date_int):
+    def get_substitutions(self, date_int, department_id=0):
         return self._rpc("getSubstitutions", {
-            "startDate": date_int, "endDate": date_int, "departmentId": 0
+            "startDate": date_int, "endDate": date_int, "departmentId": department_id
         })
 
     def get_timegrid(self):
@@ -217,7 +222,18 @@ def next_school_day(start, holiday_set):
     return d
 
 # ── Lehrer-Lookup ─────────────────────────────────────
-SKIP_NAMES = {"---", "Z Entfall", ""}
+# "---" und "" sind strukturelle Untis-Platzhalter (immer überspringen).
+# Schul-eigene Pseudo-Lehrer (z.B. "Z Entfall") kommen via config.env SKIP_TEACHERS
+# dazu (siehe configure_skip_teachers, in main aufgerufen).
+SKIP_NAMES = {"---", ""}
+
+def configure_skip_teachers(value):
+    """Ergänzt SKIP_NAMES um die in config.env (SKIP_TEACHERS) gelisteten
+    Pseudo-Lehrer-Kürzel (Komma-getrennt)."""
+    for name in (value or "").split(","):
+        name = name.strip()
+        if name:
+            SKIP_NAMES.add(name)
 
 def build_class_id_lookup(klassen):
     """Klassen-ID → Klassen-Name."""
@@ -507,17 +523,35 @@ WEEKDAYS_SHORT = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 MONTHS   = ["Januar","Februar","März","April","Mai","Juni",
             "Juli","August","September","Oktober","November","Dezember"]
 
-TEXT_BADGES   = {"b": "tb-b", "ub": "tb-ub", "MA": "tb-ma"}
+# Bekannte Bemerkungs-Codes mit eigener Farb-Klasse (CSS .tb-*). Andere via
+# config.env (TEXT_BADGES) gelistete Codes bekommen das neutrale .text-badge.
+_KNOWN_BADGE_CLASSES = {"b": "tb-b", "ub": "tb-ub", "MA": "tb-ma"}
+TEXT_BADGES   = dict(_KNOWN_BADGE_CLASSES)
 _TEXT_PATTERN = re.compile(r'\b(ub|MA|b)\b')
+
+def configure_text_badges(value):
+    """Setzt die als Badge erkannten Bemerkungs-Codes aus config.env (TEXT_BADGES,
+    Komma-getrennt). Bekannte Codes behalten ihre Farbe, neue bekommen .text-badge.
+    Längere Codes zuerst im Regex, damit z.B. 'ub' nicht als 'b' matcht."""
+    global TEXT_BADGES, _TEXT_PATTERN
+    codes = [c.strip() for c in (value or "").split(",") if c.strip()]
+    if not codes:
+        return
+    TEXT_BADGES = {c: _KNOWN_BADGE_CLASSES.get(c, "") for c in codes}
+    ordered = sorted(codes, key=len, reverse=True)
+    _TEXT_PATTERN = re.compile(r'\b(' + "|".join(re.escape(c) for c in ordered) + r')\b')
 
 def render_text(txt):
     if not txt:
         return txt
     txt_escaped = esc(txt)
     def _replace(m):
+        # Regex matcht nur konfigurierte Codes → immer als Badge rendern.
+        # Bekannte Codes mit Farb-Klasse, neue mit neutralem .text-badge.
         code = m.group(0)
         cls  = TEXT_BADGES.get(code, "")
-        return f'<span class="text-badge {cls}">{code}</span>' if cls else esc(code)
+        klass = f"text-badge {cls}".strip()
+        return f'<span class="{klass}">{esc(code)}</span>'
     return _TEXT_PATTERN.sub(_replace, txt_escaped)
 
 def render_teacher_header(kuerzel, teacher_lookup, day="today"):
@@ -528,7 +562,7 @@ def render_teacher_header(kuerzel, teacher_lookup, day="today"):
     day_cls  = " tomorrow" if day == "tomorrow" else ""
     return (
         f'<tr class="teacher-header{day_cls}">'
-        f'<td colspan="8">'
+        f'<td colspan="{NCOLS}">'
         f'<span class="th-kuerzel">{esc(kuerzel)}</span>'
         f'<span class="th-name">{esc(name_str)}</span>'
         f'</td></tr>'
@@ -536,7 +570,7 @@ def render_teacher_header(kuerzel, teacher_lookup, day="today"):
 
 def render_day_separator(d):
     label = f"Morgen · {WEEKDAYS[d.weekday()]}, {d.day}. {MONTHS[d.month-1]} {d.year}"
-    return f'<tr class="day-separator"><td colspan="8">{label}</td></tr>'
+    return f'<tr class="day-separator"><td colspan="{NCOLS}">{label}</td></tr>'
 
 def _fach_html(fach: str) -> str:
     """Liefert Fach mit Lang- und Kurz-Variante.
@@ -560,66 +594,90 @@ def _klasse_html(klasse: str) -> str:
     shown = " · ".join(parts[:2])
     return f'<span title="{esc(klasse)}">{esc(shown)} …</span>'
 
-def render_row(r):
-    row_cls, badge_cls, label_full, label_short = ART_MAP.get(
-        r["art"], ("s-sup", "b-sup", r["art"], r["art"][:1].upper())
-    )
-    day_cls = " tomorrow" if r.get("day") == "tomorrow" else ""
+# ── Spalten-Definition (Source of Truth) ──────────────
+# Reihenfolge hier ändern → COLGROUP, THEAD und jede Datenzeile folgen automatisch.
+# Spaltenbreiten bleiben im CSS (col.c-* + .compact-mode-Overrides, klassenbasiert,
+# greifen also unabhängig von der Reihenfolge). Jede Zell-Funktion escaped selbst (XSS).
+def _kuerzel_cell(r):
+    # Leere erste Spalte – trägt nur den farbigen Status-Streifen (CSS :first-child)
+    return ""
+
+def _std_cell(r):
+    return esc(r["std"])
+
+def _fach_cell(r):
+    return _fach_html(r["fach"])
+
+def _klasse_cell(r):
+    return _klasse_html(r["klasse"])
+
+def _lehrer_cell(r):
     org = r.get("org_kuerzel", "")
     if org:
         # Bei "Vtr. ohne Lehrer": Bindestrich statt Pfeil (kein echter Vertreter)
         is_vtr_ohne = (r.get("text") or "").strip().lower().startswith("vtr. ohne lehrer")
         sep = " - " if is_vtr_ohne else "&rarr;"
-        lehrer_html = (
+        return (
             f'<s class="lehr-absent">{esc(org)}</s>'
             f'<span class="lehr-arrow">{sep}</span>'
             f'{esc(r["kuerzel"])}'
         )
-    elif r.get("kuerzel_absent") or r.get("art") == "cancel":
+    if r.get("kuerzel_absent") or r.get("art") == "cancel":
         # Entfall: Lehrer ist abwesend (kein Vertreter), durchgestrichen
-        lehrer_html = f'<s class="lehr-absent">{esc(r["kuerzel"])}</s>'
-    else:
-        lehrer_html = esc(r["kuerzel"])
+        return f'<s class="lehr-absent">{esc(r["kuerzel"])}</s>'
+    return esc(r["kuerzel"])
+
+def _art_cell(r):
+    _, badge_cls, label_full, label_short = ART_MAP.get(
+        r["art"], ("s-sup", "b-sup", r["art"], r["art"][:1].upper())
+    )
+    return (
+        f'<span class="badge {badge_cls}">'
+        f'<span class="badge-full">{esc(label_full)}</span>'
+        f'<span class="badge-short">{esc(label_short)}</span>'
+        f'</span>'
+    )
+
+def _raum_cell(r):
     raum_org = r.get("raum_org", "")
     if raum_org:
-        raum_html = (
+        return (
             f'<s class="room-absent">{esc(raum_org)}</s>'
             f'<span class="lehr-arrow">&rarr;</span>'
             f'{esc(r["raum"])}'
         )
-    else:
-        raum_html = esc(r["raum"])
-    return (
-        f'<tr class="{row_cls}{day_cls}">'
-        f'<td class="c-kuerzel"></td>'
-        f'<td class="c-std">{esc(r["std"])}</td>'
-        f'<td class="c-fach">{_fach_html(r["fach"])}</td>'
-        f'<td class="c-klasse">{_klasse_html(r["klasse"])}</td>'
-        f'<td class="c-lehrer">{lehrer_html}</td>'
-        f'<td class="c-art"><span class="badge {badge_cls}">'
-        f'<span class="badge-full">{esc(label_full)}</span>'
-        f'<span class="badge-short">{esc(label_short)}</span>'
-        f'</span></td>'
-        f'<td class="c-raum">{raum_html}</td>'
-        f'<td class="c-text">{render_text(r["text"])}</td>'
-        f'</tr>'
-    )
+    return esc(r["raum"])
 
-COLGROUP = """<colgroup>
-                <col class="c-kuerzel"><col class="c-std"><col class="c-fach">
-                <col class="c-klasse"><col class="c-lehrer"><col class="c-art">
-                <col class="c-raum"><col class="c-text">
-            </colgroup>"""
-THEAD = """<thead><tr>
-                <th class="c-kuerzel"></th>
-                <th class="c-std">Std.</th>
-                <th class="c-fach">Fach</th>
-                <th class="c-klasse">Klasse(n)</th>
-                <th class="c-lehrer">(Lehrer)</th>
-                <th class="c-art">Art</th>
-                <th class="c-raum">Raum</th>
-                <th class="c-text">Text</th>
-            </tr></thead>"""
+def _text_cell(r):
+    return render_text(r["text"]) or ""
+
+def _row_class(r):
+    return ART_MAP.get(r["art"], ("s-sup",))[0]
+
+# (key, header, css_class, cell_fn) — Reihenfolge = Anzeige-Reihenfolge
+COLUMNS = [
+    ("kuerzel", "",          "c-kuerzel", _kuerzel_cell),
+    ("std",     "Std.",      "c-std",     _std_cell),
+    ("fach",    "Fach",      "c-fach",    _fach_cell),
+    ("klasse",  "Klasse(n)", "c-klasse",  _klasse_cell),
+    ("lehrer",  "(Lehrer)",  "c-lehrer",  _lehrer_cell),
+    ("art",     "Art",       "c-art",     _art_cell),
+    ("raum",    "Raum",      "c-raum",    _raum_cell),
+    ("text",    "Text",      "c-text",    _text_cell),
+]
+NCOLS = len(COLUMNS)
+
+def render_row(r):
+    day_cls = " tomorrow" if r.get("day") == "tomorrow" else ""
+    cells   = "".join(f'<td class="{css}">{fn(r)}</td>' for _, _, css, fn in COLUMNS)
+    return f'<tr class="{_row_class(r)}{day_cls}">{cells}</tr>'
+
+COLGROUP = "<colgroup>" + "".join(f'<col class="{css}">' for _, _, css, _ in COLUMNS) + "</colgroup>"
+THEAD = (
+    "<thead><tr>"
+    + "".join(f'<th class="{css}">{esc(h)}</th>' for _, h, css, _ in COLUMNS)
+    + "</tr></thead>"
+)
 
 def build_day_content(groups, teacher_lookup, day):
     """Rendert eine flache Tabelle pro Tag. Die Aufteilung in 1–4 Spalten
@@ -628,7 +686,8 @@ def build_day_content(groups, teacher_lookup, day):
     Cancel-Sektion als `data-block="cancel"`."""
 
     if not groups:
-        msg = "Kein Supplierplan für heute" if day == "today" else "Kein Supplierplan für morgen"
+        msg = (f"Kein {PLAN_TITLE} für heute" if day == "today"
+               else f"Kein {PLAN_TITLE} für morgen")
         return f'<div class="empty-state"><p>{msg}</p></div>'
 
     # Trenne Entfall-Zeilen (art=cancel) aus den Lehrer-Gruppen heraus
@@ -656,7 +715,7 @@ def build_day_content(groups, teacher_lookup, day):
         day_tom = " tomorrow" if day == "tomorrow" else ""
         cancel_body = (
             f'<tr class="cancel-header{day_tom}">'
-            f'<td colspan="8"><span class="ch-label">Entfallende Stunden</span></td>'
+            f'<td colspan="{NCOLS}"><span class="ch-label">Entfallende Stunden</span></td>'
             f'</tr>'
             + "".join(render_row(r) for r in cancel_rows)
         )
@@ -696,7 +755,7 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
                   school_location="1210 Wien", show_clock=True,
                   tz_name="Europe/Vienna", theme="dark"):
 
-    logo_html = '<div class="logo"><img src="logo.png" alt="Logo"></div>\n            ' if show_logo else ''
+    logo_html = f'<div class="logo"><img src="{esc(LOGO_FILE)}" alt="Logo"></div>\n            ' if show_logo else ''
     train_widget_html = render_train_widget(train_enabled)
 
     # Schul-Bezeichnungen (config.env) — leere Teile fallen aus der " · "-Kette.
@@ -810,7 +869,7 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
     if not show_today and not show_tomorrow:
         main_content = (
             '<div class="plan-section">'
-            '<div class="empty-state"><p>Kein Supplierplan verfügbar</p></div>'
+            f'<div class="empty-state"><p>Kein {esc(PLAN_TITLE)} verfügbar</p></div>'
             '</div>'
         )
     else:
@@ -836,17 +895,17 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>Supplierplan – {esc(school_name)}</title>
+    <title>{esc(PLAN_TITLE)} – {esc(school_name)}</title>
     <link rel="stylesheet" href="css/style.css">
     <!-- PWA -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#c8102e">
-    <meta name="application-name" content="Supplierplan">
+    <meta name="application-name" content="{esc(PLAN_TITLE)}">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="Supplierplan">
+    <meta name="apple-mobile-web-app-title" content="{esc(PLAN_TITLE)}">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="apple-touch-icon" href="{esc(LOGO_FILE)}">
     <script>window.COMPACT_COL_WIDTH = {compact_col_width};</script>
     <script>
     // Theme-Auflösung: Breit/Schmal folgen der Config, Mobil-Ansicht darf via
@@ -888,7 +947,7 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
         </div>
     </header>
     <div class="plan-header">
-        <span class="plan-label">Supplierplan</span>
+        <span class="plan-label">{esc(PLAN_TITLE)}</span>
         {plan_tag_html}
         <div class="plan-sep"></div>
         <div class="legend">
@@ -1200,6 +1259,34 @@ def purge_cloudflare_cache(zone_id, token, host=None):
     with urllib.request.urlopen(req, timeout=15) as resp:
         return json.loads(resp.read())
 
+# ── PWA-Manifest (aus config.env generiert) ───────────
+def write_manifest(school_name, school_location, theme):
+    """Erzeugt manifest.json passend zu Schulname, Logo, Plan-Titel und Theme.
+    Wird (wie index.html) bei jedem Run neu geschrieben → ist gitignored."""
+    ext  = LOGO_FILE.rsplit(".", 1)[-1].lower() if "." in LOGO_FILE else "png"
+    mime = {"png": "image/png", "svg": "image/svg+xml", "jpg": "image/jpeg",
+            "jpeg": "image/jpeg", "webp": "image/webp"}.get(ext, "image/png")
+    desc_loc = f", {school_location}" if school_location else ""
+    icon = lambda size, purpose: {"src": LOGO_FILE, "sizes": size, "type": mime, "purpose": purpose}
+    manifest = {
+        "name":              f"{PLAN_TITLE} {school_name}".strip(),
+        "short_name":        PLAN_TITLE,
+        "description":       f"{PLAN_TITLE} der {school_name}{desc_loc}",
+        "start_url":         "./",
+        "scope":             "./",
+        "display":           "fullscreen",
+        "display_override":  ["fullscreen", "standalone"],
+        "orientation":       "landscape",
+        "background_color":  "#eef0f4" if theme == "light" else "#0c0c11",
+        "theme_color":       "#c8102e",
+        "lang":              "de",
+        "dir":               "ltr",
+        "icons": [icon("192x192", "any"), icon("512x512", "any"), icon("512x512", "maskable")],
+    }
+    (BASE_DIR / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
 # ── Daten-Dump (lesbare Übersicht + Roh-JSON) ─────────
 def write_data_dump(today_substs, tomorrow_substs, today_rows, tomorrow_rows,
                     holidays, import_time, today_date, tomorrow_date):
@@ -1296,9 +1383,21 @@ s     {{ color: #888; }}
 
 # ── Main ──────────────────────────────────────────────
 def main():
+    global PLAN_TITLE, LOGO_FILE
     config = load_config()
     tz_name = config.get("TIMEZONE", "").strip() or "Europe/Vienna"
     set_timezone(tz_name)
+
+    # Schul-spezifische Stellschrauben aus config.env (siehe config.env.example)
+    configure_skip_teachers(config.get("SKIP_TEACHERS", "Z Entfall"))
+    configure_text_badges(config.get("TEXT_BADGES", "b,ub,MA"))
+    PLAN_TITLE = config.get("PLAN_TITLE", "Supplierplan").strip() or "Supplierplan"
+    LOGO_FILE  = config.get("LOGO_FILE", "logo.png").strip() or "logo.png"
+    try:
+        department_id = int(config.get("UNTIS_DEPARTMENT_ID", "0"))
+    except ValueError:
+        department_id = 0
+
     untis  = WebUntis(
         url       = config["UNTIS_URL"],
         school_id = config.get("UNTIS_SCHOOL_ID", "s921092"),
@@ -1327,7 +1426,7 @@ def main():
 
         # Heute: vergangene Stunden herausfiltern
         print(f"Hole Heute ({today_int}) ...", flush=True)
-        today_substs = untis.get_substitutions(today_int)
+        today_substs = untis.get_substitutions(today_int, department_id=department_id)
         today_rows   = process_substitutions(today_substs, timegrid, break_lookup, day="today")
         today_rows   = [r for r in today_rows if r["end_time"] >= now_t]
         groups_today = group_by_teacher(today_rows)
@@ -1357,7 +1456,7 @@ def main():
             tomorrow_int  = int(tomorrow.strftime("%Y%m%d"))
             tomorrow_date = tomorrow
             print(f"Hole nächsten Schultag ({tomorrow_int}) ...", flush=True)
-            tom_substs    = untis.get_substitutions(tomorrow_int)
+            tom_substs    = untis.get_substitutions(tomorrow_int, department_id=department_id)
             tom_rows      = process_substitutions(tom_substs, timegrid, break_lookup, day="tomorrow")
             groups_tomorrow = group_by_teacher(tom_rows)
 
@@ -1411,6 +1510,9 @@ def main():
         out = BASE_DIR / "index.html"
         out.write_text(html, encoding="utf-8")
         print(f"Fertig -> {out}", flush=True)
+
+        # PWA-Manifest passend zu Schulname/Logo/Theme schreiben
+        write_manifest(school_name, school_location, theme)
 
         # Lesbare Datenübersicht in data/ ablegen
         write_data_dump(

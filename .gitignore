@@ -7,3 +7,4 @@ __pycache__/
 data/
 scripts/api_dump/
 scripts/debug_*.json
+manifest.json

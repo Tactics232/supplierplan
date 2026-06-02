@@ -151,7 +151,21 @@ Crontab:
 | `UNTIS_USER` | ✅ | `Monitor` | Service-Account-User (mit Lese-Rechten) |
 | `UNTIS_PASSWORD` | ✅ | `…` | Passwort zum User |
 | `SHOW_TOMORROW_AFTER` | – | `12:30` | Ab welcher Uhrzeit der nächste Schultag angezeigt wird |
+| `UNTIS_DEPARTMENT_ID` | – | `0` | Abteilungs-Filter (0 = alle) |
+| **Schul-Bezeichnung & Aussehen** | | | |
+| `SCHOOL_NAME` | – | `MS Roda-Roda-Gasse` | Überschrift, Footer, Browser-Titel |
+| `SCHOOL_TYPE` | – | `Mittelschule` | Sub-Zeile (1. Teil) |
+| `SCHOOL_LOCATION` | – | `1210 Wien` | Sub-Zeile (2. Teil) + Footer |
+| `PLAN_TITLE` | – | `Supplierplan` | Plan-Titel (z.B. „Vertretungsplan") |
 | `SHOW_LOGO` | – | `false` | Logo im Header rendern |
+| `LOGO_FILE` | – | `logo.png` | Logo-Dateiname (PNG/SVG/JPG/WebP) |
+| `THEME` | – | `dark` | `dark` oder `light` (Mobil per Schalter überschreibbar) |
+| `SHOW_CLOCK` | – | `true` | Datum + Uhr im Header anzeigen |
+| `TIMEZONE` | – | `Europe/Vienna` | IANA-Zeitzone (heute/morgen + Uhr) |
+| `COMPACT_COL_WIDTH_PX` | – | `320` | Schwelle für Compact-Mode (Badges rund, „Aufs.") |
+| **WebUntis-Feinjustierung** | | | |
+| `SKIP_TEACHERS` | – | `Z Entfall` | Schul-eigene Pseudo-Lehrer (wie `---` ignorieren) |
+| `TEXT_BADGES` | – | `b,ub,MA` | Bemerkungs-Codes, die als Badge erscheinen |
 | **Cloudflare Cache-Purge** (optional) | | | |
 | `CLOUDFLARE_ZONE_ID` | – | – | Aus dem Cloudflare-Dashboard |
 | `CLOUDFLARE_API_TOKEN` | – | – | Permission: *Zone:Cache Purge* |
@@ -162,6 +176,32 @@ Crontab:
 | `TRAIN_PER_DIRECTION` | – | `1` | Anzahl Züge je Richtung |
 | `TRAIN_DISABLED` | – | `false` | Widget komplett ausschalten |
 | `TRAIN_PRODUCTS` | – | `S` | Komma-getrennte Linien-Präfixe (leer = alle) |
+
+---
+
+## Für andere Schulen einrichten
+
+Das Projekt ist mandantenfähig: **eine neue Schule braucht nur eine eigene
+`config.env` und ein Logo — kein Code-Edit.** Alle schul-spezifischen Stellen
+(Pseudo-Lehrer, Abteilung, Logo, Bemerkungs-Codes, Plan-Titel, Branding, Theme,
+Zeitzone) sind Config-Keys (siehe Tabelle oben).
+
+1. **Klonen** und `config.env` aus `config.env.example` anlegen.
+2. **WebUntis-Zugang** eintragen: `UNTIS_URL`, `UNTIS_SCHOOL_ID`, `UNTIS_USER`,
+   `UNTIS_PASSWORD` (am besten ein dedizierter Lese-Service-Account).
+3. **Branding**: `SCHOOL_NAME`, `SCHOOL_TYPE`, `SCHOOL_LOCATION`, `PLAN_TITLE`
+   setzen; eigenes Logo als Datei ablegen und `LOGO_FILE` + `SHOW_LOGO=true` setzen.
+4. **Region**: `TIMEZONE` anpassen. Train-Widget ist ÖBB-spezifisch → für Schulen
+   außerhalb Österreichs `TRAIN_DISABLED=true`.
+5. **WebUntis-Eigenheiten**: ggf. eigene Pseudo-Lehrer in `SKIP_TEACHERS` und
+   Bemerkungs-Codes in `TEXT_BADGES` eintragen; bei Abteilungsbetrieb
+   `UNTIS_DEPARTMENT_ID`.
+6. **Cron** einrichten (siehe Deployment) — `index.html` **und** `manifest.json`
+   werden bei jedem Run aus der Config generiert.
+
+> Hinweis: `index.html` und `manifest.json` sind generierte Artefakte (gitignored).
+> Spaltenreihenfolge der Tabelle ist in `scripts/fetch_untis.py` über die zentrale
+> `COLUMNS`-Liste definiert (eine Stelle umsortieren).
 
 ---
 

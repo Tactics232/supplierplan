@@ -49,6 +49,15 @@ Konfiguration in `config.env` über `TRAIN_*`-Variablen. Wenn `TRAIN_STATION` le
   Footer und Browser-Titel. Sub-Zeile = `TYPE · LOCATION`, Footer = `NAME · LOCATION`
   (leere Teile fallen aus der `·`-Kette). Defaults = MS Roda-Roda-Gasse-Werte.
 - `SHOW_CLOCK` (Default true): `false` blendet Datum + Uhrzeit + Trennlinie aus.
+- `PLAN_TITLE` (Default „Supplierplan"): Titel in Browser-Tab, Sub-Header-Label,
+  Leer-Meldungen und PWA-Manifest. Für andere Schulen z.B. „Vertretungsplan".
+- `LOGO_FILE` (Default `logo.png`): Logo-Dateiname im Projekt-Root (PNG/SVG/JPG/WebP).
+- `SKIP_TEACHERS` (Default „Z Entfall"): schul-eigene Pseudo-Lehrer, die wie `---`
+  ignoriert werden (Komma-Liste). `---`/Leer sind strukturell immer dabei. Wird in
+  `main()` via `configure_skip_teachers()` in `SKIP_NAMES` gemischt.
+- `TEXT_BADGES` (Default `b,ub,MA`): Bemerkungs-Codes, die als Badge gerendert werden.
+  Bekannte (b/ub/MA) behalten ihre Farbe, neue bekommen neutrales `.text-badge`.
+- `UNTIS_DEPARTMENT_ID` (Default 0): Abteilungs-Filter für `getSubstitutions`.
 - `THEME` (`dark` Default / `light`): Farbschema für den gesamten Supplierplan.
   Setzt `data-theme` auf `<html>`; CSS-Variablen für Light unter
   `:root[data-theme="light"]`. In der **Mobil-Ansicht** überschreibt ein kleiner
@@ -84,11 +93,12 @@ Konfiguration in `config.env` über `TRAIN_*`-Variablen. Wenn `TRAIN_STATION` le
 ```
 supplierplan/
 ├── index.html                    # Wird vom Script erzeugt (gitignored)
+├── manifest.json                 # PWA-Manifest, vom Script aus config.env erzeugt (gitignored)
 ├── config.env                    # WebUntis-Login + Schwellen (gitignored)
 ├── config.env.example            # Vorlage ohne Geheimnisse
 ├── css/style.css                 # Komplettes Styling
 ├── fonts/                        # Roboto + Roboto Condensed (lokal, kein CDN)
-├── logo.png                      # Schullogo
+├── logo.png                      # Schullogo (Dateiname via LOGO_FILE)
 ├── scripts/
 │   ├── fetch_untis.py            # Haupt-Script (Cron)
 │   ├── discover_api.py           # API-Erkundungs-Script (nicht produktiv)
@@ -127,7 +137,9 @@ Server: `https://s921092.webuntis.com`, Schul-ID `s921092`, User `Monitor` (Admi
 - `lstype == "bs"` → Pausenaufsicht (eigene Darstellung)
 
 ### Pseudo-Lehrer der Schule (in Untis-Stammdaten)
-- **`Z Entfall`** (longName "Bester Lehrer", id 127) → in `SKIP_NAMES`, wird wie `---` behandelt
+- **`Z Entfall`** (longName "Bester Lehrer", id 127) → via `SKIP_TEACHERS` (config.env,
+  Default „Z Entfall") in `SKIP_NAMES`, wird wie `---` behandelt. Andere Schulen tragen
+  hier ihre eigenen Pseudo-Lehrer ein — kein Code-Edit nötig.
 - **`Mr. X`** (longName "Lückenfüler", in `getTeachers`) → aktuell **NICHT** in SKIP_NAMES.
   Wenn er irgendwann in Substitutionen auftaucht, würde er als echter Lehrer angezeigt.
   Verhalten unklar — siehe TODOs.
@@ -226,6 +238,16 @@ sowohl bei 3–4 Spalten am Desktop als auch in der Mobil-Ansicht.
 Legende werden ausgeblendet. Train-Widget rückt an den linken Rand und zeigt nur
 den nächsten Zug je Richtung, Plan-Tag zeigt Wochentag-Kurzform („Mo" statt „Montag").
 Siehe auch die Viewport-Stufen Breit/Schmal/Mobil weiter unten.
+
+### Tabellenspalten (datengetrieben)
+- Die Spalten sind in **einer** Liste `COLUMNS` definiert (Tupel
+  `(key, header, css_class, cell_fn)`). `COLGROUP`, `THEAD` und jede Datenzeile
+  (`render_row`) werden daraus generiert → **Reihenfolge ändern = Liste umsortieren**,
+  eine Stelle. `colspan` der Section-Header nutzt `NCOLS = len(COLUMNS)`.
+- Spaltenbreiten bleiben im CSS (`col.c-*` + `.compact-mode`-Overrides, klassenbasiert)
+  und greifen damit unabhängig von der Reihenfolge.
+- Aktuelle Reihenfolge: `(Stripe) · Std · Fach · Klasse · Lehrer · Art · Raum · Text`.
+- ⚠️ XSS: jede Zell-Funktion escaped ihre API-Werte selbst (`esc()`).
 
 ### Lehrer-Gruppierung
 - Eine Tabellenzeile pro Vertretungs-Eintrag, gruppiert nach **aktuellem Lehrer-Kürzel**
