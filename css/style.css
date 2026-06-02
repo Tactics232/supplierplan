@@ -103,7 +103,7 @@ html, body {
 
 /* ── Header ─────────────────────────────────────────── */
 .header {
-    height: var(--h-header);
+    min-height: var(--h-header);
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -124,9 +124,7 @@ html, body {
     border-radius: 6px;
     padding: 8px 14px;
     font-family: var(--font-d);
-    margin: 0 16px;
-    max-height: calc(var(--h-header) - 16px);
-    overflow: hidden;
+    margin: 8px 16px;
 }
 
 .tw-station {
@@ -807,7 +805,22 @@ footer {
     font-weight: 600;
 }
 
-/* ── Mobile-Layout (< 600px) ────────────────────────────── */
+/* ── Schmal-Ansicht (≤ 830px) ───────────────────────────── */
+/* Kompletten Schul-Text (Name + Sub), die ganze Uhr (Datum + Zeit) und
+   die Legende ausblenden, um Platz zu schaffen. Logo + laufende Stunde bleiben.
+   (Basis = Breit-Ansicht > 830px; darunter folgt die Mobil-Ansicht ≤ 600px.) */
+@media (max-width: 830px) {
+    .school-name,
+    .school-sub,
+    .clock-date,
+    .clock-time,
+    .header-divider,
+    .legend {
+        display: none;
+    }
+}
+
+/* ── Mobil-Ansicht (≤ 600px) ────────────────────────────── */
 @media (max-width: 600px) {
     :root {
         --h-header: 60px;

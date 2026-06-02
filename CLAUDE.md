@@ -45,6 +45,22 @@ Konfiguration in `config.env` über `TRAIN_*`-Variablen. Wenn `TRAIN_STATION` le
 
 **Weitere Layout-Variablen:**
 - `COMPACT_COL_WIDTH_PX` (Default 320): Schwelle für Badge-Rundung + Aufs.-Kürzung
+- `SCHOOL_NAME` / `SCHOOL_TYPE` / `SCHOOL_LOCATION`: Schul-Bezeichnung im Header,
+  Footer und Browser-Titel. Sub-Zeile = `TYPE · LOCATION`, Footer = `NAME · LOCATION`
+  (leere Teile fallen aus der `·`-Kette). Defaults = MS Roda-Roda-Gasse-Werte.
+- `SHOW_CLOCK` (Default true): `false` blendet Datum + Uhrzeit + Trennlinie aus.
+- `TIMEZONE` (Default `Europe/Vienna`): IANA-Zeitzone für „heute/morgen"-Logik **und**
+  die clientseitige Uhr (JS nutzt `Intl.DateTimeFormat` mit `timeZone`).
+
+**Viewport-Stufen (Media Queries, unabhängig vom spaltenbreiten-basierten
+`compact-mode` der Tabelle):**
+- **Breit-Ansicht** (`> 830px`): alles sichtbar (Logo, Schul-Text, Train-Widget,
+  laufende Stunde, Uhr, Legende)
+- **Schmal-Ansicht** (`≤ 830px`): Schul-Text (Name + Sub), ganze Uhr (Datum + Zeit
+  + Trennlinie) **und** Legende ausgeblendet; Logo + laufende Stunde + Train-Widget bleiben
+- **Mobil-Ansicht** (`≤ 600px`): zusätzlich Logo weg, Train-Widget zeigt nur den
+  **nächsten** Zug je Richtung (JS-`slice` via `matchMedia`, Re-Render bei Resize),
+  Plan-Tag-Kurzform, scrollbar
 
 **Keine externe Dependency** — `fetch_trains.py` nutzt nur stdlib (`urllib.request`,
 `json`, `datetime`). pyhafas hatte kein OEBBProfile, daher direkter Aufruf gegen
@@ -198,11 +214,12 @@ unten-links → oben-rechts → unten-rechts.
 **Compact-Mode** (Badges rund, „Aufsicht" → „Aufs.", Raum-Spalte breiter) wird
 breite-basiert getriggert: wenn die tatsächliche Spaltenbreite kleiner ist als
 `COMPACT_COL_WIDTH_PX` (Default 320, konfigurierbar in `config.env`). Greift damit
-sowohl bei 3–4 Spalten am Desktop als auch in der Mobilansicht.
+sowohl bei 3–4 Spalten am Desktop als auch in der Mobil-Ansicht.
 
-**Mobile-Layout** (`@media (max-width: 600px)`): Logo, Schulname, Uhr, Datum,
-Legende werden ausgeblendet. Train-Widget rückt an den linken Rand, Plan-Tag
-zeigt Wochentag-Kurzform („Mo" statt „Montag").
+**Mobil-Ansicht** (`@media (max-width: 600px)`): Logo, Schul-Text, Uhr, Datum,
+Legende werden ausgeblendet. Train-Widget rückt an den linken Rand und zeigt nur
+den nächsten Zug je Richtung, Plan-Tag zeigt Wochentag-Kurzform („Mo" statt „Montag").
+Siehe auch die Viewport-Stufen Breit/Schmal/Mobil weiter unten.
 
 ### Lehrer-Gruppierung
 - Eine Tabellenzeile pro Vertretungs-Eintrag, gruppiert nach **aktuellem Lehrer-Kürzel**
@@ -270,7 +287,8 @@ nur die eine Subdomain.
 
 ## Zeitzone
 
-`fetch_untis.py` versucht `ZoneInfo("Europe/Vienna")` zu nutzen.
+`fetch_untis.py` nutzt die Zeitzone aus `config.env` (`TIMEZONE`, Default `Europe/Vienna`)
+via `set_timezone()` → `ZoneInfo`.
 - **Linux/Server (LXC):** funktioniert wenn `tzdata`-Paket installiert ist (Standard auf Debian)
 - **Windows:** braucht `pip install tzdata`. Falls nicht installiert → Fallback auf System-TZ
 - Alle Aufrufe von `datetime.now()` / `date.today()` gehen über `now_local()` / `today_local()`

@@ -24,11 +24,23 @@ except ImportError:
     TZ = None  # Python <3.9
 
 def now_local():
-    """Aktuelle Wien-Zeit (oder System-Zeit falls ZoneInfo nicht verfügbar)."""
+    """Aktuelle Ortszeit (oder System-Zeit falls ZoneInfo nicht verfügbar)."""
     return datetime.now(TZ) if TZ else datetime.now()
 
 def today_local():
     return now_local().date()
+
+def set_timezone(name):
+    """Überschreibt die globale Zeitzone aus config.env (TIMEZONE).
+    Bei leerem Namen oder fehlender tzdata bleibt der bisherige Fallback."""
+    global TZ
+    if not name:
+        return
+    try:
+        from zoneinfo import ZoneInfo as _ZI
+        TZ = _ZI(name)
+    except Exception:
+        pass  # ungültige TZ / fehlende tzdata → Fallback unverändert
 
 
 def esc(s):
@@ -679,10 +691,18 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
                   teacher_lookup, period_nr, period_start, period_end,
                   show_logo=False, import_time=None, train_enabled=False,
                   today_classes_override=None, tomorrow_classes_override=None,
-                  compact_col_width=320):
+                  compact_col_width=320,
+                  school_name="MS Roda-Roda-Gasse", school_type="Mittelschule",
+                  school_location="1210 Wien", show_clock=True,
+                  tz_name="Europe/Vienna"):
 
     logo_html = '<div class="logo"><img src="logo.png" alt="Logo"></div>\n            ' if show_logo else ''
     train_widget_html = render_train_widget(train_enabled)
+
+    # Schul-Bezeichnungen (config.env) — leere Teile fallen aus der " · "-Kette.
+    school_sub_str  = " · ".join(p for p in (school_type, school_location) if p)
+    school_foot_str = " · ".join(p for p in (school_name, school_location) if p)
+    tz_js = json.dumps(tz_name)  # sicheres JS-String-Literal für die Uhr-Logik
 
     if import_time:
         import_block = f'<span class="foot-c">Stand Untis: {import_time.strftime("%d.%m.%Y %H:%M")} Uhr</span>'
@@ -710,6 +730,18 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
             '<span class="period-time">&nbsp;</span>'
             '</div>'
         )
+
+    # Uhr + Datum (optional via SHOW_CLOCK); Divider nur wenn Uhr sichtbar.
+    if show_clock:
+        clock_html = (
+            f'<div class="header-divider"></div>'
+            f'<div class="clock">'
+            f'<p class="clock-date" id="clock-date">{date_str}</p>'
+            f'<p class="clock-time" id="clock-time">{time_str}</p>'
+            f'</div>'
+        )
+    else:
+        clock_html = ''
 
     show_today    = bool(groups_today)
     show_tomorrow = bool(groups_tomorrow) and bool(tomorrow_date)
@@ -803,7 +835,7 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>Supplierplan – MS Roda-Roda-Gasse</title>
+    <title>Supplierplan – {esc(school_name)}</title>
     <link rel="stylesheet" href="css/style.css">
     <!-- PWA -->
     <link rel="manifest" href="manifest.json">
@@ -822,18 +854,14 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
     <header class="header">
         <div class="header-left">
             {logo_html}<div>
-                <p class="school-name">MS Roda-Roda-Gasse</p>
-                <p class="school-sub">Mittelschule · 1210 Wien</p>
+                <p class="school-name">{esc(school_name)}</p>
+                <p class="school-sub">{esc(school_sub_str)}</p>
             </div>
         </div>
         {train_widget_html}
         <div class="header-right">
             {period_block}
-            <div class="header-divider"></div>
-            <div class="clock">
-                <p class="clock-date" id="clock-date">{date_str}</p>
-                <p class="clock-time" id="clock-time">{time_str}</p>
-            </div>
+            {clock_html}
         </div>
     </header>
     <div class="plan-header">
@@ -854,7 +882,7 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
     <footer>
         <span class="foot-l">Letzte Aktualisierung: {upd_str}</span>
         {import_block}
-        <span class="foot-r">MS Roda-Roda-Gasse · 1210 Wien</span>
+        <span class="foot-r">{esc(school_foot_str)}</span>
     </footer>
 </div>
 <script>
@@ -866,13 +894,16 @@ if ('serviceWorker' in navigator) {{
 }}
 
 (function tick() {{
-    var n = new Date();
-    var days = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
-    var months = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
-    document.getElementById('clock-time').textContent =
-        String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
-    document.getElementById('clock-date').textContent =
-        days[n.getDay()] + ', ' + n.getDate() + '. ' + months[n.getMonth()] + ' ' + n.getFullYear();
+    var ct = document.getElementById('clock-time');
+    var cd = document.getElementById('clock-date');
+    if (!ct && !cd) return;  // Uhr per Config deaktiviert
+    var now  = new Date();
+    var tz   = {tz_js};
+    var tOpt = {{hour: '2-digit', minute: '2-digit', hour12: false}};
+    var dOpt = {{weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'}};
+    if (tz) {{ tOpt.timeZone = tz; dOpt.timeZone = tz; }}
+    if (ct) ct.textContent = new Intl.DateTimeFormat('de-DE', tOpt).format(now);
+    if (cd) cd.textContent = new Intl.DateTimeFormat('de-DE', dOpt).format(now);
     setTimeout(tick, 1000);
 }})();
 
@@ -1062,14 +1093,20 @@ if ('serviceWorker' in navigator) {{
         return row;
     }}
 
-    function update(data) {{
+    // Im Mobile-Mode nur den nächsten Zug je Richtung zeigen (sonst alle).
+    var mobileMQ = window.matchMedia('(max-width: 600px)');
+    var lastData = null;
+
+    function render(data) {{
+        if (!data) return;
         document.getElementById('tw-station').textContent = data.station || '';
         var tCell = document.getElementById('tw-towards-row');
         var aCell = document.getElementById('tw-away-row');
         tCell.innerHTML = '';
         aCell.innerHTML = '';
-        (data.towards || []).forEach(function (dep) {{ tCell.appendChild(fmtRow(dep, 'tw-towards')); }});
-        (data.away    || []).forEach(function (dep) {{ aCell.appendChild(fmtRow(dep, 'tw-away')); }});
+        var limit = mobileMQ.matches ? 1 : Infinity;
+        (data.towards || []).slice(0, limit).forEach(function (dep) {{ tCell.appendChild(fmtRow(dep, 'tw-towards')); }});
+        (data.away    || []).slice(0, limit).forEach(function (dep) {{ aCell.appendChild(fmtRow(dep, 'tw-away')); }});
 
         var foot = document.getElementById('tw-foot');
         var fetched = data.fetched_at ? new Date(data.fetched_at) : null;
@@ -1082,6 +1119,16 @@ if ('serviceWorker' in navigator) {{
         }}
         widget.setAttribute('data-state', 'ok');
     }}
+
+    function update(data) {{
+        lastData = data;
+        render(data);
+    }}
+
+    // Bei Wechsel mobil ↔ desktop neu rendern (Anzahl Züge ändert sich).
+    var onMQ = function () {{ if (lastData) render(lastData); }};
+    if (mobileMQ.addEventListener) mobileMQ.addEventListener('change', onMQ);
+    else if (mobileMQ.addListener) mobileMQ.addListener(onMQ);
 
     function load() {{
         fetch('data/trains.json?cb=' + Date.now(), {{cache: 'no-store'}})
@@ -1215,6 +1262,8 @@ s     {{ color: #888; }}
 # ── Main ──────────────────────────────────────────────
 def main():
     config = load_config()
+    tz_name = config.get("TIMEZONE", "").strip() or "Europe/Vienna"
+    set_timezone(tz_name)
     untis  = WebUntis(
         url       = config["UNTIS_URL"],
         school_id = config.get("UNTIS_SCHOOL_ID", "s921092"),
@@ -1299,6 +1348,12 @@ def main():
             compact_col_width = max(0, int(config.get("COMPACT_COL_WIDTH_PX", "320")))
         except ValueError:
             compact_col_width = 320
+
+        school_name     = config.get("SCHOOL_NAME", "MS Roda-Roda-Gasse").strip() or "MS Roda-Roda-Gasse"
+        school_type     = config.get("SCHOOL_TYPE", "Mittelschule").strip()
+        school_location = config.get("SCHOOL_LOCATION", "1210 Wien").strip()
+        show_clock      = config.get("SHOW_CLOCK", "true").strip().lower() != "false"
+
         html = generate_html(
             groups_today, groups_tomorrow, today, tomorrow_date,
             teacher_lookup, period_nr, p_start, p_end,
@@ -1308,6 +1363,11 @@ def main():
             today_classes_override=today_absent_classes_override,
             tomorrow_classes_override=tomorrow_absent_classes_override,
             compact_col_width=compact_col_width,
+            school_name=school_name,
+            school_type=school_type,
+            school_location=school_location,
+            show_clock=show_clock,
+            tz_name=tz_name,
         )
         out = BASE_DIR / "index.html"
         out.write_text(html, encoding="utf-8")
