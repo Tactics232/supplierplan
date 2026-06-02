@@ -87,7 +87,7 @@
     --c-surface2:  #e6e8ef;
     --c-border:    #d3d5e0;
     --c-text:      #1b1c24;
-    --c-muted:     #6a6c7e;
+    --c-muted:     #1b1c24;   /* Light: keine graue Schrift → schwarz wie Haupttext */
     --c-wien:      #c8102e;
 
     --c-amber:     #a9690a;
@@ -101,6 +101,10 @@
     --c-accent-blue: #1f6fc0;
     --c-accent-red:  #d12d44;
 }
+
+/* Light: Grau-Texte, die nicht über --c-muted laufen, ebenfalls schwarz */
+:root[data-theme="light"] tbody tr.s-ent td:not(.c-art) { color: var(--c-text); }
+:root[data-theme="light"] .foot-r { color: var(--c-text); }
 
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -660,6 +664,7 @@ td.c-raum {
     font-size: 14px;
     font-weight: 700;
     text-align: center;
+    white-space: nowrap;
 }
 
 td.c-text {
@@ -968,5 +973,15 @@ footer {
         position: sticky;
         top: var(--h-header);
         z-index: 9;
+    }
+
+    /* Footer: Schul-Text weg, WebUntis-Stand rechts statt zentriert */
+    .foot-r {
+        display: none;
+    }
+    .foot-c {
+        position: static;
+        transform: none;
+        margin-left: auto;
     }
 }
