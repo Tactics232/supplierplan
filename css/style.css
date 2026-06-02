@@ -749,13 +749,22 @@ tr.cancel-header.tomorrow td {
 }
 
 /* Compact-Mode: Spalten-Breiten umverteilt */
-.layout-wrapper.compact-mode col.c-std     { width: 7%;  }
+.layout-wrapper.compact-mode col.c-std     { width: 8%;  }
 .layout-wrapper.compact-mode col.c-fach    { width: 14%; }
 .layout-wrapper.compact-mode col.c-klasse  { width: 10%; }
 .layout-wrapper.compact-mode col.c-lehrer  { width: 24%; }
 .layout-wrapper.compact-mode col.c-art     { width: 5%;  }
 .layout-wrapper.compact-mode col.c-raum    { width: 13%; }
-.layout-wrapper.compact-mode col.c-text    { width: 24%; }
+.layout-wrapper.compact-mode col.c-text    { width: 23%; }
+
+/* Compact-Mode: Stunden-Spalte linksbündig + kleiner, damit Pausen-
+   Aufsichten ("5/6") nicht über den rechten Rand ins Fach laufen. */
+.layout-wrapper.compact-mode td.c-std {
+    font-size: 14px;
+    text-align: left;
+    padding-left: 6px;
+    padding-right: 2px;
+}
 
 /* ── Footer ─────────────────────────────────────────── */
 footer {

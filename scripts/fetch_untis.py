@@ -535,6 +535,19 @@ def _fach_html(fach: str) -> str:
         f'<span class="fach-short">{esc(short)}</span>'
     )
 
+def _klasse_html(klasse: str) -> str:
+    """Begrenzt die Klassen-Anzeige auf max. 2 Einträge, damit eine Zeile
+    nicht mehrzeilig umbricht. Rest wird durch '…' angedeutet (vollständige
+    Liste im title-Tooltip). r['klasse'] selbst bleibt unverändert, damit
+    die 'Abwesende Klassen'-Leiste alle Klassen sieht."""
+    if not klasse or klasse == "—":
+        return esc(klasse)
+    parts = klasse.split(" · ")
+    if len(parts) <= 2:
+        return esc(klasse)
+    shown = " · ".join(parts[:2])
+    return f'<span title="{esc(klasse)}">{esc(shown)} …</span>'
+
 def render_row(r):
     row_cls, badge_cls, label_full, label_short = ART_MAP.get(
         r["art"], ("s-sup", "b-sup", r["art"], r["art"][:1].upper())
@@ -569,7 +582,7 @@ def render_row(r):
         f'<td class="c-kuerzel"></td>'
         f'<td class="c-std">{esc(r["std"])}</td>'
         f'<td class="c-fach">{_fach_html(r["fach"])}</td>'
-        f'<td class="c-klasse">{esc(r["klasse"])}</td>'
+        f'<td class="c-klasse">{_klasse_html(r["klasse"])}</td>'
         f'<td class="c-lehrer">{lehrer_html}</td>'
         f'<td class="c-art"><span class="badge {badge_cls}">'
         f'<span class="badge-full">{esc(label_full)}</span>'
