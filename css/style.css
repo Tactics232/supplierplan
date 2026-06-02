@@ -63,6 +63,13 @@
     --c-blue:      #2c7dd0;
     --c-green:     #2a8a4a;
 
+    /* Theme-abhängige Overlays + Akzente (Light-Werte siehe [data-theme="light"]) */
+    --c-overlay:     rgba(255,255,255,0.04);   /* gefüllte Flächen: Widget, Teacher-Header */
+    --c-hairline:    rgba(255,255,255,0.032);  /* dünne Zeilentrenner */
+    --c-dot:         rgba(255,255,255,0.025);  /* Hintergrund-Punktraster */
+    --c-accent-blue: #6aacf0;                  /* Morgen-Akzent (Datum, Titel) */
+    --c-accent-red:  #ff6b80;                  /* Heute-Akzent (Datum, Titel) */
+
     --font-d: 'Roboto Condensed', sans-serif;
     --font-b: 'Roboto', sans-serif;
 
@@ -71,6 +78,28 @@
     --h-sub:     44px;
     --h-foot:    40px;
     --pad-x:     36px;
+}
+
+/* ── Light-Ansicht (data-theme="light" auf <html>) ──────── */
+:root[data-theme="light"] {
+    --c-bg:        #eef0f4;
+    --c-surface:   #ffffff;
+    --c-surface2:  #e6e8ef;
+    --c-border:    #d3d5e0;
+    --c-text:      #1b1c24;
+    --c-muted:     #6a6c7e;
+    --c-wien:      #c8102e;
+
+    --c-amber:     #a9690a;
+    --c-red:       #bf2c2c;
+    --c-blue:      #1f6fc0;
+    --c-green:     #1f7a3f;
+
+    --c-overlay:     rgba(0,0,0,0.045);
+    --c-hairline:    rgba(0,0,0,0.08);
+    --c-dot:         rgba(0,0,0,0.05);
+    --c-accent-blue: #1f6fc0;
+    --c-accent-red:  #d12d44;
 }
 
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -91,7 +120,7 @@ html, body {
     height: 100vh;
     overflow: hidden;
     background-color: var(--c-bg);
-    background-image: radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-image: radial-gradient(circle, var(--c-dot) 1px, transparent 1px);
     background-size: 30px 30px;
 }
 
@@ -119,7 +148,7 @@ html, body {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    background: rgba(255,255,255,0.04);
+    background: var(--c-overlay);
     border: 1px solid var(--c-border);
     border-radius: 6px;
     padding: 8px 14px;
@@ -199,6 +228,28 @@ html, body {
     align-items: center;
     gap: 16px;
 }
+
+/* ── Theme-Umschalter ───────────────────────────────────── */
+/* Nur in der Mobil-Ansicht sichtbar (überschreibt die Config via localStorage).
+   Breit/Schmal folgen ausschließlich der config.env-Einstellung. */
+.theme-toggle {
+    display: none;
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    background: var(--c-overlay);
+    border: 1px solid var(--c-border);
+    border-radius: 50%;
+    color: var(--c-text);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.theme-toggle::before { content: '\263E'; }  /* ☾ Mond → Dark-Ansicht aktiv */
+:root[data-theme="light"] .theme-toggle::before { content: '\2600'; }  /* ☀ Sonne → Light aktiv */
 
 .logo {
     width: 54px;
@@ -354,7 +405,7 @@ html, body {
 
 .plan-tag.tomorrow-only {
     background: transparent;
-    color: #6aacf0;
+    color: var(--c-accent-blue);
     font-size: 13px;
     font-weight: 800;
     letter-spacing: 0.16em;
@@ -473,11 +524,11 @@ html, body {
     font-weight: 800;
     letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: #6aacf0;
+    color: var(--c-accent-blue);
 }
 
 .day-title-bar.today .day-title-text {
-    color: #ff6b80;
+    color: var(--c-accent-red);
 }
 
 /* ── Multi-Column Layout-Wrapper ───────────────────────── */
@@ -533,7 +584,7 @@ thead th.c-std,
 thead th.c-raum { text-align: center; }
 
 tbody tr {
-    border-bottom: 1px solid rgba(255,255,255,0.032);
+    border-bottom: 1px solid var(--c-hairline);
 }
 
 tbody tr:last-child { border-bottom: none; }
@@ -651,13 +702,13 @@ tr.day-separator td {
     font-weight: 700;
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: #6aacf0;
+    color: var(--c-accent-blue);
     border-left: 3px solid #2c7dd0 !important;
 }
 
 /* ── Teacher group header ───────────────────────────── */
 tr.teacher-header td {
-    background: rgba(255,255,255,0.03);
+    background: var(--c-overlay);
     border-top: 1px solid var(--c-border);
     padding: 10px 12px 7px;
     border-left: none !important;
@@ -844,6 +895,11 @@ footer {
     }
     .header-left {
         gap: 0;
+    }
+    /* Theme-Schalter oben links einblenden */
+    .theme-toggle {
+        display: inline-flex;
+        margin-right: 10px;
     }
     .train-widget {
         flex: 1 1 auto;

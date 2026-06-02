@@ -694,7 +694,7 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
                   compact_col_width=320,
                   school_name="MS Roda-Roda-Gasse", school_type="Mittelschule",
                   school_location="1210 Wien", show_clock=True,
-                  tz_name="Europe/Vienna"):
+                  tz_name="Europe/Vienna", theme="dark"):
 
     logo_html = '<div class="logo"><img src="logo.png" alt="Logo"></div>\n            ' if show_logo else ''
     train_widget_html = render_train_widget(train_enabled)
@@ -702,7 +702,8 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
     # Schul-Bezeichnungen (config.env) — leere Teile fallen aus der " · "-Kette.
     school_sub_str  = " · ".join(p for p in (school_type, school_location) if p)
     school_foot_str = " · ".join(p for p in (school_name, school_location) if p)
-    tz_js = json.dumps(tz_name)  # sicheres JS-String-Literal für die Uhr-Logik
+    tz_js    = json.dumps(tz_name)  # sicheres JS-String-Literal für die Uhr-Logik
+    theme_js = json.dumps(theme)    # Config-Theme fürs Head-Script
 
     if import_time:
         import_block = f'<span class="foot-c">Stand Untis: {import_time.strftime("%d.%m.%Y %H:%M")} Uhr</span>'
@@ -827,7 +828,7 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
         plan_tag_html = '<span class="plan-tag">Heute</span>'
 
     return f"""<!DOCTYPE html>
-<html lang="de">
+<html lang="de" data-theme="{esc(theme)}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -847,12 +848,34 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="logo.png">
     <script>window.COMPACT_COL_WIDTH = {compact_col_width};</script>
+    <script>
+    // Theme-Auflösung: Breit/Schmal folgen der Config, Mobil-Ansicht darf via
+    // localStorage überschreiben. Läuft früh im <head> → minimiert Flackern.
+    (function () {{
+        var CONFIG_THEME = {theme_js};
+        var mq = window.matchMedia('(max-width: 600px)');
+        function resolveTheme() {{
+            var t = CONFIG_THEME;
+            if (mq.matches) {{
+                try {{
+                    var s = localStorage.getItem('theme-override');
+                    if (s === 'dark' || s === 'light') t = s;
+                }} catch (e) {{}}
+            }}
+            document.documentElement.setAttribute('data-theme', t);
+        }}
+        resolveTheme();
+        if (mq.addEventListener) mq.addEventListener('change', resolveTheme);
+        else if (mq.addListener) mq.addListener(resolveTheme);
+    }})();
+    </script>
 </head>
 <body>
 <div class="layout">
     <div class="accent-top"></div>
     <header class="header">
         <div class="header-left">
+            <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Hell-/Dunkelmodus umschalten"></button>
             {logo_html}<div>
                 <p class="school-name">{esc(school_name)}</p>
                 <p class="school-sub">{esc(school_sub_str)}</p>
@@ -1059,6 +1082,18 @@ if ('serviceWorker' in navigator) {{
     window.addEventListener('resize', function () {{
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(layoutAll, 250);
+    }});
+}})();
+
+// ── Theme-Umschalter (nur in der Mobil-Ansicht sichtbar) ──
+(function () {{
+    var btn = document.getElementById('theme-toggle');
+    if (!btn) return;
+    btn.addEventListener('click', function () {{
+        var cur  = document.documentElement.getAttribute('data-theme');
+        var next = cur === 'light' ? 'dark' : 'light';
+        try {{ localStorage.setItem('theme-override', next); }} catch (e) {{}}
+        document.documentElement.setAttribute('data-theme', next);
     }});
 }})();
 
@@ -1353,6 +1388,9 @@ def main():
         school_type     = config.get("SCHOOL_TYPE", "Mittelschule").strip()
         school_location = config.get("SCHOOL_LOCATION", "1210 Wien").strip()
         show_clock      = config.get("SHOW_CLOCK", "true").strip().lower() != "false"
+        theme           = config.get("THEME", "dark").strip().lower()
+        if theme not in ("dark", "light"):
+            theme = "dark"
 
         html = generate_html(
             groups_today, groups_tomorrow, today, tomorrow_date,
@@ -1368,6 +1406,7 @@ def main():
             school_location=school_location,
             show_clock=show_clock,
             tz_name=tz_name,
+            theme=theme,
         )
         out = BASE_DIR / "index.html"
         out.write_text(html, encoding="utf-8")

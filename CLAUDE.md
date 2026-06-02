@@ -49,6 +49,12 @@ Konfiguration in `config.env` über `TRAIN_*`-Variablen. Wenn `TRAIN_STATION` le
   Footer und Browser-Titel. Sub-Zeile = `TYPE · LOCATION`, Footer = `NAME · LOCATION`
   (leere Teile fallen aus der `·`-Kette). Defaults = MS Roda-Roda-Gasse-Werte.
 - `SHOW_CLOCK` (Default true): `false` blendet Datum + Uhrzeit + Trennlinie aus.
+- `THEME` (`dark` Default / `light`): Farbschema für den gesamten Supplierplan.
+  Setzt `data-theme` auf `<html>`; CSS-Variablen für Light unter
+  `:root[data-theme="light"]`. In der **Mobil-Ansicht** überschreibt ein kleiner
+  Schalter oben links (`#theme-toggle`) das Theme pro Gerät (localStorage
+  `theme-override`); Breit/Schmal folgen nur der Config. Theme-Auflösung läuft als
+  Inline-Script früh im `<head>` (reaktiv via `matchMedia`, minimiert Flackern).
 - `TIMEZONE` (Default `Europe/Vienna`): IANA-Zeitzone für „heute/morgen"-Logik **und**
   die clientseitige Uhr (JS nutzt `Intl.DateTimeFormat` mit `timeZone`).
 
