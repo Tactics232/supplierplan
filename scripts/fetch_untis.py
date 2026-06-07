@@ -66,6 +66,10 @@ def load_config():
                 config[key.strip()] = val.strip()
     return config
 
+# cellState-Werte aus weekly/data, in denen ein Lehrer wirklich anwesend ist
+# (normaler Unterricht / Pausenaufsicht). CANCEL + SUBSTITUTION = nicht anwesend.
+PRESENT_CELLSTATES = {"STANDARD", "BREAKSUPERVISION"}
+
 # ── WebUntis JSON-RPC Client ──────────────────────────
 class WebUntis:
     def __init__(self, url, school_id, user, password):
@@ -144,6 +148,32 @@ class WebUntis:
                             and e.get("orgId", 0) > 0):
                         absent.setdefault(e["orgId"], set()).add(p["startTime"])
         return absent
+
+    def get_teacher_present_periods(self, teacher_id, date_obj):
+        """REST weekly/data für EINEN Lehrer → Set der startTimes, in denen er an
+        `date_obj` tatsächlich anwesend ist (cellState STANDARD oder
+        BREAKSUPERVISION). Entfallene (CANCEL) und weg-vertretene (SUBSTITUTION)
+        Stunden zählen NICHT als anwesend.
+
+        ⚠️ Das `state`-Feld am Lehrer-Element ist unbrauchbar (steht auch bei
+        entfallenen Stunden auf REGULAR) — maßgeblich ist `cellState` der Periode.
+        `elementId=0` liefert Phantom-Daten (falscher Tag); daher echte Lehrer-ID.
+        """
+        date_str = date_obj.strftime("%Y-%m-%d")
+        url = (f"{self.base_url}/WebUntis/api/public/timetable/weekly/data"
+               f"?elementType=2&elementId={teacher_id}&date={date_str}")
+        req = urllib.request.Request(url, headers={"Accept": "application/json"})
+        with self.opener.open(req, timeout=15) as resp:
+            data = json.loads(resp.read())
+        periods = data.get("data", {}).get("result", {}).get("data", {}).get("elementPeriods", {})
+        target_int = int(date_obj.strftime("%Y%m%d"))
+        present = set()
+        for p in periods.get(str(teacher_id), []):
+            if p.get("date") != target_int:
+                continue
+            if p.get("cellState") in PRESENT_CELLSTATES:
+                present.add(p.get("startTime"))
+        return present
 
     def get_latest_import_time(self):
         ms = self._rpc("getLatestImportTime")
@@ -341,7 +371,10 @@ def process_substitutions(substs, timegrid, break_lookup, day="today"):
             std_display = break_lookup.get(start, fmt_time(start))
             klasse  = "—"
             fach    = "Aufsicht"
-            art_out = "pause"
+            # Entfallene/freigestellte Aufsicht bleibt cancel/free (→ landet in
+            # „Entfallende Stunden", Lehrer wird als abwesend gewertet). Nur eine
+            # tatsächlich stattfindende Aufsichts-Vertretung ist „pause".
+            art_out = art if art in ("cancel", "free") else "pause"
         else:
             info        = timegrid.get(start)
             std_display = str(info[0]) if info else "?"
@@ -367,6 +400,7 @@ def process_substitutions(substs, timegrid, break_lookup, day="today"):
         ]
 
         seen_kuerzel = set()
+        covered_orgs = set()   # abwesende Lehrer, die hier real vertreten werden
         for t in s.get("te", []):
             kuerzel = (t.get("name") or "").strip()
             if kuerzel in SKIP_NAMES:
@@ -388,6 +422,10 @@ def process_substitutions(substs, timegrid, break_lookup, day="today"):
             else:
                 org_kuerzel = ""
 
+            for o in org_kuerzel.split(" · "):
+                if o.strip():
+                    covered_orgs.add(o.strip())
+
             rows.append({
                 "kuerzel":     kuerzel,
                 "org_kuerzel": org_kuerzel,
@@ -403,11 +441,15 @@ def process_substitutions(substs, timegrid, break_lookup, day="today"):
                 "text":        txt,
             })
 
-        # Sonderfall FDKM-artig: te[] enthält NUR '---'-Marker, kein echter Lehrer
-        # → eine Zeile pro abwesendem Lehrer erzeugen (Entfall ohne Vertretung)
-        if not real_teacher_names and absent_via_dash:
+        # Entfall ohne Vertretung: jeder via '---'/'Z Entfall'-Marker abwesende
+        # Lehrer, der NICHT bereits real vertreten wird (covered_orgs), bekommt eine
+        # eigene cancel-Zeile. Greift auch in gemischten Einträgen, in denen ein
+        # echter Vertreter für einen ANDEREN Lehrer steht — z.B. Pausenaufsichten
+        # mit mehreren Aufsicht-Lehrern, von denen einer ersetzt wird und einer
+        # entfällt (sonst ginge der Entfall des Abwesenden verloren).
+        if absent_via_dash:
             for absent_name in absent_via_dash:
-                if absent_name in seen_kuerzel:
+                if absent_name in seen_kuerzel or absent_name in covered_orgs:
                     continue
                 rows.append({
                     "kuerzel":        absent_name,
@@ -434,20 +476,34 @@ def group_by_teacher(rows):
         groups[key].sort(key=lambda r: r["sort_key"])
     return dict(sorted(groups.items()))
 
-def compute_absent(groups):
-    absent_periods  = {}
-    classes_periods = {}
+def extract_absent_periods(groups):
+    """{lehrer_kuerzel: set(std)} aller abwesenden Lehrer eines Tages — gemeinsame
+    Quelle für die Anzeige (compute_absent) und für die weekly/data-Abfrage in
+    main() (determine_full_absent)."""
+    absent_periods = {}
     for rows in groups.values():
         for r in rows:
             if r.get("org_kuerzel"):
-                org = r["org_kuerzel"]
-                for o in org.split(" · "):
+                for o in r["org_kuerzel"].split(" · "):
                     o = o.strip()
                     if o:
                         absent_periods.setdefault(o, set()).add(r.get("std", ""))
             elif r.get("kuerzel_absent") or r.get("art") == "cancel":
                 # FDKM-Fall oder type=cancel: Lehrer ist selbst abwesend (kein Vertreter)
                 absent_periods.setdefault(r["kuerzel"], set()).add(r.get("std", ""))
+    return absent_periods
+
+
+def compute_absent(groups, full_absent_kuerzel=None):
+    """`full_absent_kuerzel`: Set der Lehrer-Kürzel, die laut weekly/data den
+    ganzen Tag fehlen (keine STANDARD-Stunde). Diese zeigen nur das Kürzel ohne
+    Stundenangabe. Ist das Set leer/None (z.B. weekly/data nicht verfügbar),
+    fällt jeder mehrstündige Eintrag auf die Range-Anzeige zurück."""
+    full_absent_kuerzel = full_absent_kuerzel or set()
+    absent_periods  = extract_absent_periods(groups)
+    classes_periods = {}
+    for rows in groups.values():
+        for r in rows:
             if r.get("art") in ("cancel", "free"):
                 klasse = r.get("klasse", "")
                 if klasse and klasse != "—":
@@ -456,30 +512,19 @@ def compute_absent(groups):
                         if k:
                             classes_periods.setdefault(k, set()).add(r.get("std", ""))
 
-    # Globaler Maximalwert über alle abwesenden Lehrer dieses Tages
-    all_nums = set()
-    for stds in absent_periods.values():
-        for s in stds:
-            if str(s).lstrip("-").isdigit():
-                all_nums.add(int(s))
-    global_max = max(all_nums) if all_nums else 0
-
-    def period_range(stds):
+    def period_range(kuerzel, stds):
+        # Komplett abwesend (weekly/data: keine anwesende Stunde) → nur Kürzel.
+        if kuerzel in full_absent_kuerzel:
+            return ""
         nums = sorted({int(s) for s in stds if str(s).lstrip("-").isdigit()})
         if not nums:
             return ""
         min_p, max_p = nums[0], nums[-1]
         if min_p == max_p:
-            return str(min_p)
-        is_consec    = all(nums[i+1] - nums[i] == 1 for i in range(len(nums)-1))
-        reaches_end  = max_p >= global_max
-        if is_consec and reaches_end:
-            if min_p <= 1:
-                return ""           # Ganzer Tag → nur Kürzel
-            return f"ab {min_p}"    # Lehrer fehlt ab Stunde X bis Tagesende
-        return f"{min_p}–{max_p}"
+            return str(min_p)       # genau eine Stunde → die Zahl
+        return f"{min_p}–{max_p}"   # Teil-Abwesenheit → Spanne der Fehl-Stunden
 
-    absent  = [(k, period_range(v)) for k, v in sorted(absent_periods.items())]
+    absent  = [(k, period_range(k, v)) for k, v in sorted(absent_periods.items())]
 
     def classes_range(stds):
         # Klassen: simple Range (Logik wie ursprünglich, ohne 'ab'-Heuristik)
@@ -492,6 +537,29 @@ def compute_absent(groups):
 
     classes = [(k, classes_range(v)) for k, v in sorted(classes_periods.items())]
     return absent, classes
+
+
+def determine_full_absent(untis, groups, kuerzel_to_id, date_obj):
+    """Set der Lehrer-Kürzel, die an `date_obj` komplett abwesend sind: Lehrer aus
+    der Abwesenheitsliste, die laut weekly/data keine einzige anwesende Stunde
+    (STANDARD/BREAKSUPERVISION) haben. Pro betroffenem Lehrer ein REST-Call.
+
+    Bei unbekannter ID oder API-Fehler bleibt der Lehrer aus dem Set → er bekommt
+    die Stunden-Range (sichere, informativere Rückfallebene)."""
+    full = set()
+    for kuerzel in extract_absent_periods(groups):
+        tid = kuerzel_to_id.get(kuerzel)
+        if not tid:
+            continue
+        try:
+            present = untis.get_teacher_present_periods(tid, date_obj)
+        except Exception as e:
+            print(f"weekly/data Fehler für {kuerzel} ({date_obj}): {e}", flush=True)
+            continue
+        if not present:
+            full.add(kuerzel)
+    return full
+
 
 def render_summary_bar(teachers, classes):
     def fmt(name, periods):
@@ -709,19 +777,17 @@ def build_day_content(groups, teacher_lookup, day):
             f'<tbody data-block="teacher" data-key="{esc(kuerzel)}">{body}</tbody>'
         )
 
-    # Cancel-Section als eigenes tbody-Block
+    # Cancel-Section: jede Entfall-Zeile als eigener data-block="cancel" (ohne
+    # Überschrift). Die Layout-Engine verteilt die Zeilen über die Spalten und
+    # bricht sie an den echten Spaltengrenzen um — sie setzt die Überschrift
+    # („Entfallende Stunden" / „… (Forts.)") pro Spalte selbst und nur dort, wo
+    # tatsächlich Entfälle landen (siehe applyLayout / makeCancelHeader).
     if cancel_rows:
         cancel_rows.sort(key=lambda r: (r["sort_key"], r["kuerzel"]))
-        day_tom = " tomorrow" if day == "tomorrow" else ""
-        cancel_body = (
-            f'<tr class="cancel-header{day_tom}">'
-            f'<td colspan="{NCOLS}"><span class="ch-label">Entfallende Stunden</span></td>'
-            f'</tr>'
-            + "".join(render_row(r) for r in cancel_rows)
-        )
-        blocks_html.append(
-            f'<tbody data-block="cancel">{cancel_body}</tbody>'
-        )
+        for r in cancel_rows:
+            blocks_html.append(
+                f'<tbody data-block="cancel">{render_row(r)}</tbody>'
+            )
 
     return (
         f'<div class="layout-wrapper cols-1">'
@@ -753,7 +819,8 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
                   compact_col_width=320,
                   school_name="MS Roda-Roda-Gasse", school_type="Mittelschule",
                   school_location="1210 Wien", show_clock=True,
-                  tz_name="Europe/Vienna", theme="dark"):
+                  tz_name="Europe/Vienna", theme="dark",
+                  today_full_absent=None, tomorrow_full_absent=None):
 
     logo_html = f'<div class="logo"><img src="{esc(LOGO_FILE)}" alt="Logo"></div>\n            ' if show_logo else ''
     train_widget_html = render_train_widget(train_enabled)
@@ -809,7 +876,7 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
 
     today_section = ""
     if show_today:
-        today_absent, today_classes_derived = compute_absent(groups_today)
+        today_absent, today_classes_derived = compute_absent(groups_today, today_full_absent)
         today_classes = today_classes_override if today_classes_override is not None else today_classes_derived
         date_str_today = (
             f"{WEEKDAYS[today_date.weekday()]}, "
@@ -833,7 +900,7 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
     tomorrow_only_label_full = ""
     tomorrow_only_label_short = ""
     if show_tomorrow:
-        tom_absent, tom_classes_derived = compute_absent(groups_tomorrow)
+        tom_absent, tom_classes_derived = compute_absent(groups_tomorrow, tomorrow_full_absent)
         tom_classes = tomorrow_classes_override if tomorrow_classes_override is not None else tom_classes_derived
         days_ahead = (tomorrow_date - today_date).days
         date_str_tom = (
@@ -1025,10 +1092,17 @@ if ('serviceWorker' in navigator) {{
         return Math.min(MAX_COLS, byHeight, byWidth);
     }}
 
+    var CANCEL_HEADER_H = 46;  // geschätzte Höhe der eingefügten Überschrift
+
     function distributeGreedy(blocks, cols, availablePerCol) {{
         var buckets = [];
         for (var i = 0; i < cols; i++) buckets.push([]);
 
+        // Lehrer-Blöcke zuerst, danach die einzelnen Entfall-Zeilen. So bleiben die
+        // Entfälle am Ende des Leseflusses, füllen aber jede Spalte bis zum Limit
+        // und brechen erst an der echten Spaltengrenze um (statt in starre Chunks).
+        // Pro Spalte, in der Entfälle beginnen, wird Platz für die später
+        // eingefügte Überschrift reserviert.
         var regular = [];
         var cancels = [];
         for (var j = 0; j < blocks.length; j++) {{
@@ -1038,27 +1112,49 @@ if ('serviceWorker' in navigator) {{
                 regular.push(blocks[j]);
             }}
         }}
+        var ordered = regular.concat(cancels);
 
         var currentCol = 0;
         var currentHeight = 0;
-        for (var k = 0; k < regular.length; k++) {{
-            var b = regular[k];
+        var colHasCancel = false;
+        for (var k = 0; k < ordered.length; k++) {{
+            var b = ordered[k];
+            var isCancel = b.getAttribute('data-block') === 'cancel';
             var h = b.getBoundingClientRect().height;
-            if (currentHeight + h > availablePerCol
+            var extra = (isCancel && !colHasCancel) ? CANCEL_HEADER_H : 0;
+            if (currentHeight + h + extra > availablePerCol
                     && currentCol < cols - 1
                     && buckets[currentCol].length > 0) {{
                 currentCol++;
                 currentHeight = 0;
+                colHasCancel = false;
+                extra = isCancel ? CANCEL_HEADER_H : 0;
             }}
             buckets[currentCol].push(b);
-            currentHeight += h;
-        }}
-
-        for (var l = 0; l < cancels.length; l++) {{
-            buckets[cols - 1].push(cancels[l]);
+            currentHeight += h + extra;
+            if (isCancel) colHasCancel = true;
         }}
 
         return buckets;
+    }}
+
+    function makeCancelHeader(ncols, isCont, spaced, isTomorrow) {{
+        var tb = document.createElement('tbody');
+        tb.className = 'cancel-header-block';
+        var tr = document.createElement('tr');
+        tr.className = 'cancel-header'
+            + (isTomorrow ? ' tomorrow' : '')
+            + (isCont ? ' cont' : '')
+            + (spaced ? ' spaced' : '');
+        var td = document.createElement('td');
+        td.colSpan = ncols;
+        var span = document.createElement('span');
+        span.className = 'ch-label';
+        span.textContent = isCont ? 'Entfallende Stunden (Forts.)' : 'Entfallende Stunden';
+        td.appendChild(span);
+        tr.appendChild(td);
+        tb.appendChild(tr);
+        return tb;
     }}
 
     function applyLayout(wrapper) {{
@@ -1078,15 +1174,6 @@ if ('serviceWorker' in navigator) {{
 
         var cols = chooseColCount(wrapper, blocks, availablePerCol);
 
-        // Early-Return: schon 1-spaltig und cols=1 → fertig (bis auf compact-Check)
-        if (cols === 1 && wrapper.querySelectorAll('.col').length === 1) {{
-            var firstCol1 = wrapper.querySelector('.col');
-            if (firstCol1 && firstCol1.clientWidth < (window.COMPACT_COL_WIDTH || 320)) {{
-                wrapper.classList.add('compact-mode');
-            }}
-            return;
-        }}
-
         wrapper.classList.remove('cols-1');
         wrapper.classList.add('cols-' + cols);
 
@@ -1094,19 +1181,35 @@ if ('serviceWorker' in navigator) {{
         if (!origTable) return;
         var origColgroup = origTable.querySelector('colgroup');
         var origThead    = origTable.querySelector('thead');
+        var ncols = origColgroup ? origColgroup.querySelectorAll('col').length : 8;
+        var isTomorrow = !!wrapper.closest('.tomorrow-section');
 
         var buckets = distributeGreedy(blocks, cols, availablePerCol);
 
-        // Container leeren und N neue Spalten/Tables anlegen
+        // Container leeren und N neue Spalten/Tables anlegen. Die "Entfallende
+        // Stunden"-Überschrift wird pro Spalte VOR der ersten Entfall-Zeile
+        // eingefügt: in der ersten betroffenen Spalte voll, danach als "(Forts.)".
+        // Zusätzlicher Abstand (spaced) nur, wenn die Überschrift unter einem
+        // anderen Block steht — nicht, wenn sie ganz oben in der Spalte sitzt.
         wrapper.innerHTML = '';
+        var cancelHeaderSeen = false;
         for (var c = 0; c < cols; c++) {{
             var colDiv = document.createElement('div');
             colDiv.className = 'col';
             var table = document.createElement('table');
             if (origColgroup) table.appendChild(origColgroup.cloneNode(true));
             if (origThead)    table.appendChild(origThead.cloneNode(true));
+            var colCancelSeen = false;
             for (var m = 0; m < buckets[c].length; m++) {{
-                table.appendChild(buckets[c][m]);
+                var blk = buckets[c][m];
+                if (blk.getAttribute('data-block') === 'cancel' && !colCancelSeen) {{
+                    colCancelSeen = true;
+                    table.appendChild(
+                        makeCancelHeader(ncols, cancelHeaderSeen, m > 0, isTomorrow)
+                    );
+                    cancelHeaderSeen = true;
+                }}
+                table.appendChild(blk);
             }}
             colDiv.appendChild(table);
             wrapper.appendChild(colDiv);
@@ -1419,6 +1522,9 @@ def main():
         teacher_lookup = build_teacher_lookup(teachers)
         class_id_lk    = build_class_id_lookup(klassen_raw)
         holiday_set    = parse_holidays(holidays_raw)
+        # Kürzel → Lehrer-ID für die weekly/data-Abfrage (komplett vs. teil-abwesend)
+        kuerzel_to_id  = {t.get("name", "").strip(): t["id"]
+                          for t in (teachers or []) if t.get("id") and t.get("name")}
 
         now_t   = now_hhmm()
         today   = today_local()
@@ -1439,6 +1545,9 @@ def main():
             today_abs_classes_raw = {}
         today_absent_classes_override = class_absences_to_list(today_abs_classes_raw, class_id_lk, timegrid)
 
+        # Komplett abwesende Lehrer (weekly/data) → zeigen nur das Kürzel ohne Std-Range
+        today_full_absent = determine_full_absent(untis, groups_today, kuerzel_to_id, today)
+
         # Morgen: ab konfigurierter Uhrzeit ODER wenn heute schon leer ist
         threshold_str = config.get("SHOW_TOMORROW_AFTER", "14:00")
         th, tm     = map(int, threshold_str.split(":"))
@@ -1450,6 +1559,7 @@ def main():
         tom_substs      = []
         tom_rows        = []
         tomorrow_absent_classes_override = []
+        tomorrow_full_absent = set()
 
         if show_tomorrow:
             tomorrow      = next_school_day(today, holiday_set)
@@ -1466,6 +1576,8 @@ def main():
                 print(f"Klassen-Abwesenheits-API Fehler (morgen): {e}", flush=True)
                 tom_abs_classes_raw = {}
             tomorrow_absent_classes_override = class_absences_to_list(tom_abs_classes_raw, class_id_lk, timegrid)
+
+            tomorrow_full_absent = determine_full_absent(untis, groups_tomorrow, kuerzel_to_id, tomorrow)
 
         period_nr, p_start, p_end = find_current_period(timegrid)
 
@@ -1506,6 +1618,8 @@ def main():
             show_clock=show_clock,
             tz_name=tz_name,
             theme=theme,
+            today_full_absent=today_full_absent,
+            tomorrow_full_absent=tomorrow_full_absent,
         )
         out = BASE_DIR / "index.html"
         out.write_text(html, encoding="utf-8")

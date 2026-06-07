@@ -171,13 +171,25 @@ Pattern `te=[---/SaF, BuL]` (SaF fehlt, BuL ist da). Für Lehrer ohne orgid wird
 `orgname` aus dem `---`-Eintrag als `org_kuerzel` übernommen → Anzeige `SaF→BuL`.
 
 **FDKM-artiger Sonderfall (Entfall ohne Vertretung)**:
-Wenn `te[]` nur `---`/`Z Entfall`-Marker enthält (kein echter Lehrer-Eintrag),
-wird **eine virtuelle Zeile pro abwesendem Lehrer** erzeugt:
+Für **jeden** via `---`/`Z Entfall`-Marker abwesenden Lehrer (`absent_via_dash`),
+der nicht ohnehin schon real vertreten wird (`covered_orgs`), wird **eine virtuelle
+Zeile** erzeugt:
 - `kuerzel` = abwesender Lehrer
 - `art` = `cancel`
 - `kuerzel_absent` = True (für Render-Logik: nur durchgestrichener Name, kein Pfeil)
 
 → FDKM Std 0 für NeS, Pausenaufsicht-Entfälle (GrM, WöR Std 8/9), etc.
+
+⚠️ Greift auch in **gemischten Einträgen**, in denen ein echter Vertreter für
+einen *anderen* Lehrer steht (z.B. Pausenaufsicht `te=[LaI, SeM<-FaM, Z Entfall<-BrH]`:
+SeM vertritt FaM, BrH entfällt). Früher unterdrückte ein `not real_teacher_names`-Guard
+diese cancel-Zeilen → Aufsichten abwesender Lehrer gingen bei Projekttagen verloren.
+`covered_orgs` (alle real vertretenen `orgname`) verhindert dabei doppelte/falsche
+Entfälle für tatsächlich gedeckte Lehrer.
+
+**Aufsicht-`type`:** Eine Pausenaufsicht (`lstype="bs"`) behält `cancel`/`free` als
+Art (→ Sektion „Entfallende Stunden", Lehrer gilt als abwesend); nur eine real
+stattfindende Aufsichts-Vertretung wird zu `pause`.
 
 **Trenner Pfeil ↔ Bindestrich**:
 - `→` bei echter Vertretung (orgid vorhanden)
@@ -211,16 +223,29 @@ wird **eine virtuelle Zeile pro abwesendem Lehrer** erzeugt:
 
 ### Multi-Column-Layout (Browser-seitig)
 
-Die Supplierliste wird server-seitig als **flache Tabelle** ausgegeben (eine
-`<tbody>`-Sektion pro Lehrer + eine für Cancel-Stunden, jeweils mit
-`data-block`-Attribut). Eine JavaScript-Layout-Engine im Browser misst nach
-DOMContentLoaded den verfügbaren Platz und verteilt die Blöcke per
-first-fit-min auf 1–4 Spalten. Setzt am `.layout-wrapper`-Container die Klasse
-`.cols-N` (1, 2, 3 oder 4).
+Die Supplierliste wird server-seitig als **flache Tabelle** ausgegeben: ein
+`<tbody data-block="teacher">` pro Lehrer und **je Entfall-Zeile ein eigenes**
+`<tbody data-block="cancel">` (ohne Überschrift). Eine JavaScript-Layout-Engine
+im Browser misst nach DOMContentLoaded den verfügbaren Platz und verteilt die
+Blöcke per first-fit-min auf 1–4 Spalten. Setzt am `.layout-wrapper`-Container
+die Klasse `.cols-N` (1, 2, 3 oder 4).
 
 Ab `.cols-3` schaltet CSS die Art-Badges (Vertr./Entfall/…) auf runde
-Einbuchstaben-Form (V/E/R/F/P) um. Die Cancel-Sektion landet immer in der
-letzten Spalte.
+Einbuchstaben-Form (V/E/R/F/P) um.
+
+**Cancel-Sektion („Entfallende Stunden"):** Die einzelnen `cancel`-Zeilen fließen
+**nach** allen Lehrer-Blöcken in den Greedy-Fill (`distributeGreedy`) und brechen
+damit an den **echten Spaltengrenzen** um (kein starres Chunking mehr). Die
+Überschrift erzeugt die Engine selbst (`makeCancelHeader`) — **pro Spalte einmal**,
+direkt vor der ersten Entfall-Zeile dieser Spalte:
+- erste betroffene Spalte → „Entfallende Stunden", weitere → „… (Forts.)" (`.cont`, dezenter)
+- zusätzlicher Freiraum + Trennlinie oben (`.spaced`) nur, wenn die Überschrift
+  **unter** einem anderen Block in derselben Spalte sitzt — nicht, wenn sie ganz
+  oben in einer Spalte steht.
+Pro Spalte mit Entfällen reserviert der Greedy-Fill `CANCEL_HEADER_H` px für die
+später eingefügte Überschrift. So verteilen sich auch sehr viele Entfälle (z.B.
+Projekttage mit ganzen abwesenden Klassen) sauber über die Spalten, statt eine
+Spalte zu überlaufen.
 
 Re-Layout bei Browser-Resize (250 ms debounced) und bei jedem Page-Reload
 (60 s Auto-Refresh greift wie bisher).
@@ -269,15 +294,34 @@ Quellen für „Abwesende Lehrer":
 - `art="cancel"` → bei Entfall ist der Lehrer abwesend
 - Die `---`-Heuristik propagiert `orgname` auch auf Co-Lehrer-Zeilen
 
-**Heuristik für Stundenangabe** (`period_range`):
-1. Einzelne Stunde → nur die Zahl (z.B. `DuS (2)`)
-2. Lückenhaft → Range `min–max` (z.B. `SeA (3–8)` wenn 3,4,6,8)
-3. Lückenlos + reicht bis globalen Tagesende (höchste abwesende Stunde aller Lehrer):
-   - Wenn `min ≤ 1` → nur Kürzel ohne Suffix (= Ganzer Tag)
-   - Wenn `min > 1` → `ab X` (z.B. `WöR (ab 6)`)
+**Stundenangabe komplett vs. teil-abwesend** (`period_range` + `determine_full_absent`):
+- **Komplett abwesend → nur Kürzel** (keine Stundenangabe). Schul-Konvention.
+- **Teil-abwesend → Range `min–max`** der Fehl-Stunden (z.B. `WöR (5–9)`),
+  einzelne Stunde → die Zahl (z.B. `SaI (6)`).
 
-„Globaler Tagesende" ist die höchste Stunde über alle abwesenden Lehrer dieses Tages
-— dynamisch, nicht aus dem Timegrid.
+Ob „komplett" oder „teil" kommt **datengetrieben aus `weekly/data`**, nicht aus einer
+Heuristik: `determine_full_absent()` ruft pro abwesendem Lehrer
+`get_teacher_present_periods(teacher_id, date)` auf (REST
+`weekly/data?elementType=2&elementId=<id>`). Hat der Lehrer an dem Tag **keine**
+Stunde mit `cellState ∈ {STANDARD, BREAKSUPERVISION}` (= echter Unterricht /
+Pausenaufsicht), gilt er als komplett abwesend → nur Kürzel. Hat er welche
+(z.B. eine nicht entfallene Stunde, oder eine Aufsicht) → teil-abwesend → Range.
+
+⚠️ **Warum nicht aus dem Supplierplan ableitbar:** dort sind nur Stunden **mit
+Änderung** sichtbar, nicht der ganze Tag — ob `1–5` der volle Tag oder nur der
+Vormittag ist, steht da nicht drin. Daher der separate `weekly/data`-Call.
+
+⚠️ **`cellState`, nicht `state`:** Das `state`-Feld am Lehrer-Element ist unbrauchbar
+(steht auch bei entfallenen Stunden auf `REGULAR`). Maßgeblich ist `cellState` der
+Periode: `STANDARD` / `CANCEL` / `SUBSTITUTION` / `BREAKSUPERVISION`.
+
+⚠️ **`elementId=0` ist ein Phantom** (liefert beliebige/falsche Tage) — immer die
+**echte Lehrer-ID** verwenden. `get_weekly_class_absences` nutzt noch `elementId=0`
+und liefert daher vermutlich Müll — beim nächsten Anfassen auf echte Klassen-IDs
+umstellen (TODO).
+
+**Kosten:** ein REST-Call pro abwesendem Lehrer je angezeigtem Tag. Bei API-Fehler
+oder unbekannter ID fällt der Lehrer auf die Range-Anzeige zurück (sicher).
 
 ---
 
@@ -380,9 +424,10 @@ Im Claude Code Prompt mit `!`-Präfix ausführen, dann landet Output direkt im C
 ---
 
 ## Verfügbar aber noch nicht genutzt — Ideen für später
-- **`weekly/data` REST** (`elementType=2`): Wochenstundenplan ALLER Lehrer mit
-  `state: ABSENT`/`REGULAR` pro Stunde → präzisere Quelle für „Abwesende Lehrer".
-  Würde u.a. die Heuristik mit dem globalen Tagesende ersetzen können.
+- **`weekly/data` REST für Klassen** (`elementType=1`): könnte die „Abwesende
+  Klassen"-Liste sauber liefern (aktuell `get_weekly_class_absences` mit kaputtem
+  `elementId=0`). Pro Klasse ein Call. (Für Lehrer ist `weekly/data` bereits
+  produktiv im Einsatz, siehe „Stundenangabe komplett vs. teil-abwesend".)
 - `getStatusData`: Original-Untis-Farben (`lstypes`, `codes`)
 - `getKlassen.longName`: `DFK` → `Deutsch Förderklasse`
 - `getSubjects.foreColor/backColor`: Fach-spezifische Farben
@@ -397,9 +442,10 @@ Im Claude Code Prompt mit `!`-Präfix ausführen, dann landet Output direkt im C
    oder „Entfall" bedeutet.
 2. **Bedeutung unklar:** `txt='a'` (4× im Dump), `txt='t'` (2× im Dump). Werden aktuell
    einfach als Text durchgereicht. Bei Bedarf Badges definieren.
-3. **`weekly/data`-Migration** für die „Abwesende Lehrer"-Liste (siehe oben).
-   Aktuelle Heuristik ist gut, aber `weekly/data` wäre noch genauer (z.B. wenn ein
-   Lehrer fehlt aber gar nicht im Supplierplan auftaucht).
+3. ~~**`weekly/data`-Migration** für „Abwesende Lehrer"~~ ✅ erledigt: komplett vs.
+   teil-abwesend kommt jetzt aus `weekly/data` (`determine_full_absent`,
+   `get_teacher_present_periods`). Offen bleibt nur die Klassen-Liste
+   (`get_weekly_class_absences` nutzt noch `elementId=0` → kaputt).
 4. **Sonder-Modi für `lstype`:** `ex` (Prüfung), `oh` (Sprechstunde), `sb` (Standby)
    sind im Code nicht behandelt — Verhalten unklar bis sie auftauchen.
 5. ~~Automatisches Cloudflare Cache-Purge~~ ✅ implementiert (siehe oben).

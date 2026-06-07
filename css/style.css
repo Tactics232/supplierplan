@@ -743,13 +743,27 @@ tr.teacher-header:first-child td {
 /* ── Cancel-Sektion (gesammelte Entfälle) ───────────── */
 tr.cancel-header td {
     background: rgba(255, 255, 255, 0.03);
-    border-top: 1px solid var(--c-border);
-    padding: 26px 12px 7px;   /* zusätzliches top-padding = Freiraum zur Lehrer-Liste */
+    padding: 7px 12px 7px;
     border-left: none !important;
+}
+
+/* Zusätzlicher Freiraum + Trennlinie nur, wenn die Überschrift UNTER einem
+   anderen Block in derselben Spalte steht (von der Layout-Engine als .spaced
+   markiert) — nicht, wenn sie ganz oben in einer Spalte sitzt. */
+tr.cancel-header.spaced td {
+    border-top: 1px solid var(--c-border);
+    padding-top: 26px;
 }
 
 tr.cancel-header.tomorrow td {
     background: rgba(20, 50, 90, 0.28);
+}
+
+/* Fortsetzungs-Überschrift („Entfallende Stunden (Forts.)") in einer weiteren
+   Spalte: dezenter, da sie nur die Fortsetzung markiert. */
+tr.cancel-header.cont .ch-label {
+    font-weight: 700;
+    opacity: 0.72;
 }
 
 .ch-label {
