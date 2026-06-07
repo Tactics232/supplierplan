@@ -26,7 +26,14 @@ except ImportError:
 
 
 BASE_DIR    = Path(__file__).resolve().parent.parent
-CONFIG_FILE = BASE_DIR / "config.env"
+
+def resolve_config_path() -> Path:
+    """Pfad zur config.env. Bevorzugt $SUPPLIERPLAN_CONFIG, damit die Datei mit
+    Geheimnissen außerhalb des Webroots liegen kann; sonst Projekt-Root (dev)."""
+    env_path = os.environ.get("SUPPLIERPLAN_CONFIG", "").strip()
+    return Path(env_path) if env_path else BASE_DIR / "config.env"
+
+CONFIG_FILE = resolve_config_path()
 DATA_DIR    = BASE_DIR / "data"
 OUTPUT      = DATA_DIR / "trains.json"
 

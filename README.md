@@ -106,8 +106,21 @@ Browser: `http://localhost:8080/`
 
 ```bash
 rsync -avz --exclude='.claude' --exclude='.git' --exclude='data/' \
+      --exclude='config.env' \
       ./ root@<lxc-ip>:/var/www/supplierplan/
 ```
+
+> ⚠️ **`config.env` wird bewusst NICHT mitkopiert.** Der statische Webserver würde
+> jede Datei im Verzeichnis ausliefern — also auch Passwort und Token. Lege die
+> Datei stattdessen außerhalb des Webroots ab und schütze sie:
+> ```bash
+> mkdir -p /etc/supplierplan
+> # config.env einmalig nach /etc/supplierplan/config.env kopieren, dann:
+> chmod 600 /etc/supplierplan/config.env
+> ```
+> Die Scripts finden sie über die Umgebungsvariable `SUPPLIERPLAN_CONFIG`
+> (siehe Cron unten). Ohne die Variable greift der Fallback auf den Projekt-Root —
+> nur für lokale Entwicklung gedacht.
 
 Auf dem LXC einmal:
 
@@ -136,9 +149,13 @@ crontab -e
 
 Crontab:
 ```cron
+SUPPLIERPLAN_CONFIG=/etc/supplierplan/config.env
 */5 * * * *  cd /var/www/supplierplan && /usr/bin/python3 scripts/fetch_untis.py  >> /var/log/supplierplan-untis.log 2>&1
 *   * * * *  cd /var/www/supplierplan && /usr/bin/python3 scripts/fetch_trains.py >> /var/log/supplierplan-trains.log 2>&1
 ```
+
+Die erste Zeile setzt `SUPPLIERPLAN_CONFIG` für beide Jobs, damit sie die
+`config.env` außerhalb des Webroots lesen.
 
 ---
 

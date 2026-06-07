@@ -6,6 +6,7 @@ Holt den heutigen (und ggf. morgigen) Supplierplan und generiert index.html
 
 import html as _html
 import json
+import os
 import re
 import urllib.request
 import urllib.parse
@@ -48,7 +49,16 @@ def esc(s):
     return _html.escape(str(s)) if s is not None else ""
 
 BASE_DIR    = Path(__file__).parent.parent
-CONFIG_FILE = BASE_DIR / "config.env"
+
+def resolve_config_path():
+    """Pfad zur config.env. Bevorzugt $SUPPLIERPLAN_CONFIG — damit die Datei mit
+    Passwort/Token AUSSERHALB des vom Webserver ausgelieferten Verzeichnisses
+    liegen kann (z.B. /etc/supplierplan/config.env). Ohne die Variable wird wie
+    bisher die Datei im Projekt-Root genutzt (abwärtskompatibel, lokal/dev)."""
+    env_path = os.environ.get("SUPPLIERPLAN_CONFIG", "").strip()
+    return Path(env_path) if env_path else BASE_DIR / "config.env"
+
+CONFIG_FILE = resolve_config_path()
 
 # Schul-spezifische Defaults — in main() aus config.env überschrieben
 # (PLAN_TITLE/LOGO_FILE). Als Modul-Globals, weil an mehreren Render-Stellen genutzt.
@@ -754,8 +764,8 @@ def build_day_content(groups, teacher_lookup, day):
     Cancel-Sektion als `data-block="cancel"`."""
 
     if not groups:
-        msg = (f"Kein {PLAN_TITLE} für heute" if day == "today"
-               else f"Kein {PLAN_TITLE} für morgen")
+        msg = (f"Kein {esc(PLAN_TITLE)} für heute" if day == "today"
+               else f"Kein {esc(PLAN_TITLE)} für morgen")
         return f'<div class="empty-state"><p>{msg}</p></div>'
 
     # Trenne Entfall-Zeilen (art=cancel) aus den Lehrer-Gruppen heraus
@@ -1512,11 +1522,21 @@ def main():
         print("Einloggen ...", flush=True)
         untis.login()
 
+        def _optional(label, fn, fallback):
+            """Nicht-essentieller API-Call: fehlt das Recht (z.B. API -8509) oder
+            schlägt er fehl, wird gewarnt und der Fallback genutzt, statt das ganze
+            Board crashen zu lassen. Vertretungen + Zeitraster bleiben Pflicht."""
+            try:
+                return fn()
+            except Exception as e:
+                print(f"  ⚠️  {label}: {e} – läuft eingeschränkt weiter", flush=True)
+                return fallback
+
         grid_raw       = untis.get_timegrid()
-        teachers       = untis.get_teachers()
-        klassen_raw    = untis.get_klassen()
-        holidays_raw   = untis.get_holidays()
-        import_time    = untis.get_latest_import_time()
+        teachers       = _optional("getTeachers (Stammdaten Lehrkraft)", untis.get_teachers, [])
+        klassen_raw    = _optional("getKlassen (Stammdaten Klasse)", untis.get_klassen, [])
+        holidays_raw   = _optional("getHolidays (Stammdaten Ferien)", untis.get_holidays, [])
+        import_time    = _optional("getLatestImportTime", untis.get_latest_import_time, None)
         timegrid       = build_timegrid(grid_raw)
         break_lookup   = build_break_lookup(grid_raw)
         teacher_lookup = build_teacher_lookup(teachers)

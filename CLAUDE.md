@@ -373,11 +373,18 @@ via `set_timezone()` → `ZoneInfo`.
 ## Cron-Setup auf dem LXC
 
 ```cron
+SUPPLIERPLAN_CONFIG=/etc/supplierplan/config.env
 */5  * * * *  cd /var/www/supplierplan && python3 scripts/fetch_untis.py  >> /var/log/supplierplan-untis.log 2>&1
 *    * * * *  cd /var/www/supplierplan && python3 scripts/fetch_trains.py >> /var/log/supplierplan-trains.log 2>&1
 ```
 
 Voraussetzungen: nur Python 3.9+ (stdlib reicht, keine externen Packages mehr).
+
+⚠️ **`config.env` gehört NICHT in den Webroot** (`python3 -m http.server` liefert sonst
+Passwort + Cloudflare-Token aus). Sie liegt unter `/etc/supplierplan/config.env`
+(außerhalb von `/var/www/supplierplan`), und die Scripts finden sie über
+`SUPPLIERPLAN_CONFIG` (siehe `resolve_config_path()`). Ohne die Variable fällt der
+Pfad auf den Projekt-Root zurück — das ist nur für lokale Entwicklung gedacht.
 
 ---
 
@@ -411,9 +418,14 @@ Voraussetzungen: nur Python 3.9+ (stdlib reicht, keine externen Packages mehr).
 ### Deployment auf den LXC
 ```
 rsync -avz --exclude='.claude' --exclude='Screenshot*' --exclude='.git' \
+      --exclude='config.env' \
       /mnt/c/Users/Admin/Onedrive/Programming/Claude/Supplier/ \
       root@192.168.10.134:/var/www/supplierplan/
 ```
+⚠️ `--exclude='config.env'` ist **Sicherheits-relevant**: die Datei darf nicht in den
+ausgelieferten Webroot. Auf dem Server liegt sie unter `/etc/supplierplan/config.env`
+(einmalig dorthin kopieren, `chmod 600`). Wird über `SUPPLIERPLAN_CONFIG` gefunden.
+
 SSH-Auth läuft nur im echten Terminal (kein ssh-askpass in WSL).
 Im Claude Code Prompt mit `!`-Präfix ausführen, dann landet Output direkt im Chat.
 
