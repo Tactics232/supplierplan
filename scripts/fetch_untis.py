@@ -58,6 +58,20 @@ def resolve_config_path():
     env_path = os.environ.get("SUPPLIERPLAN_CONFIG", "").strip()
     return Path(env_path) if env_path else BASE_DIR / "config.env"
 
+
+def resolve_webroot():
+    """Verzeichnis für index.html + manifest.json. Über $SUPPLIERPLAN_WEBROOT in ein
+    beschreibbares Verzeichnis lenkbar (Tray-App); sonst Projekt-Root (Cron/LXC)."""
+    p = os.environ.get("SUPPLIERPLAN_WEBROOT", "").strip()
+    return Path(p) if p else BASE_DIR
+
+
+def resolve_data_out():
+    """Verzeichnis für die Roh-/Übersichts-Dumps. Über $SUPPLIERPLAN_DATA lenkbar."""
+    p = os.environ.get("SUPPLIERPLAN_DATA", "").strip()
+    return Path(p) if p else BASE_DIR / "data"
+
+
 CONFIG_FILE = resolve_config_path()
 
 # Schul-spezifische Defaults — in main() aus config.env überschrieben
@@ -1737,7 +1751,7 @@ def write_manifest(school_name, school_location, theme):
         "dir":               "ltr",
         "icons": [icon("192x192", "any"), icon("512x512", "any"), icon("512x512", "maskable")],
     }
-    (BASE_DIR / "manifest.json").write_text(
+    (resolve_webroot() / "manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
     )
 
@@ -1748,7 +1762,7 @@ def write_data_dump(today_substs, tomorrow_substs, today_rows, tomorrow_rows,
        - last_raw.json:     unveränderte Roh-Daten von WebUntis
        - last_overview.html: formatierte Übersicht für Browser
     """
-    data_dir = BASE_DIR / "data"
+    data_dir = resolve_data_out()
     data_dir.mkdir(exist_ok=True)
 
     fetched_at = now_local().strftime("%Y-%m-%d %H:%M:%S %Z")
@@ -1984,7 +1998,7 @@ def main():
             tomorrow_full_absent=tomorrow_full_absent,
             overflow_cfg=overflow_cfg,
         )
-        out = BASE_DIR / "index.html"
+        out = resolve_webroot() / "index.html"
         out.write_text(html, encoding="utf-8")
         print(f"Fertig -> {out}", flush=True)
 
@@ -1998,7 +2012,7 @@ def main():
             holidays_raw, import_time,
             today, tomorrow_date,
         )
-        print(f"Daten-Dump -> {BASE_DIR / 'data'}", flush=True)
+        print(f"Daten-Dump -> {resolve_data_out()}", flush=True)
 
         # Cloudflare Cache-Purge (optional, nur wenn konfiguriert)
         cf_zone  = config.get("CLOUDFLARE_ZONE_ID", "").strip()
