@@ -1035,6 +1035,7 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
     <meta name="apple-mobile-web-app-title" content="{esc(PLAN_TITLE)}">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="{esc(LOGO_FILE)}">
+    <link rel="icon" href="{esc(LOGO_FILE)}">
     <script>window.COMPACT_COL_WIDTH = {compact_col_width};</script>
     <script>window.OVERFLOW = {json.dumps(overflow_cfg)};</script>
     <script>
