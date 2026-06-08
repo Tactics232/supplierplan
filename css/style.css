@@ -1042,9 +1042,20 @@ footer {
     background: var(--c-accent, #c8102e);
 }
 
-/* Seiten-Container beim Blättern wirkt wie der Spalten-Flexcontainer */
+/* Seiten-Container beim Blättern wirkt wie der Spalten-Flexcontainer.
+   Die Spalten liegen jetzt unter .ov-page (nicht direkt unter .layout-wrapper),
+   daher die Spalten-Flex-Regeln hier spiegeln (sonst greift nur .layout-wrapper > .col). */
 .layout-wrapper .ov-page {
     display: flex;
-    gap: inherit;
+    gap: 20px;
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+}
+.layout-wrapper .ov-page > .col {
+    flex: 1;
+    min-width: 0;
+}
+.layout-wrapper .ov-page > .col table {
     width: 100%;
 }

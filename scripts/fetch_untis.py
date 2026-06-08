@@ -1301,7 +1301,9 @@ if ('serviceWorker' in navigator) {{
         function stillOverflows() {{
             var cols = chooseColCount(wrapper, blocks, availablePerCol);
             var buckets = distributeGreedy(blocks, cols, availablePerCol);
-            return tallestBucketHeight(buckets) > availablePerCol && cols >= MAX_COLS;
+            // Überlauf, sobald die höchste Spalte das Höhenbudget sprengt — egal ob
+            // die Spaltenzahl durch MAX_COLS ODER durch die Fensterbreite begrenzt ist.
+            return tallestBucketHeight(buckets) > availablePerCol;
         }}
 
         // Stufe 2: Reduzieren
