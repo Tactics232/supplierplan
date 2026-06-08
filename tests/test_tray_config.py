@@ -82,5 +82,24 @@ class TestAutostart(unittest.TestCase):
         self.assertFalse(is_autostart(FakeRegistry(), "Supplierplan"))
 
 
+from tray.server import is_path_allowed
+
+
+class TestServerGuard(unittest.TestCase):
+    def test_normale_dateien_erlaubt(self):
+        self.assertTrue(is_path_allowed("/index.html"))
+        self.assertTrue(is_path_allowed("/css/style.css"))
+        self.assertTrue(is_path_allowed("/"))
+
+    def test_env_und_dotfiles_blockiert(self):
+        self.assertFalse(is_path_allowed("/config.env"))
+        self.assertFalse(is_path_allowed("/.git/config"))
+        self.assertFalse(is_path_allowed("/secret.env"))
+
+    def test_traversal_blockiert(self):
+        self.assertFalse(is_path_allowed("/../config.env"))
+        self.assertFalse(is_path_allowed("/..%2fconfig.env"))
+
+
 if __name__ == "__main__":
     unittest.main()
