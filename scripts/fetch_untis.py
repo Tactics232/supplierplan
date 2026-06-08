@@ -822,6 +822,36 @@ def render_train_widget(enabled: bool) -> str:
         '</div>'
     )
 
+def parse_overflow_config(config):
+    """Liest die OVERFLOW_*-Keys aus config.env und liefert ein dict für die
+    Injektion als window.OVERFLOW. Werte werden geklemmt; ungültige → Default."""
+    def flag(key, default):
+        v = config.get(key, "")
+        if v == "":
+            return default
+        return v.strip().lower() == "true"
+
+    try:
+        smin = float(config.get("OVERFLOW_SCALE_MIN", "0.65"))
+    except ValueError:
+        smin = 0.65
+    smin = min(1.0, max(0.3, smin))
+
+    try:
+        psec = int(config.get("OVERFLOW_PAGE_SECONDS", "12"))
+    except ValueError:
+        psec = 12
+    psec = max(3, psec)
+
+    return {
+        "scale":        flag("OVERFLOW_SCALE", True),
+        "scale_min":    round(smin, 4),
+        "reduce":       flag("OVERFLOW_REDUCE", True),
+        "paginate":     flag("OVERFLOW_PAGINATE", True),
+        "page_seconds": psec,
+    }
+
+
 def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
                   teacher_lookup, period_nr, period_start, period_end,
                   show_logo=False, import_time=None, train_enabled=False,
@@ -830,8 +860,10 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
                   school_name="MS Roda-Roda-Gasse", school_type="Mittelschule",
                   school_location="1210 Wien", show_clock=True,
                   tz_name="Europe/Vienna", theme="dark",
-                  today_full_absent=None, tomorrow_full_absent=None):
+                  today_full_absent=None, tomorrow_full_absent=None,
+                  overflow_cfg=None):
 
+    overflow_cfg = overflow_cfg or parse_overflow_config({})
     logo_html = f'<div class="logo"><img src="{esc(LOGO_FILE)}" alt="Logo"></div>\n            ' if show_logo else ''
     train_widget_html = render_train_widget(train_enabled)
 
@@ -984,6 +1016,7 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="{esc(LOGO_FILE)}">
     <script>window.COMPACT_COL_WIDTH = {compact_col_width};</script>
+    <script>window.OVERFLOW = {json.dumps(overflow_cfg)};</script>
     <script>
     // Theme-Auflösung: Breit/Schmal folgen der Config, Mobil-Ansicht darf via
     // localStorage überschreiben. Läuft früh im <head> → minimiert Flackern.
@@ -1623,6 +1656,7 @@ def main():
         if theme not in ("dark", "light"):
             theme = "dark"
 
+        overflow_cfg = parse_overflow_config(config)
         html = generate_html(
             groups_today, groups_tomorrow, today, tomorrow_date,
             teacher_lookup, period_nr, p_start, p_end,
@@ -1640,6 +1674,7 @@ def main():
             theme=theme,
             today_full_absent=today_full_absent,
             tomorrow_full_absent=tomorrow_full_absent,
+            overflow_cfg=overflow_cfg,
         )
         out = BASE_DIR / "index.html"
         out.write_text(html, encoding="utf-8")
