@@ -28,34 +28,26 @@ def _acquire_single_instance():
         return None
 
 
+def _static_dir():
+    """Wurzel der statischen Assets: assets/ neben der .exe (gebaut) oder der
+    Projektordner (Dev, css/fonts/logo/sw.js liegen direkt dort)."""
+    app = paths.app_dir()
+    assets = app / "assets"
+    return assets if assets.exists() else app
+
+
 def _ensure_data_dir():
+    """Legt das beschreibbare Datenverzeichnis an (web/, data/, config.env aus
+    Vorlage). Statische Assets werden NICHT kopiert — der Server liefert sie als
+    Fallback aus _static_dir() aus (siehe tray/server.py)."""
     dd = paths.data_dir()
     (dd / "web").mkdir(parents=True, exist_ok=True)
     (dd / "data").mkdir(parents=True, exist_ok=True)
-    app = paths.app_dir()
-    assets = app / "assets"
-    import shutil
-    # Gebaute .exe: Assets liegen unter assets/. Dev (kein assets/): direkt aus dem
-    # Projektordner (css/fonts/logo/sw.js) — so funktioniert `python -m tray.app`
-    # mit gestylter Seite ohne vorheriges Bauen.
-    if assets.exists():
-        src_items = [p for p in assets.iterdir() if p.name != "config.env.example"]
-    else:
-        src_items = [app / n for n in ("css", "fonts", "logo.png", "sw.js")
-                     if (app / n).exists()]
-    for item in src_items:
-        dest = dd / "web" / item.name
-        if not dest.exists():
-            if item.is_dir():
-                shutil.copytree(item, dest)
-            else:
-                shutil.copy2(item, dest)
     cfg = dd / "config.env"
-    tmpl = assets / "config.env.example"
-    if not tmpl.exists():
-        tmpl = app / "config.env.example"
-    if not cfg.exists() and tmpl.exists():
-        write_config_env({}, cfg, template=tmpl)
+    if not cfg.exists():
+        tmpl = _static_dir() / "config.env.example"
+        if tmpl.exists():
+            write_config_env({}, cfg, template=tmpl)
     return dd
 
 
@@ -79,7 +71,7 @@ def main():
         return
 
     data_dir = _ensure_data_dir()
-    service = Service(data_dir)
+    service = Service(data_dir, static_dir=_static_dir())
     reg = WinRegistry() if os.name == "nt" else None
 
     def exe_command():

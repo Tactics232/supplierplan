@@ -13,10 +13,11 @@ from tray.server import serve_web
 
 
 class Service:
-    def __init__(self, data_dir: Path, log=print):
+    def __init__(self, data_dir: Path, static_dir=None, log=print):
         self.data_dir = Path(data_dir)
         self.web_dir = self.data_dir / "web"
         self.config_path = self.data_dir / "config.env"
+        self.static_dir = static_dir   # Fallback-Wurzel für statische Assets
         self.log = log
         self._timers = []
         self._httpd = None
@@ -84,7 +85,7 @@ class Service:
         self.running = True
         port = self._cfg_int("SERVER_PORT", 8080)
         try:
-            self._httpd, _ = serve_web(self.web_dir, port)
+            self._httpd, _ = serve_web(self.web_dir, port, static_dir=self.static_dir)
         except Exception as e:
             self.running = False
             self._record_error("Server", e)
