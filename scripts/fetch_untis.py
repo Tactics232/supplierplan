@@ -1143,19 +1143,25 @@ if ('serviceWorker' in navigator) {{
     }}
 
     function availFor(wrapper) {{
-        // Echte Höhe, die eine Spalte (inkl. Kopfzeile) einnehmen darf = die vom
-        // Flex-Layout zugeteilte Wrapper-Höhe. Titel-/Abwesenheits-Leiste sind
-        // Geschwister AUSSERHALB des Wrappers und damit automatisch abgezogen.
-        var h = wrapper.clientHeight;
-        if (h < 120) {{
-            // Fallback (noch nicht sauber gelayoutet): grobe Gleichverteilung.
-            var tw = wrapper.closest('.table-wrap');
-            if (tw) {{
-                var sc = tw.querySelectorAll('.plan-section').length || 1;
-                h = Math.floor(tw.clientHeight / sc) - 60;
+        // BEGRENZTES Budget: gleicher Viewport-Anteil je Sektion (sonst würde eine
+        // inhalts-große Sektion ein riesiges Budget bekommen -> nur 1 Spalte).
+        var tw = wrapper.closest('.table-wrap');
+        if (!tw) return 100;
+        var sc = tw.querySelectorAll('.plan-section').length || 1;
+        var share = tw.clientHeight / sc;
+        // Tatsächliche Chrome-Höhe der Sektion messen (Geschwister VOR dem Wrapper:
+        // Titel-Leiste, Abwesenheits-Leiste, ggf. Seitenindikator) statt pauschal 60.
+        var section = wrapper.closest('.plan-section');
+        var chrome = 0;
+        if (section) {{
+            var sib = section.firstElementChild;
+            while (sib && sib !== wrapper) {{
+                chrome += sib.getBoundingClientRect().height;
+                sib = sib.nextElementSibling;
             }}
         }}
-        return h < 80 ? 80 : h - 4;  // 4px Sicherheitsmarge
+        var h = share - chrome - 4;  // 4px Sicherheitsmarge
+        return h < 80 ? 80 : h;
     }}
 
     // Höhe der TATSÄCHLICH gerenderten höchsten Spalte (nicht im 1-Spalten-Zustand
@@ -1544,6 +1550,8 @@ if ('serviceWorker' in navigator) {{
                 if (getBlocks(w).length === 0 || !w.querySelector('table')) continue;
                 w.style.removeProperty('--ov-scale');
                 w.classList.remove('reduce-text', 'reduce-cancel');
+                var oi = w.parentNode && w.parentNode.querySelector('.ov-pageind');
+                if (oi) oi.remove();
                 var avail = availFor(w);
                 renderColumns(w, getBlocks(w), Math.max(60, avail - THEAD_RESERVE),
                               false, maxColsByWidth(w));
