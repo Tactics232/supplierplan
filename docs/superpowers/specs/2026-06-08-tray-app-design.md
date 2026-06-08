@@ -32,17 +32,31 @@ Erreichbarkeit) wird optional und per Schalter zuschaltbar.
 6. **Reuse statt Neubau:** die App importiert `fetch_untis.py`/`fetch_trains.py`
    und ruft deren `main()` auf Timern auf. Die Fetch-/Render-Logik bleibt unverändert.
 
-## Komponenten & Ordnerlayout (auf dem Schul-PC)
+## Komponenten & Ordnerlayout
 
+**Programm-Teil** (read-only, neben der `.exe` bzw. unter `Programme` bei Installation):
 ```
-Supplierplan/
+<Programmordner>/
 ├── Supplierplan.exe        # Tray-App (Python + Abhängigkeiten gebündelt)
+└── assets/                 # mitgelieferte Vorlagen: css/ fonts/ logo.png sw.js manifest-Vorlage
+```
+
+**Beschreibbares Datenverzeichnis** (zur Laufzeit, siehe unten):
+```
+<Datenverzeichnis>/
 ├── config.env              # von der GUI geschrieben — NICHT im Web-Root
 ├── web/                    # einziges ausgeliefertes Verzeichnis
 │   ├── index.html          # von fetch_untis.py erzeugt
-│   ├── css/  fonts/  logo.png  manifest.json  sw.js
-├── data/                   # last_raw.json, trains.json, app.log — NICHT ausgeliefert
+│   ├── css/  fonts/  logo.png  manifest.json  sw.js   (beim Erststart aus assets/ kopiert)
+└── data/                   # last_raw.json, trains.json, app.log — NICHT ausgeliefert
 ```
+
+**Datenverzeichnis-Auflösung** (`resolve_data_dir()`): bevorzugt **neben der `.exe`**
+(portabler Ordner, wenn dort schreibbar); ist das nicht beschreibbar (Installation
+unter `C:\Program Files\…`), dann **`%LOCALAPPDATA%\Supplierplan\`**. Beim Erststart
+werden `web/`, `data/` angelegt, die statischen Assets aus `assets/` nach `web/`
+kopiert und `config.env` aus der Vorlage erzeugt. `SUPPLIERPLAN_CONFIG` und
+`SUPPLIERPLAN_WEBROOT` zeigen auf dieses Datenverzeichnis.
 
 **Sicherheit:** Der HTTP-Server liefert ausschließlich `web/` aus. `config.env`
 (Passwort, Cloudflare-Token) liegt außerhalb des Web-Roots und ist damit nicht
@@ -130,14 +144,26 @@ Cron/LXC-Variante funktioniert unverändert weiter.
 
 ## Bauen & Auslieferung
 
-- **Build-Skript** (`tray/build.py` o. ä.) ruft PyInstaller mit den Daten
-  (`scripts/`, `css/`, `fonts/`, `logo.png`, `manifest`-/`sw.js`-Vorlagen) und
-  erzeugt `Supplierplan.exe`. Beim ersten Start legt die App fehlende Ordner
-  (`web/`, `data/`) und eine `config.env` aus `config.env.example` an.
+Zwei Artefakte (aus demselben PyInstaller-Build):
+
+1. **Portabler Ordner** — PyInstaller (one-folder): `Supplierplan.exe` + `assets/`.
+   Auf einen Stick/Ordner kopieren, starten, fertig (Daten landen neben der `.exe`,
+   falls schreibbar).
+2. **Setup-Installer** (`Supplierplan-Setup.exe`) — **Inno Setup** (`tray/installer.iss`)
+   verpackt den PyInstaller-Output: installiert nach `Programme`, legt
+   Startmenü-Eintrag + Deinstaller an, optional Autostart-Häkchen schon im Setup.
+   Datenverzeichnis dann automatisch `%LOCALAPPDATA%\Supplierplan` (siehe Auflösung).
+
+- **Build-Skript** (`tray/build.py`) ruft PyInstaller mit den Daten (`scripts/` als
+  importierbares Paket, `css/`, `fonts/`, `logo.png`, `sw.js`, `manifest`-Vorlage,
+  `config.env.example`) und erzeugt den one-folder-Output; ein zweiter Schritt ruft
+  den Inno-Setup-Compiler (`ISCC.exe`) auf `tray/installer.iss` auf.
+- Beim ersten Start legt die App das Datenverzeichnis an (siehe oben).
 - **README-Abschnitt** „Build der Windows-App" (Dev-PC: `pip install pyinstaller
-  pystray pillow`, dann Build-Skript). Plus „Installation am Schul-PC" (Ordner
-  kopieren, `Supplierplan.exe` starten, Einstellungen ausfüllen, „Mit Windows
-  starten" anhaken).
+  pystray pillow`; Inno Setup installiert für den Installer-Schritt; dann
+  `build.py`). Plus „Installation am Schul-PC": entweder portablen Ordner kopieren
+  **oder** `Supplierplan-Setup.exe` ausführen; danach Einstellungen ausfüllen und
+  „Mit Windows starten" anhaken.
 
 ## Testing
 
@@ -151,13 +177,14 @@ Cron/LXC-Variante funktioniert unverändert weiter.
     eine gemockte Registry-Schnittstelle.
   - Validierung Port/Intervalle (Default/Klemmung bei Unsinn).
   - Pfad-Resolver `SUPPLIERPLAN_WEBROOT` in `fetch_untis.py`.
+  - `resolve_data_dir()` — wählt neben-der-exe (wenn schreibbar) vs.
+    `%LOCALAPPDATA%\Supplierplan` (gemockt: Schreibbarkeit/Umgebung).
 - **Manuell:** Tray-Icon (rot/grün), Menü, GUI-Speichern, „Verbindung testen",
   Autostart-Haken, LAN-Abruf von einem zweiten Gerät, `config.env` nicht abrufbar.
 - Bestehende `tests/` bleiben grün; neue Tests unter `tests/test_tray_config.py`.
 
 ## Bewusst nicht enthalten (YAGNI)
 
-- Kein Setup-Installer (Inno Setup) in v1 — nur der Ordner mit `.exe` (kann später).
 - Keine Anzeige-/Browser-Steuerung (nur Backend).
 - Keine Mehrsprachigkeit der GUI (deutsch).
 - Kein Auto-Update der App.
@@ -166,8 +193,9 @@ Cron/LXC-Variante funktioniert unverändert weiter.
 
 - **Neu:** `tray/app.py` (Tray + Dienst-Orchestrierung), `tray/config_io.py`
   (read/write config.env — testbar), `tray/autostart.py` (Registry — testbar),
-  `tray/gui.py` (tkinter-Fenster), `tray/server.py` (gehärteter HTTP-Handler),
-  `tray/build.py` (PyInstaller), `tests/test_tray_config.py`.
+  `tray/paths.py` (`resolve_data_dir()` — testbar), `tray/gui.py` (tkinter-Fenster),
+  `tray/server.py` (gehärteter HTTP-Handler), `tray/build.py` (PyInstaller),
+  `tray/installer.iss` (Inno-Setup-Skript), `tests/test_tray_config.py`.
 - **Geändert:** `scripts/fetch_untis.py` (+`SUPPLIERPLAN_WEBROOT`-Resolver),
   ggf. `scripts/fetch_trains.py`, `config.env.example` (+`SERVER_PORT`,
   `*_INTERVAL_SECONDS`), `README.md`/`CLAUDE.md` (Build/Install + neue Architektur).
