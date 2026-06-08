@@ -51,5 +51,36 @@ class TestConfigIO(unittest.TestCase):
         self.assertNotIn("CLOUDFLARE_HOST=alt", out)
 
 
+from tray.autostart import enable_autostart, disable_autostart, is_autostart
+
+
+class FakeRegistry:
+    def __init__(self):
+        self.store = {}
+    def set_value(self, name, value):
+        self.store[name] = value
+    def delete_value(self, name):
+        self.store.pop(name, None)
+    def get_value(self, name):
+        return self.store.get(name)
+
+
+class TestAutostart(unittest.TestCase):
+    def test_enable_setzt_eintrag(self):
+        reg = FakeRegistry()
+        enable_autostart(reg, "Supplierplan", "C:/app/Supplierplan.exe")
+        self.assertEqual(reg.get_value("Supplierplan"), "C:/app/Supplierplan.exe")
+        self.assertTrue(is_autostart(reg, "Supplierplan"))
+
+    def test_disable_entfernt_eintrag(self):
+        reg = FakeRegistry()
+        enable_autostart(reg, "Supplierplan", "x")
+        disable_autostart(reg, "Supplierplan")
+        self.assertFalse(is_autostart(reg, "Supplierplan"))
+
+    def test_is_autostart_false_wenn_fehlt(self):
+        self.assertFalse(is_autostart(FakeRegistry(), "Supplierplan"))
+
+
 if __name__ == "__main__":
     unittest.main()
