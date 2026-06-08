@@ -63,3 +63,18 @@ def fit_scale(content_height, available_height, scale_min, step=0.05):
         if content_height * s <= available_height:
             return s
     return round(scale_min, 4)
+
+
+def distribute_uncapped(block_heights, available_height_per_col):
+    """Greedy-Verteilung in BELIEBIG viele Spalten (kein MAX_COLS-Limit).
+    Gibt eine Liste von Spalten zurück, jede Spalte eine Liste von Block-Indizes.
+    Ein übergroßer Block bekommt eine eigene Spalte (kein Überspringen)."""
+    cols = [[]]
+    h = 0
+    for i, bh in enumerate(block_heights):
+        if cols[-1] and h + bh > available_height_per_col:
+            cols.append([])
+            h = 0
+        cols[-1].append(i)
+        h += bh
+    return cols

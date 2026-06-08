@@ -1,6 +1,6 @@
 import unittest
 
-from scripts._layout_logic import fit_scale
+from scripts._layout_logic import fit_scale, distribute_uncapped
 
 
 class TestFitScale(unittest.TestCase):
@@ -21,6 +21,20 @@ class TestFitScale(unittest.TestCase):
 
     def test_leerer_inhalt_bleibt_1(self):
         self.assertEqual(fit_scale(0, 100, 0.65), 1.0)
+
+
+class TestDistributeUncapped(unittest.TestCase):
+    def test_alles_in_eine_spalte(self):
+        self.assertEqual(distribute_uncapped([30, 30, 30], 100), [[0, 1, 2]])
+
+    def test_umbruch_an_budgetgrenze(self):
+        self.assertEqual(distribute_uncapped([60, 60, 30], 100), [[0], [1, 2]])
+
+    def test_uebergrosser_block_bekommt_eigene_spalte(self):
+        self.assertEqual(distribute_uncapped([150, 40], 100), [[0], [1]])
+
+    def test_leere_eingabe(self):
+        self.assertEqual(distribute_uncapped([], 100), [[]])
 
 
 if __name__ == "__main__":
