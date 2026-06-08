@@ -307,6 +307,32 @@ Schulanzeigen ist willkommen — aber: keine Garantien, eigenes Risiko.
 
 ---
 
+## Windows-App (Schul-PC)
+
+Die Tray-App (`tray/`) betreibt Holen + lokalen Webserver direkt auf dem Schul-PC;
+die Seite ist im LAN unter `http://<PC-IP>:<SERVER_PORT>` erreichbar. Cloudflare ist
+optional (Felder leer lassen = nicht extern erreichbar).
+
+### Build (auf dem Entwickler-PC, Python nötig)
+```
+pip install pyinstaller pystray pillow
+python tray/build.py
+```
+Ergebnis: `dist/Supplierplan/` (portabel) und – falls Inno Setup installiert –
+`dist/Supplierplan-Setup.exe`.
+
+### Installation (Schul-PC, kein Python nötig)
+- Portabel: Ordner `dist/Supplierplan/` kopieren, `Supplierplan.exe` starten.
+- Oder `Supplierplan-Setup.exe` ausführen.
+- Tray-Icon → „Einstellungen…" ausfüllen → „Start" (Icon wird grün).
+- „Mit Windows starten" anhaken.
+
+Daten/Config liegen im beschreibbaren Datenverzeichnis (portabel: neben der `.exe`;
+installiert: `%LOCALAPPDATA%\Supplierplan`). `config.env` liegt außerhalb des
+ausgelieferten `web/` und ist nicht über die URL abrufbar.
+
+---
+
 ## Hintergrund
 
 Entstanden als Ersatz für die schwer lesbare WebUntis-Monitor-Anzeige der. Die offizielle

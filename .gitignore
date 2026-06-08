@@ -8,3 +8,9 @@ data/
 scripts/api_dump/
 scripts/debug_*.json
 manifest.json
+
+# Tray-App: Build-Artefakte (PyInstaller/Inno) + Dev-Laufzeitdaten
+build/
+dist/
+*.spec
+web/

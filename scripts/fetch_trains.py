@@ -33,8 +33,15 @@ def resolve_config_path() -> Path:
     env_path = os.environ.get("SUPPLIERPLAN_CONFIG", "").strip()
     return Path(env_path) if env_path else BASE_DIR / "config.env"
 
+
+def resolve_data_out() -> Path:
+    """data-Verzeichnis (trains.json). Über $SUPPLIERPLAN_DATA lenkbar (Tray-App)."""
+    p = os.environ.get("SUPPLIERPLAN_DATA", "").strip()
+    return Path(p) if p else BASE_DIR / "data"
+
+
 CONFIG_FILE = resolve_config_path()
-DATA_DIR    = BASE_DIR / "data"
+DATA_DIR    = resolve_data_out()
 OUTPUT      = DATA_DIR / "trains.json"
 
 

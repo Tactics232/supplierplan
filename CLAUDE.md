@@ -97,6 +97,17 @@ Konfiguration in `config.env` über `TRAIN_*`-Variablen. Wenn `TRAIN_STATION` le
 - **Hosting:** LXC `192.168.10.134`, erreichbar via Cloudflare Tunnel
 - **Deployment:** `rsync` von WSL auf den LXC, danach Cron übernimmt
 
+### Lokaler Betrieb (Windows-Tray-App, Alternative zum LXC/Cron)
+`tray/` ist eine Windows-Tray-App (PyInstaller-`.exe`), die `fetch_untis.py`/
+`fetch_trains.py` `main()` auf Timern aufruft und einen gehärteten lokalen Webserver
+betreibt (`web/` als einziges ausgeliefertes Verzeichnis, im LAN erreichbar).
+Ausgaben werden über `SUPPLIERPLAN_CONFIG`/`SUPPLIERPLAN_WEBROOT`/`SUPPLIERPLAN_DATA`
+in ein beschreibbares Datenverzeichnis gelenkt (neben der `.exe` oder
+`%LOCALAPPDATA%\Supplierplan`, via `tray/paths.resolve_data_dir`). Konfiguration über
+ein tkinter-Fenster → `config.env`. Cloudflare optional. Grün/rot-Tray-Icon,
+Autostart via HKCU-Run. Testbare Logik in `tray/{paths,config_io,autostart,server}.py`;
+GUI/Tray manuell geprüft. Spec/Plan: `docs/superpowers/{specs,plans}/2026-06-08-tray-app*`.
+
 ### Dateistruktur
 ```
 supplierplan/
