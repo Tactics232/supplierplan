@@ -47,3 +47,19 @@ def distribute_blocks(blocks: Iterable[dict], n_cols: int,
         buckets[-1].append(block)
 
     return buckets
+
+
+def fit_scale(content_height, available_height, scale_min, step=0.05):
+    """Größter Skalierungsfaktor in {1.0, 1-step, ...} >= scale_min, bei dem
+    content_height * faktor <= available_height. Passt es schon bei 1.0, kommt
+    1.0 zurück; passt es selbst bei scale_min nicht, kommt scale_min zurück."""
+    if content_height <= 0 or content_height <= available_height:
+        return 1.0
+    if available_height <= 0:
+        return round(scale_min, 4)
+    steps = int(round((1.0 - scale_min) / step))
+    for i in range(steps + 1):
+        s = round(1.0 - i * step, 4)
+        if content_height * s <= available_height:
+            return s
+    return round(scale_min, 4)
