@@ -1124,7 +1124,6 @@ if ('serviceWorker' in navigator) {{
     var MIN_COL_WIDTH = 280;  // für Spaltenzahl-Berechnung
     var MAX_COLS = 4;
     var THEAD_RESERVE = 34;   // Kopfzeile sitzt in JEDER Spalte oben → vom Block-Budget abziehen
-    var PAGEIND_RESERVE = 30; // Seitenindikator beim Blättern (Geschwister über dem Wrapper)
 
     var OV = window.OVERFLOW || {{
         scale: true, scale_min: 0.65, reduce: true, paginate: true, page_seconds: 12
@@ -1143,24 +1142,25 @@ if ('serviceWorker' in navigator) {{
     }}
 
     function availFor(wrapper) {{
-        // BEGRENZTES Budget: gleicher Viewport-Anteil je Sektion (sonst würde eine
-        // inhalts-große Sektion ein riesiges Budget bekommen -> nur 1 Spalte).
-        var tw = wrapper.closest('.table-wrap');
-        if (!tw) return 100;
-        var sc = tw.querySelectorAll('.plan-section').length || 1;
-        var share = tw.clientHeight / sc;
-        // Tatsächliche Chrome-Höhe der Sektion messen (Geschwister VOR dem Wrapper:
-        // Titel-Leiste, Abwesenheits-Leiste, ggf. Seitenindikator) statt pauschal 60.
+        // GEOMETRISCH gemessener, real sichtbarer Platz für die Spalten dieser
+        // Sektion: von der Wrapper-Oberkante bis zur unteren Sichtgrenze. Das deckt
+        // automatisch ab: Titel-/Abwesenheits-Leiste (liegen über dem Wrapper →
+        // drücken wTop nach unten), table-wrap-Padding, Gap zwischen den Sektionen,
+        // und das Hochdrücken durch eine inhalts-große „Heute"-Sektion darüber.
         var section = wrapper.closest('.plan-section');
-        var chrome = 0;
-        if (section) {{
-            var sib = section.firstElementChild;
-            while (sib && sib !== wrapper) {{
-                chrome += sib.getBoundingClientRect().height;
-                sib = sib.nextElementSibling;
-            }}
+        var tw = wrapper.closest('.table-wrap');
+        if (!section || !tw) return 100;
+        var wTop = wrapper.getBoundingClientRect().top;
+        var next = section.nextElementSibling;
+        while (next && !next.classList.contains('plan-section')) next = next.nextElementSibling;
+        var boundary;
+        if (next) {{
+            boundary = next.getBoundingClientRect().top - 8;  // 8px = table-wrap gap
+        }} else {{
+            var padB = parseFloat(getComputedStyle(tw).paddingBottom) || 0;
+            boundary = tw.getBoundingClientRect().bottom - padB;
         }}
-        var h = share - chrome - 4;  // 4px Sicherheitsmarge
+        var h = boundary - wTop - 4;  // 4px Sicherheitsmarge
         return h < 80 ? 80 : h;
     }}
 
@@ -1353,10 +1353,9 @@ if ('serviceWorker' in navigator) {{
             }}
         }}
 
-        // Stufe 3: Blättern (Seitenindikator zusätzlich vom Budget abziehen)
+        // Stufe 3: Blättern (Indikator ist ein Overlay → keine extra Höhe nötig)
         if (OV.paginate && realTallest(wrapper) > avail) {{
-            renderPaginated(wrapper, getBlocks(wrapper),
-                            Math.max(60, colBudget - PAGEIND_RESERVE));
+            renderPaginated(wrapper, getBlocks(wrapper), colBudget);
         }}
 
         if (OVDEBUG) {{
@@ -1525,7 +1524,9 @@ if ('serviceWorker' in navigator) {{
             dot.className = 'ovp-dot';
             ind.appendChild(dot); dots.push(dot);
         }}
-        wrapper.parentNode.insertBefore(ind, wrapper);
+        // Als Overlay in die Sektion hängen (position:absolute) → verbraucht KEINE
+        // Layout-Höhe, drückt die Spalten also nicht nach unten aus dem Sichtbereich.
+        (wrapper.closest('.plan-section') || wrapper.parentNode).appendChild(ind);
         setLabel(0);
 
         var cur = 0;
