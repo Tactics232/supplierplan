@@ -1123,6 +1123,8 @@ if ('serviceWorker' in navigator) {{
 (function () {{
     var MIN_COL_WIDTH = 280;  // für Spaltenzahl-Berechnung
     var MAX_COLS = 4;
+    var THEAD_RESERVE = 34;   // Kopfzeile sitzt in JEDER Spalte oben → vom Block-Budget abziehen
+    var PAGEIND_RESERVE = 30; // Seitenindikator beim Blättern (Geschwister über dem Wrapper)
 
     var OV = window.OVERFLOW || {{
         scale: true, scale_min: 0.65, reduce: true, paginate: true, page_seconds: 12
@@ -1141,11 +1143,19 @@ if ('serviceWorker' in navigator) {{
     }}
 
     function availFor(wrapper) {{
-        var tableWrap = wrapper.closest('.table-wrap');
-        if (!tableWrap) return 100;
-        var sectionCount = tableWrap.querySelectorAll('.plan-section').length || 1;
-        var a = Math.floor(tableWrap.clientHeight / sectionCount) - 60;
-        return a < 100 ? 100 : a;
+        // Echte Höhe, die eine Spalte (inkl. Kopfzeile) einnehmen darf = die vom
+        // Flex-Layout zugeteilte Wrapper-Höhe. Titel-/Abwesenheits-Leiste sind
+        // Geschwister AUSSERHALB des Wrappers und damit automatisch abgezogen.
+        var h = wrapper.clientHeight;
+        if (h < 120) {{
+            // Fallback (noch nicht sauber gelayoutet): grobe Gleichverteilung.
+            var tw = wrapper.closest('.table-wrap');
+            if (tw) {{
+                var sc = tw.querySelectorAll('.plan-section').length || 1;
+                h = Math.floor(tw.clientHeight / sc) - 60;
+            }}
+        }}
+        return h < 80 ? 80 : h - 4;  // 4px Sicherheitsmarge
     }}
 
     // Höhe der TATSÄCHLICH gerenderten höchsten Spalte (nicht im 1-Spalten-Zustand
@@ -1302,12 +1312,13 @@ if ('serviceWorker' in navigator) {{
         if (getBlocks(wrapper).length === 0) return;
         if (!wrapper.querySelector('table')) return;
 
-        var availablePerCol = availFor(wrapper);
+        var avail = availFor(wrapper);                          // echte Spaltenhöhe (inkl. Kopf)
+        var colBudget = Math.max(60, avail - THEAD_RESERVE);    // Platz für die Blöcke
         var isMobile = window.matchMedia('(max-width: 600px)').matches;
 
         // Mobil: altes Scroll-Verhalten, keine Überlauf-Pipeline
         if (isMobile) {{
-            renderColumns(wrapper, getBlocks(wrapper), availablePerCol, isMobile);
+            renderColumns(wrapper, getBlocks(wrapper), colBudget, isMobile);
             return;
         }}
 
@@ -1315,30 +1326,31 @@ if ('serviceWorker' in navigator) {{
         if (OV.scale && boardScale < 1.0) wrapper.style.setProperty('--ov-scale', boardScale);
 
         // Erst rendern, DANN echte Spaltenhöhen messen.
-        renderColumns(wrapper, getBlocks(wrapper), availablePerCol, isMobile);
+        renderColumns(wrapper, getBlocks(wrapper), colBudget, isMobile);
 
         // Bei Überlauf zuerst die maximal mögliche Spaltenzahl (Breite) ausreizen.
-        if (realTallest(wrapper) > availablePerCol) {{
-            renderColumns(wrapper, getBlocks(wrapper), availablePerCol, isMobile,
+        if (realTallest(wrapper) > avail) {{
+            renderColumns(wrapper, getBlocks(wrapper), colBudget, isMobile,
                           maxColsByWidth(wrapper));
         }}
 
         // Stufe 2: Reduzieren (Text-Spalte aus, dann Entfall-Sektion kompakt)
-        if (OV.reduce && realTallest(wrapper) > availablePerCol) {{
+        if (OV.reduce && realTallest(wrapper) > avail) {{
             wrapper.classList.add('reduce-text');
-            renderColumns(wrapper, getBlocks(wrapper), availablePerCol, isMobile,
+            renderColumns(wrapper, getBlocks(wrapper), colBudget, isMobile,
                           maxColsByWidth(wrapper));
-            if (realTallest(wrapper) > availablePerCol) {{
+            if (realTallest(wrapper) > avail) {{
                 applyCancelCompact(wrapper);
                 wrapper.classList.add('reduce-cancel');
-                renderColumns(wrapper, getBlocks(wrapper), availablePerCol, isMobile,
+                renderColumns(wrapper, getBlocks(wrapper), colBudget, isMobile,
                               maxColsByWidth(wrapper));
             }}
         }}
 
-        // Stufe 3: Blättern
-        if (OV.paginate && realTallest(wrapper) > availablePerCol) {{
-            renderPaginated(wrapper, getBlocks(wrapper), availablePerCol);
+        // Stufe 3: Blättern (Seitenindikator zusätzlich vom Budget abziehen)
+        if (OV.paginate && realTallest(wrapper) > avail) {{
+            renderPaginated(wrapper, getBlocks(wrapper),
+                            Math.max(60, colBudget - PAGEIND_RESERVE));
         }}
 
         if (OVDEBUG) {{
@@ -1347,7 +1359,7 @@ if ('serviceWorker' in navigator) {{
                 : wrapper.classList.contains('reduce-text')   ? 'reduzieren-1'
                 : (boardScale < 1.0 ? 'skalieren(' + boardScale + ')' : 'normal');
             var flags = (OV.scale ? 'S' : '-') + (OV.reduce ? 'R' : '-') + (OV.paginate ? 'P' : '-');
-            ovDebugReport(wrapper, 'avail=' + Math.round(availablePerCol)
+            ovDebugReport(wrapper, 'avail=' + Math.round(avail)
                 + ' max=' + Math.round(realTallest(wrapper))
                 + ' blocks=' + getBlocks(wrapper).length
                 + ' cols=' + wrapper.querySelectorAll('.col').length
@@ -1533,7 +1545,8 @@ if ('serviceWorker' in navigator) {{
                 w.style.removeProperty('--ov-scale');
                 w.classList.remove('reduce-text', 'reduce-cancel');
                 var avail = availFor(w);
-                renderColumns(w, getBlocks(w), avail, false, maxColsByWidth(w));
+                renderColumns(w, getBlocks(w), Math.max(60, avail - THEAD_RESERVE),
+                              false, maxColsByWidth(w));
                 var tall = realTallest(w);
                 if (tall > avail && avail > 0) {{
                     var s = fitScale(tall, avail, OV.scale_min, 0.05);
