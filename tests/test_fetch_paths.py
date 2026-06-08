@@ -32,6 +32,12 @@ class TestOutputResolvers(unittest.TestCase):
         os.environ["SUPPLIERPLAN_DATA"] = "/tmp/d"
         self.assertEqual(fetch_trains.resolve_data_out(), Path("/tmp/d"))
 
+    def test_trains_bevorzugt_webroot(self):
+        # trains.json muss ausgeliefert werden → unter dem Webroot, nicht im Dump-Dir
+        os.environ["SUPPLIERPLAN_WEBROOT"] = "/tmp/web"
+        os.environ["SUPPLIERPLAN_DATA"] = "/tmp/d"
+        self.assertEqual(fetch_trains.resolve_data_out(), Path("/tmp/web") / "data")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -35,7 +35,13 @@ def resolve_config_path() -> Path:
 
 
 def resolve_data_out() -> Path:
-    """data-Verzeichnis (trains.json). Über $SUPPLIERPLAN_DATA lenkbar (Tray-App)."""
+    """Verzeichnis für trains.json. Die Datei MUSS ausgeliefert werden (die Seite
+    holt sie relativ als data/trains.json), gehört also unter den Webroot:
+    bevorzugt $SUPPLIERPLAN_WEBROOT/data (Tray-App), sonst $SUPPLIERPLAN_DATA,
+    sonst BASE_DIR/data (LXC: ganzes Projekt wird ausgeliefert)."""
+    web = os.environ.get("SUPPLIERPLAN_WEBROOT", "").strip()
+    if web:
+        return Path(web) / "data"
     p = os.environ.get("SUPPLIERPLAN_DATA", "").strip()
     return Path(p) if p else BASE_DIR / "data"
 
@@ -319,16 +325,20 @@ def main():
         print("data/trains.json wird NICHT überschrieben - alte Daten bleiben.", flush=True)
         return
 
-    DATA_DIR.mkdir(exist_ok=True)
+    # Ausgabepfad zur LAUFZEIT bestimmen (robust, falls Umgebung erst nach dem
+    # Import gesetzt wurde — z.B. in der Tray-App).
+    out_dir = resolve_data_out()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    output = out_dir / "trains.json"
     payload = {
         "station":    resolved_name,
         "fetched_at": _now_local().isoformat(timespec="seconds"),
         "towards":    result["towards"],
         "away":       result["away"],
     }
-    atomic_write_json(OUTPUT, payload)
+    atomic_write_json(output, payload)
     print(
-        f"Fertig: {len(result['towards'])} towards, {len(result['away'])} away -> {OUTPUT}",
+        f"Fertig: {len(result['towards'])} towards, {len(result['away'])} away -> {output}",
         flush=True,
     )
 
