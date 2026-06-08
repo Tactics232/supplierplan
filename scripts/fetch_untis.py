@@ -1118,6 +1118,80 @@ if ('serviceWorker' in navigator) {{
     var MIN_COL_WIDTH = 280;  // für Spaltenzahl-Berechnung
     var MAX_COLS = 4;
 
+    var OV = window.OVERFLOW || {{
+        scale: true, scale_min: 0.65, reduce: true, paginate: true, page_seconds: 12
+    }};
+
+    function sumHeights(blocks) {{
+        var t = 0;
+        for (var i = 0; i < blocks.length; i++) t += blocks[i].getBoundingClientRect().height;
+        return t;
+    }}
+
+    function fitScale(contentH, availH, scaleMin, step) {{
+        step = step || 0.05;
+        if (contentH <= 0 || contentH <= availH) return 1.0;
+        if (availH <= 0) return scaleMin;
+        var steps = Math.round((1.0 - scaleMin) / step);
+        for (var i = 0; i <= steps; i++) {{
+            var s = Math.round((1.0 - i * step) * 10000) / 10000;
+            if (contentH * s <= availH) return s;
+        }}
+        return scaleMin;
+    }}
+
+    function tallestBucketHeight(buckets) {{
+        var max = 0;
+        for (var c = 0; c < buckets.length; c++) {{
+            var h = 0, hasCancel = false;
+            for (var m = 0; m < buckets[c].length; m++) {{
+                var b = buckets[c][m];
+                h += b.getBoundingClientRect().height;
+                if (b.getAttribute('data-block') === 'cancel' && !hasCancel) {{
+                    h += CANCEL_HEADER_H; hasCancel = true;
+                }}
+            }}
+            if (h > max) max = h;
+        }}
+        return max;
+    }}
+
+    function availFor(wrapper) {{
+        var tableWrap = wrapper.closest('.table-wrap');
+        if (!tableWrap) return 100;
+        var sectionCount = tableWrap.querySelectorAll('.plan-section').length || 1;
+        var a = Math.floor(tableWrap.clientHeight / sectionCount) - 60;
+        return a < 100 ? 100 : a;
+    }}
+
+    function neededScale(wrapper) {{
+        var blocks = getBlocks(wrapper);
+        if (!blocks.length) return 1.0;
+        wrapper.style.removeProperty('--ov-scale');
+        wrapper.classList.remove('cols-2','cols-3','cols-4','compact-mode');
+        wrapper.classList.add('cols-1');
+        return fitScale(sumHeights(blocks), MAX_COLS * availFor(wrapper), OV.scale_min, 0.05);
+    }}
+
+    function distributeUncapped(blocks, availH) {{
+        var cols = [[]];
+        var h = 0;
+        for (var i = 0; i < blocks.length; i++) {{
+            var bh = blocks[i].getBoundingClientRect().height;
+            if (cols[cols.length - 1].length && h + bh > availH) {{ cols.push([]); h = 0; }}
+            cols[cols.length - 1].push(blocks[i]);
+            h += bh;
+        }}
+        return cols;
+    }}
+
+    function paginateColumns(cols, maxCols) {{
+        if (maxCols < 1) maxCols = 1;
+        var pages = [];
+        for (var i = 0; i < cols.length; i += maxCols) pages.push(cols.slice(i, i + maxCols));
+        return pages;
+    }}
+
     function getBlocks(wrapper) {{
         return Array.prototype.slice.call(
             wrapper.querySelectorAll('tbody[data-block]')
@@ -1200,27 +1274,60 @@ if ('serviceWorker' in navigator) {{
         return tb;
     }}
 
-    function applyLayout(wrapper) {{
+    function applyLayout(wrapper, boardScale) {{
+        if (boardScale === undefined) boardScale = 1.0;
+        if (wrapper._ovTimer) {{ clearInterval(wrapper._ovTimer); wrapper._ovTimer = null; }}
+        wrapper.style.removeProperty('--ov-scale');
+        wrapper.classList.remove('reduce-text', 'reduce-cancel');
+        var oldInd = wrapper.parentNode && wrapper.parentNode.querySelector('.ov-pageind');
+        if (oldInd) oldInd.remove();
+
         var blocks = getBlocks(wrapper);
         if (blocks.length === 0) return;
+        if (!wrapper.querySelector('table')) return;
 
-        var tableWrap = wrapper.closest('.table-wrap');
-        if (!tableWrap) return;
-        var sectionCount = tableWrap.querySelectorAll('.plan-section').length || 1;
-        var availablePerCol = Math.floor(tableWrap.clientHeight / sectionCount) - 60;
-        if (availablePerCol < 100) availablePerCol = 100;
+        var availablePerCol = availFor(wrapper);
 
-        // Reset für saubere Messung mit 1-Spalten-Layout
-        wrapper.classList.remove('cols-1','cols-2','cols-3','cols-4');
-        wrapper.classList.remove('compact-mode');
+        wrapper.classList.remove('cols-1','cols-2','cols-3','cols-4','compact-mode');
         wrapper.classList.add('cols-1');
 
-        var cols = chooseColCount(wrapper, blocks, availablePerCol);
+        var isMobile = window.matchMedia('(max-width: 600px)').matches;
 
+        // Stufe 1: Skalieren (board-weiter Faktor aus layoutAll)
+        if (!isMobile && OV.scale && boardScale < 1.0) {{
+            wrapper.style.setProperty('--ov-scale', boardScale);
+        }}
+
+        function stillOverflows() {{
+            var cols = chooseColCount(wrapper, blocks, availablePerCol);
+            var buckets = distributeGreedy(blocks, cols, availablePerCol);
+            return tallestBucketHeight(buckets) > availablePerCol && cols >= MAX_COLS;
+        }}
+
+        // Stufe 2: Reduzieren
+        if (!isMobile && OV.reduce && stillOverflows()) {{
+            wrapper.classList.add('reduce-text');
+            if (stillOverflows()) {{
+                applyCancelCompact(wrapper);
+                wrapper.classList.add('reduce-cancel');
+                blocks = getBlocks(wrapper);
+            }}
+        }}
+
+        // Stufe 3: Blättern
+        if (!isMobile && OV.paginate && stillOverflows()) {{
+            renderPaginated(wrapper, blocks, availablePerCol);
+        }} else {{
+            renderColumns(wrapper, blocks, availablePerCol, isMobile);
+        }}
+    }}
+
+    function renderColumns(wrapper, blocks, availablePerCol, isMobile) {{
+        var cols = chooseColCount(wrapper, blocks, availablePerCol);
         wrapper.classList.remove('cols-1');
         wrapper.classList.add('cols-' + cols);
 
-        var origTable    = wrapper.querySelector('table');
+        var origTable = wrapper.querySelector('table');
         if (!origTable) return;
         var origColgroup = origTable.querySelector('colgroup');
         var origThead    = origTable.querySelector('thead');
@@ -1229,11 +1336,6 @@ if ('serviceWorker' in navigator) {{
 
         var buckets = distributeGreedy(blocks, cols, availablePerCol);
 
-        // Container leeren und N neue Spalten/Tables anlegen. Die "Entfallende
-        // Stunden"-Überschrift wird pro Spalte VOR der ersten Entfall-Zeile
-        // eingefügt: in der ersten betroffenen Spalte voll, danach als "(Forts.)".
-        // Zusätzlicher Abstand (spaced) nur, wenn die Überschrift unter einem
-        // anderen Block steht — nicht, wenn sie ganz oben in der Spalte sitzt.
         wrapper.innerHTML = '';
         var cancelHeaderSeen = false;
         for (var c = 0; c < cols; c++) {{
@@ -1247,9 +1349,7 @@ if ('serviceWorker' in navigator) {{
                 var blk = buckets[c][m];
                 if (blk.getAttribute('data-block') === 'cancel' && !colCancelSeen) {{
                     colCancelSeen = true;
-                    table.appendChild(
-                        makeCancelHeader(ncols, cancelHeaderSeen, m > 0, isTomorrow)
-                    );
+                    table.appendChild(makeCancelHeader(ncols, cancelHeaderSeen, m > 0, isTomorrow));
                     cancelHeaderSeen = true;
                 }}
                 table.appendChild(blk);
@@ -1258,17 +1358,144 @@ if ('serviceWorker' in navigator) {{
             wrapper.appendChild(colDiv);
         }}
 
-        // Compact-Mode prüfen nach Spalten-Build
         var firstCol = wrapper.querySelector('.col');
         if (firstCol && firstCol.clientWidth < (window.COMPACT_COL_WIDTH || 320)) {{
             wrapper.classList.add('compact-mode');
         }}
     }}
 
+    function applyCancelCompact(wrapper) {{
+        var cancelBlocks = Array.prototype.slice.call(
+            wrapper.querySelectorAll('tbody[data-block="cancel"]')
+        );
+        if (cancelBlocks.length === 0) return;
+
+        var items = [];
+        for (var i = 0; i < cancelBlocks.length; i++) {{
+            var row = cancelBlocks[i].querySelector('tr');
+            if (!row) continue;
+            var kEl = row.querySelector('.c-lehrer');
+            var sEl = row.querySelector('.c-std');
+            var k = kEl ? kEl.textContent.trim() : '';
+            var s = sEl ? sEl.textContent.trim() : '';
+            items.push({{ k: k, s: s }});
+        }}
+
+        var tb = document.createElement('tbody');
+        tb.setAttribute('data-block', 'cancel');
+        var tr = document.createElement('tr');
+        var td = document.createElement('td');
+        td.colSpan = 8;
+        td.className = 'ov-cancel-compact';
+        for (var j = 0; j < items.length; j++) {{
+            var span = document.createElement('span');
+            span.className = 'occ-item';
+            var ks = document.createElement('span');
+            ks.className = 'occ-k';
+            ks.textContent = items[j].k;
+            span.appendChild(ks);
+            if (items[j].s) span.appendChild(document.createTextNode(' (' + items[j].s + ')'));
+            td.appendChild(span);
+        }}
+        tr.appendChild(td);
+        tb.appendChild(tr);
+
+        cancelBlocks[0].parentNode.insertBefore(tb, cancelBlocks[0]);
+        for (var d = 0; d < cancelBlocks.length; d++) cancelBlocks[d].remove();
+    }}
+
+    function renderPaginated(wrapper, blocks, availablePerCol) {{
+        var origTable = wrapper.querySelector('table');
+        if (!origTable) return;
+        var origColgroup = origTable.querySelector('colgroup');
+        var origThead    = origTable.querySelector('thead');
+        var ncols = origColgroup ? origColgroup.querySelectorAll('col').length : 8;
+        var isTomorrow = !!wrapper.closest('.tomorrow-section');
+
+        var allCols = distributeUncapped(blocks, availablePerCol);
+        var pages = paginateColumns(allCols, MAX_COLS);
+
+        wrapper.classList.remove('cols-1');
+        wrapper.classList.add('cols-' + MAX_COLS);
+
+        wrapper.innerHTML = '';
+        var pageEls = [];
+        var cancelHeaderSeen = false;
+        for (var p = 0; p < pages.length; p++) {{
+            var pageEl = document.createElement('div');
+            pageEl.className = 'ov-page';
+            pageEl.style.display = (p === 0 ? 'flex' : 'none');
+            for (var c = 0; c < pages[p].length; c++) {{
+                var colDiv = document.createElement('div');
+                colDiv.className = 'col';
+                var table = document.createElement('table');
+                if (origColgroup) table.appendChild(origColgroup.cloneNode(true));
+                if (origThead)    table.appendChild(origThead.cloneNode(true));
+                var colCancelSeen = false;
+                for (var m = 0; m < pages[p][c].length; m++) {{
+                    var blk = pages[p][c][m];
+                    if (blk.getAttribute('data-block') === 'cancel' && !colCancelSeen) {{
+                        colCancelSeen = true;
+                        table.appendChild(makeCancelHeader(ncols, cancelHeaderSeen, m > 0, isTomorrow));
+                        cancelHeaderSeen = true;
+                    }}
+                    table.appendChild(blk);
+                }}
+                colDiv.appendChild(table);
+                pageEl.appendChild(colDiv);
+            }}
+            wrapper.appendChild(pageEl);
+            pageEls.push(pageEl);
+        }}
+
+        var firstCol = wrapper.querySelector('.col');
+        if (firstCol && firstCol.clientWidth < (window.COMPACT_COL_WIDTH || 320)) {{
+            wrapper.classList.add('compact-mode');
+        }}
+
+        if (pages.length <= 1) return;
+
+        var ind = document.createElement('div');
+        ind.className = 'ov-pageind';
+        var label = isTomorrow ? 'Morgen' : 'Heute';
+        var txt = document.createElement('span');
+        var dots = [];
+        function setLabel(idx) {{
+            txt.textContent = label + ' ' + (idx + 1) + '/' + pages.length;
+            for (var d = 0; d < dots.length; d++) {{
+                dots[d].className = 'ovp-dot' + (d === idx ? ' active' : '');
+            }}
+        }}
+        ind.appendChild(txt);
+        for (var d2 = 0; d2 < pages.length; d2++) {{
+            var dot = document.createElement('span');
+            dot.className = 'ovp-dot';
+            ind.appendChild(dot); dots.push(dot);
+        }}
+        wrapper.parentNode.insertBefore(ind, wrapper);
+        setLabel(0);
+
+        var cur = 0;
+        wrapper._ovTimer = setInterval(function () {{
+            pageEls[cur].style.display = 'none';
+            cur = (cur + 1) % pageEls.length;
+            pageEls[cur].style.display = 'flex';
+            setLabel(cur);
+        }}, (OV.page_seconds || 12) * 1000);
+    }}
+
     function layoutAll() {{
         var wrappers = document.querySelectorAll('.layout-wrapper');
-        for (var i = 0; i < wrappers.length; i++) {{
-            applyLayout(wrappers[i]);
+        var isMobile = window.matchMedia('(max-width: 600px)').matches;
+        var boardScale = 1.0;
+        if (!isMobile && OV.scale) {{
+            for (var i = 0; i < wrappers.length; i++) {{
+                var s = neededScale(wrappers[i]);
+                if (s < boardScale) boardScale = s;
+            }}
+        }}
+        for (var j = 0; j < wrappers.length; j++) {{
+            applyLayout(wrappers[j], boardScale);
         }}
     }}
 
