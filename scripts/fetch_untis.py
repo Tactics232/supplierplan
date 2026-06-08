@@ -1142,25 +1142,30 @@ if ('serviceWorker' in navigator) {{
     }}
 
     function availFor(wrapper) {{
-        // GEOMETRISCH gemessener, real sichtbarer Platz für die Spalten dieser
-        // Sektion: von der Wrapper-Oberkante bis zur unteren Sichtgrenze. Das deckt
-        // automatisch ab: Titel-/Abwesenheits-Leiste (liegen über dem Wrapper →
-        // drücken wTop nach unten), table-wrap-Padding, Gap zwischen den Sektionen,
-        // und das Hochdrücken durch eine inhalts-große „Heute"-Sektion darüber.
         var section = wrapper.closest('.plan-section');
         var tw = wrapper.closest('.table-wrap');
         if (!section || !tw) return 100;
+        var sc = tw.querySelectorAll('.plan-section').length || 1;
+        var sectTop = section.getBoundingClientRect().top;
         var wTop = wrapper.getBoundingClientRect().top;
-        var next = section.nextElementSibling;
-        while (next && !next.classList.contains('plan-section')) next = next.nextElementSibling;
-        var boundary;
-        if (next) {{
-            boundary = next.getBoundingClientRect().top - 8;  // 8px = table-wrap gap
-        }} else {{
-            var padB = parseFloat(getComputedStyle(tw).paddingBottom) || 0;
-            boundary = tw.getBoundingClientRect().bottom - padB;
+        var chrome = wTop - sectTop;  // Höhe von Titel-/Abwesenheits-Leiste über dem Wrapper
+
+        // Inhalts-große Top-Sektion (today-section, flex 0 0 auto): geometrisch wäre
+        // ihr „Platz" = eigene Höhe → zirkulär (1 Spalte). Daher BEGRENZTES Budget:
+        // fairer Anteil der nutzbaren table-wrap-Höhe.
+        if (section.classList.contains('today-section')) {{
+            var cs = getComputedStyle(tw);
+            var pad = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+            var usable = tw.clientHeight - pad - 8 * (sc - 1);  // 8px gap je Lücke
+            var hb = (usable / sc) - chrome - 4;
+            return hb < 80 ? 80 : hb;
         }}
-        var h = boundary - wTop - 4;  // 4px Sicherheitsmarge
+
+        // Constrainte / letzte / einzige Sektion: real sichtbaren Platz geometrisch
+        // messen (bis Unterkante der table-wrap), berücksichtigt das Hochdrücken
+        // durch eine große Sektion darüber automatisch.
+        var padB = parseFloat(getComputedStyle(tw).paddingBottom) || 0;
+        var h = (tw.getBoundingClientRect().bottom - padB) - wTop - 4;
         return h < 80 ? 80 : h;
     }}
 
