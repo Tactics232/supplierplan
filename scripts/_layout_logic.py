@@ -47,3 +47,41 @@ def distribute_blocks(blocks: Iterable[dict], n_cols: int,
         buckets[-1].append(block)
 
     return buckets
+
+
+def fit_scale(content_height, available_height, scale_min, step=0.05):
+    """Größter Skalierungsfaktor in {1.0, 1-step, ...} >= scale_min, bei dem
+    content_height * faktor <= available_height. Passt es schon bei 1.0, kommt
+    1.0 zurück; passt es selbst bei scale_min nicht, kommt scale_min zurück."""
+    if content_height <= 0 or content_height <= available_height:
+        return 1.0
+    if available_height <= 0:
+        return round(scale_min, 4)
+    steps = int(round((1.0 - scale_min) / step))
+    for i in range(steps + 1):
+        s = round(1.0 - i * step, 4)
+        if content_height * s <= available_height:
+            return s
+    return round(scale_min, 4)
+
+
+def distribute_uncapped(block_heights, available_height_per_col):
+    """Greedy-Verteilung in BELIEBIG viele Spalten (kein MAX_COLS-Limit).
+    Gibt eine Liste von Spalten zurück, jede Spalte eine Liste von Block-Indizes.
+    Ein übergroßer Block bekommt eine eigene Spalte (kein Überspringen)."""
+    cols = [[]]
+    h = 0
+    for i, bh in enumerate(block_heights):
+        if cols[-1] and h + bh > available_height_per_col:
+            cols.append([])
+            h = 0
+        cols[-1].append(i)
+        h += bh
+    return cols
+
+
+def paginate_columns(columns, max_cols):
+    """Teilt eine Liste von Spalten in Seiten zu je höchstens max_cols Spalten."""
+    if max_cols < 1:
+        max_cols = 1
+    return [columns[i:i + max_cols] for i in range(0, len(columns), max_cols)]

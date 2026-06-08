@@ -472,6 +472,7 @@ html, body {
     flex: 1 1 auto;
     overflow: hidden;
     min-height: 0;
+    position: relative;   /* Anker für das Seitenindikator-Overlay */
 }
 
 /* Wenn beide Tage sichtbar: heute nimmt nur seinen Content-Platz,
@@ -573,13 +574,13 @@ col.c-text    { width: 19%; }
 
 thead th {
     font-family: var(--font-d);
-    font-size: 10px;
+    font-size: calc(10px * var(--ov-scale, 1));
     font-weight: 700;
     letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--c-muted);
     text-align: left;
-    padding: 0 10px 6px;
+    padding: 0 10px calc(6px * var(--ov-scale, 1));
     border-bottom: 1px solid var(--c-border);
     vertical-align: bottom;
 }
@@ -594,9 +595,9 @@ tbody tr {
 tbody tr:last-child { border-bottom: none; }
 
 tbody td {
-    padding: 3px 10px;
+    padding: calc(3px * var(--ov-scale, 1)) 10px;
     vertical-align: middle;
-    font-size: 13px;
+    font-size: calc(13px * var(--ov-scale, 1));
     color: var(--c-text);
     line-height: 1.2;
 }
@@ -715,7 +716,7 @@ tr.day-separator td {
 tr.teacher-header td {
     background: var(--c-overlay);
     border-top: 1px solid var(--c-border);
-    padding: 10px 12px 7px;
+    padding: calc(10px * var(--ov-scale, 1)) 12px calc(7px * var(--ov-scale, 1));
     border-left: none !important;
 }
 
@@ -743,7 +744,7 @@ tr.teacher-header:first-child td {
 /* ── Cancel-Sektion (gesammelte Entfälle) ───────────── */
 tr.cancel-header td {
     background: rgba(255, 255, 255, 0.03);
-    padding: 7px 12px 7px;
+    padding: calc(7px * var(--ov-scale, 1)) 12px;
     border-left: none !important;
 }
 
@@ -998,4 +999,70 @@ footer {
         transform: none;
         margin-left: auto;
     }
+}
+
+/* ── Überlauf-Reduktion ─────────────────────────────── */
+/* Stufe 2a: Text-Spalte komplett ausblenden */
+.layout-wrapper.reduce-text col.c-text,
+.layout-wrapper.reduce-text th.c-text,
+.layout-wrapper.reduce-text td.c-text {
+    display: none;
+}
+
+/* Stufe 2b: Entfall-Sektion kompakt (kompakte Kürzel+Std-Liste) */
+.layout-wrapper.reduce-cancel .ov-cancel-compact {
+    font-size: calc(12px * var(--ov-scale, 1));
+    line-height: 1.45;
+    padding: 4px 12px 6px;
+    color: var(--c-muted);
+}
+.layout-wrapper.reduce-cancel .ov-cancel-compact .occ-item {
+    white-space: nowrap;
+    margin-right: 10px;
+}
+.layout-wrapper.reduce-cancel .ov-cancel-compact .occ-k {
+    text-decoration: line-through;
+    color: var(--c-text);
+}
+
+/* ── Seitenindikator beim Blättern ──────────────────── */
+.ov-pageind {
+    position: absolute;
+    top: 2px;
+    right: 6px;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-d);
+    font-size: 12px;
+    color: var(--c-muted);
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--c-overlay);
+}
+.ov-pageind .ovp-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--c-border);
+}
+.ov-pageind .ovp-dot.active {
+    background: var(--c-accent, #c8102e);
+}
+
+/* Seiten-Container beim Blättern wirkt wie der Spalten-Flexcontainer.
+   Die Spalten liegen jetzt unter .ov-page (nicht direkt unter .layout-wrapper),
+   daher die Spalten-Flex-Regeln hier spiegeln (sonst greift nur .layout-wrapper > .col). */
+.layout-wrapper .ov-page {
+    display: flex;
+    gap: 20px;
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+}
+.layout-wrapper .ov-page > .col {
+    flex: 1;
+    min-width: 0;
+}
+.layout-wrapper .ov-page > .col table {
+    width: 100%;
 }

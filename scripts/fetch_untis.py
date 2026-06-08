@@ -822,6 +822,42 @@ def render_train_widget(enabled: bool) -> str:
         '</div>'
     )
 
+def parse_overflow_config(config):
+    """Liest die OVERFLOW_*-Keys aus config.env und liefert ein dict für die
+    Injektion als window.OVERFLOW. Werte werden geklemmt; ungültige → Default."""
+    def clean(v):
+        # load_config strippt KEINE Inline-Kommentare. Für die OVERFLOW-Keys hier
+        # tolerant abschneiden, damit "true   # Stufe 3" nicht als False gelesen wird.
+        # (Passwörter/Token laufen NICHT durch diese Funktion → unkritisch.)
+        return v.split("#")[0].strip()
+
+    def flag(key, default):
+        v = clean(config.get(key, ""))
+        if v == "":
+            return default
+        return v.lower() == "true"
+
+    try:
+        smin = float(clean(config.get("OVERFLOW_SCALE_MIN", "")) or "0.65")
+    except ValueError:
+        smin = 0.65
+    smin = min(1.0, max(0.3, smin))
+
+    try:
+        psec = int(clean(config.get("OVERFLOW_PAGE_SECONDS", "")) or "12")
+    except ValueError:
+        psec = 12
+    psec = max(3, psec)
+
+    return {
+        "scale":        flag("OVERFLOW_SCALE", True),
+        "scale_min":    round(smin, 4),
+        "reduce":       flag("OVERFLOW_REDUCE", True),
+        "paginate":     flag("OVERFLOW_PAGINATE", True),
+        "page_seconds": psec,
+    }
+
+
 def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
                   teacher_lookup, period_nr, period_start, period_end,
                   show_logo=False, import_time=None, train_enabled=False,
@@ -830,8 +866,10 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
                   school_name="MS Roda-Roda-Gasse", school_type="Mittelschule",
                   school_location="1210 Wien", show_clock=True,
                   tz_name="Europe/Vienna", theme="dark",
-                  today_full_absent=None, tomorrow_full_absent=None):
+                  today_full_absent=None, tomorrow_full_absent=None,
+                  overflow_cfg=None):
 
+    overflow_cfg = overflow_cfg or parse_overflow_config({})
     logo_html = f'<div class="logo"><img src="{esc(LOGO_FILE)}" alt="Logo"></div>\n            ' if show_logo else ''
     train_widget_html = render_train_widget(train_enabled)
 
@@ -984,6 +1022,7 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="{esc(LOGO_FILE)}">
     <script>window.COMPACT_COL_WIDTH = {compact_col_width};</script>
+    <script>window.OVERFLOW = {json.dumps(overflow_cfg)};</script>
     <script>
     // Theme-Auflösung: Breit/Schmal folgen der Config, Mobil-Ansicht darf via
     // localStorage überschreiben. Läuft früh im <head> → minimiert Flackern.
@@ -1084,6 +1123,111 @@ if ('serviceWorker' in navigator) {{
 (function () {{
     var MIN_COL_WIDTH = 280;  // für Spaltenzahl-Berechnung
     var MAX_COLS = 4;
+    var THEAD_RESERVE = 34;   // Kopfzeile sitzt in JEDER Spalte oben → vom Block-Budget abziehen
+
+    var OV = window.OVERFLOW || {{
+        scale: true, scale_min: 0.65, reduce: true, paginate: true, page_seconds: 12
+    }};
+
+    function fitScale(contentH, availH, scaleMin, step) {{
+        step = step || 0.05;
+        if (contentH <= 0 || contentH <= availH) return 1.0;
+        if (availH <= 0) return scaleMin;
+        var steps = Math.round((1.0 - scaleMin) / step);
+        for (var i = 0; i <= steps; i++) {{
+            var s = Math.round((1.0 - i * step) * 10000) / 10000;
+            if (contentH * s <= availH) return s;
+        }}
+        return scaleMin;
+    }}
+
+    function availFor(wrapper) {{
+        var section = wrapper.closest('.plan-section');
+        var tw = wrapper.closest('.table-wrap');
+        if (!section || !tw) return 100;
+        var sc = tw.querySelectorAll('.plan-section').length || 1;
+        var sectTop = section.getBoundingClientRect().top;
+        var wTop = wrapper.getBoundingClientRect().top;
+        var chrome = wTop - sectTop;  // Höhe von Titel-/Abwesenheits-Leiste über dem Wrapper
+
+        // Inhalts-große Top-Sektion (today-section, flex 0 0 auto): geometrisch wäre
+        // ihr „Platz" = eigene Höhe → zirkulär (1 Spalte). Daher BEGRENZTES Budget:
+        // fairer Anteil der nutzbaren table-wrap-Höhe.
+        if (section.classList.contains('today-section')) {{
+            var cs = getComputedStyle(tw);
+            var pad = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+            var usable = tw.clientHeight - pad - 8 * (sc - 1);  // 8px gap je Lücke
+            var hb = (usable / sc) - chrome - 4;
+            return hb < 80 ? 80 : hb;
+        }}
+
+        // Constrainte / letzte / einzige Sektion: real sichtbaren Platz geometrisch
+        // messen (bis Unterkante der table-wrap), berücksichtigt das Hochdrücken
+        // durch eine große Sektion darüber automatisch.
+        var padB = parseFloat(getComputedStyle(tw).paddingBottom) || 0;
+        var h = (tw.getBoundingClientRect().bottom - padB) - wTop - 4;
+        return h < 80 ? 80 : h;
+    }}
+
+    // Höhe der TATSÄCHLICH gerenderten höchsten Spalte (nicht im 1-Spalten-Zustand
+    // schätzen — das unterschätzt stark, weil schmale Spalten mehr umbrechen).
+    function realTallest(wrapper) {{
+        var cols = wrapper.querySelectorAll('.col');
+        var max = 0;
+        for (var i = 0; i < cols.length; i++) {{
+            var h = cols[i].getBoundingClientRect().height;
+            if (h > max) max = h;
+        }}
+        return max;
+    }}
+
+    function maxColsByWidth(wrapper) {{
+        return Math.max(1, Math.min(MAX_COLS,
+            Math.floor(wrapper.clientWidth / MIN_COL_WIDTH)));
+    }}
+
+    // Diagnose-Overlay: index.html mit ?ovdebug=1 öffnen → zeigt je Sektion, welche
+    // Überlauf-Stufe gegriffen hat und die gemessenen Höhen.
+    var OVDEBUG = (location.search.indexOf('ovdebug') >= 0);
+    function ovDebugReport(wrapper, info) {{
+        if (!OVDEBUG) return;
+        var id = wrapper.closest('.tomorrow-section') ? 'Morgen' : 'Heute';
+        var box = document.getElementById('ovdebug-box');
+        if (!box) {{
+            box = document.createElement('div');
+            box.id = 'ovdebug-box';
+            box.style.cssText = 'position:fixed;left:4px;bottom:4px;z-index:99999;'
+                + 'background:rgba(0,0,0,.85);color:#0f0;font:11px monospace;'
+                + 'padding:6px 8px;white-space:pre;border:1px solid #0f0;';
+            document.body.appendChild(box);
+        }}
+        box.setAttribute('data-ov-' + id, info);
+        var out = '', ks = ['Heute', 'Morgen'];
+        for (var i = 0; i < ks.length; i++) {{
+            var v = box.getAttribute('data-ov-' + ks[i]);
+            if (v) out += ks[i] + ': ' + v + '\\n';
+        }}
+        box.textContent = out;
+    }}
+
+    function distributeUncapped(blocks, availH) {{
+        var cols = [[]];
+        var h = 0;
+        for (var i = 0; i < blocks.length; i++) {{
+            var bh = blocks[i].getBoundingClientRect().height;
+            if (cols[cols.length - 1].length && h + bh > availH) {{ cols.push([]); h = 0; }}
+            cols[cols.length - 1].push(blocks[i]);
+            h += bh;
+        }}
+        return cols;
+    }}
+
+    function paginateColumns(cols, maxCols) {{
+        if (maxCols < 1) maxCols = 1;
+        var pages = [];
+        for (var i = 0; i < cols.length; i += maxCols) pages.push(cols.slice(i, i + maxCols));
+        return pages;
+    }}
 
     function getBlocks(wrapper) {{
         return Array.prototype.slice.call(
@@ -1167,27 +1311,82 @@ if ('serviceWorker' in navigator) {{
         return tb;
     }}
 
-    function applyLayout(wrapper) {{
-        var blocks = getBlocks(wrapper);
-        if (blocks.length === 0) return;
+    function applyLayout(wrapper, boardScale) {{
+        if (boardScale === undefined) boardScale = 1.0;
+        if (wrapper._ovTimer) {{ clearInterval(wrapper._ovTimer); wrapper._ovTimer = null; }}
+        wrapper._ovPages = 1;
+        wrapper.style.removeProperty('--ov-scale');
+        wrapper.style.removeProperty('height');
+        wrapper.classList.remove('reduce-text', 'reduce-cancel');
+        var oldInd = wrapper.parentNode && wrapper.parentNode.querySelector('.ov-pageind');
+        if (oldInd) oldInd.remove();
 
-        var tableWrap = wrapper.closest('.table-wrap');
-        if (!tableWrap) return;
-        var sectionCount = tableWrap.querySelectorAll('.plan-section').length || 1;
-        var availablePerCol = Math.floor(tableWrap.clientHeight / sectionCount) - 60;
-        if (availablePerCol < 100) availablePerCol = 100;
+        if (getBlocks(wrapper).length === 0) return;
+        if (!wrapper.querySelector('table')) return;
 
-        // Reset für saubere Messung mit 1-Spalten-Layout
-        wrapper.classList.remove('cols-1','cols-2','cols-3','cols-4');
-        wrapper.classList.remove('compact-mode');
-        wrapper.classList.add('cols-1');
+        var avail = availFor(wrapper);                          // echte Spaltenhöhe (inkl. Kopf)
+        var colBudget = Math.max(60, avail - THEAD_RESERVE);    // Platz für die Blöcke
+        var isMobile = window.matchMedia('(max-width: 600px)').matches;
 
-        var cols = chooseColCount(wrapper, blocks, availablePerCol);
+        // Mobil: altes Scroll-Verhalten, keine Überlauf-Pipeline
+        if (isMobile) {{
+            renderColumns(wrapper, getBlocks(wrapper), colBudget, isMobile);
+            return;
+        }}
 
-        wrapper.classList.remove('cols-1');
+        // Stufe 1: Skalieren (board-weiter Faktor aus layoutAll)
+        if (OV.scale && boardScale < 1.0) wrapper.style.setProperty('--ov-scale', boardScale);
+
+        // Erst rendern, DANN echte Spaltenhöhen messen.
+        renderColumns(wrapper, getBlocks(wrapper), colBudget, isMobile);
+
+        // Bei Überlauf zuerst die maximal mögliche Spaltenzahl (Breite) ausreizen.
+        if (realTallest(wrapper) > avail) {{
+            renderColumns(wrapper, getBlocks(wrapper), colBudget, isMobile,
+                          maxColsByWidth(wrapper));
+        }}
+
+        // Stufe 2: Reduzieren (Text-Spalte aus, dann Entfall-Sektion kompakt)
+        if (OV.reduce && realTallest(wrapper) > avail) {{
+            wrapper.classList.add('reduce-text');
+            renderColumns(wrapper, getBlocks(wrapper), colBudget, isMobile,
+                          maxColsByWidth(wrapper));
+            if (realTallest(wrapper) > avail) {{
+                applyCancelCompact(wrapper);
+                wrapper.classList.add('reduce-cancel');
+                renderColumns(wrapper, getBlocks(wrapper), colBudget, isMobile,
+                              maxColsByWidth(wrapper));
+            }}
+        }}
+
+        // Stufe 3: Blättern (Indikator ist ein Overlay → keine extra Höhe nötig).
+        // avail wird mitgegeben, um den Wrapper auf feste Höhe zu setzen → beim
+        // Seitenwechsel ändert sich die Sektionshöhe nicht (sonst rutscht Morgen).
+        if (OV.paginate && realTallest(wrapper) > avail) {{
+            renderPaginated(wrapper, getBlocks(wrapper), colBudget, avail);
+        }}
+
+        if (OVDEBUG) {{
+            var stage = (wrapper._ovPages > 1) ? ('blaettern(' + wrapper._ovPages + ')')
+                : wrapper.classList.contains('reduce-cancel') ? 'reduzieren-2'
+                : wrapper.classList.contains('reduce-text')   ? 'reduzieren-1'
+                : (boardScale < 1.0 ? 'skalieren(' + boardScale + ')' : 'normal');
+            var flags = (OV.scale ? 'S' : '-') + (OV.reduce ? 'R' : '-') + (OV.paginate ? 'P' : '-');
+            ovDebugReport(wrapper, 'avail=' + Math.round(avail)
+                + ' max=' + Math.round(realTallest(wrapper))
+                + ' blocks=' + getBlocks(wrapper).length
+                + ' cols=' + wrapper.querySelectorAll('.col').length
+                + ' pages=' + wrapper._ovPages
+                + ' flags=' + flags + ' bScale=' + boardScale + ' Stufe=' + stage);
+        }}
+    }}
+
+    function renderColumns(wrapper, blocks, availablePerCol, isMobile, forceCols) {{
+        var cols = forceCols || chooseColCount(wrapper, blocks, availablePerCol);
+        wrapper.classList.remove('cols-1','cols-2','cols-3','cols-4','compact-mode');
         wrapper.classList.add('cols-' + cols);
 
-        var origTable    = wrapper.querySelector('table');
+        var origTable = wrapper.querySelector('table');
         if (!origTable) return;
         var origColgroup = origTable.querySelector('colgroup');
         var origThead    = origTable.querySelector('thead');
@@ -1196,11 +1395,6 @@ if ('serviceWorker' in navigator) {{
 
         var buckets = distributeGreedy(blocks, cols, availablePerCol);
 
-        // Container leeren und N neue Spalten/Tables anlegen. Die "Entfallende
-        // Stunden"-Überschrift wird pro Spalte VOR der ersten Entfall-Zeile
-        // eingefügt: in der ersten betroffenen Spalte voll, danach als "(Forts.)".
-        // Zusätzlicher Abstand (spaced) nur, wenn die Überschrift unter einem
-        // anderen Block steht — nicht, wenn sie ganz oben in der Spalte sitzt.
         wrapper.innerHTML = '';
         var cancelHeaderSeen = false;
         for (var c = 0; c < cols; c++) {{
@@ -1214,9 +1408,7 @@ if ('serviceWorker' in navigator) {{
                 var blk = buckets[c][m];
                 if (blk.getAttribute('data-block') === 'cancel' && !colCancelSeen) {{
                     colCancelSeen = true;
-                    table.appendChild(
-                        makeCancelHeader(ncols, cancelHeaderSeen, m > 0, isTomorrow)
-                    );
+                    table.appendChild(makeCancelHeader(ncols, cancelHeaderSeen, m > 0, isTomorrow));
                     cancelHeaderSeen = true;
                 }}
                 table.appendChild(blk);
@@ -1225,17 +1417,166 @@ if ('serviceWorker' in navigator) {{
             wrapper.appendChild(colDiv);
         }}
 
-        // Compact-Mode prüfen nach Spalten-Build
         var firstCol = wrapper.querySelector('.col');
         if (firstCol && firstCol.clientWidth < (window.COMPACT_COL_WIDTH || 320)) {{
             wrapper.classList.add('compact-mode');
         }}
     }}
 
+    function applyCancelCompact(wrapper) {{
+        var cancelBlocks = Array.prototype.slice.call(
+            wrapper.querySelectorAll('tbody[data-block="cancel"]')
+        );
+        if (cancelBlocks.length === 0) return;
+
+        var items = [];
+        for (var i = 0; i < cancelBlocks.length; i++) {{
+            var row = cancelBlocks[i].querySelector('tr');
+            if (!row) continue;
+            var kEl = row.querySelector('.c-lehrer');
+            var sEl = row.querySelector('.c-std');
+            var k = kEl ? kEl.textContent.trim() : '';
+            var s = sEl ? sEl.textContent.trim() : '';
+            items.push({{ k: k, s: s }});
+        }}
+
+        var tb = document.createElement('tbody');
+        tb.setAttribute('data-block', 'cancel');
+        var tr = document.createElement('tr');
+        var td = document.createElement('td');
+        td.colSpan = 8;
+        td.className = 'ov-cancel-compact';
+        for (var j = 0; j < items.length; j++) {{
+            var span = document.createElement('span');
+            span.className = 'occ-item';
+            var ks = document.createElement('span');
+            ks.className = 'occ-k';
+            ks.textContent = items[j].k;
+            span.appendChild(ks);
+            if (items[j].s) span.appendChild(document.createTextNode(' (' + items[j].s + ')'));
+            td.appendChild(span);
+        }}
+        tr.appendChild(td);
+        tb.appendChild(tr);
+
+        cancelBlocks[0].parentNode.insertBefore(tb, cancelBlocks[0]);
+        for (var d = 0; d < cancelBlocks.length; d++) cancelBlocks[d].remove();
+    }}
+
+    function renderPaginated(wrapper, blocks, availablePerCol, availReal) {{
+        var origTable = wrapper.querySelector('table');
+        if (!origTable) return;
+        var origColgroup = origTable.querySelector('colgroup');
+        var origThead    = origTable.querySelector('thead');
+        var ncols = origColgroup ? origColgroup.querySelectorAll('col').length : 8;
+        var isTomorrow = !!wrapper.closest('.tomorrow-section');
+
+        var allCols = distributeUncapped(blocks, availablePerCol);
+        var pages = paginateColumns(allCols, MAX_COLS);
+        wrapper._ovPages = pages.length;
+
+        wrapper.classList.remove('cols-1','cols-2','cols-3','cols-4','compact-mode');
+        wrapper.classList.add('cols-' + MAX_COLS);
+
+        wrapper.innerHTML = '';
+        var pageEls = [];
+        var cancelHeaderSeen = false;
+        for (var p = 0; p < pages.length; p++) {{
+            var pageEl = document.createElement('div');
+            pageEl.className = 'ov-page';
+            pageEl.style.display = (p === 0 ? 'flex' : 'none');
+            for (var c = 0; c < pages[p].length; c++) {{
+                var colDiv = document.createElement('div');
+                colDiv.className = 'col';
+                var table = document.createElement('table');
+                if (origColgroup) table.appendChild(origColgroup.cloneNode(true));
+                if (origThead)    table.appendChild(origThead.cloneNode(true));
+                var colCancelSeen = false;
+                for (var m = 0; m < pages[p][c].length; m++) {{
+                    var blk = pages[p][c][m];
+                    if (blk.getAttribute('data-block') === 'cancel' && !colCancelSeen) {{
+                        colCancelSeen = true;
+                        table.appendChild(makeCancelHeader(ncols, cancelHeaderSeen, m > 0, isTomorrow));
+                        cancelHeaderSeen = true;
+                    }}
+                    table.appendChild(blk);
+                }}
+                colDiv.appendChild(table);
+                pageEl.appendChild(colDiv);
+            }}
+            wrapper.appendChild(pageEl);
+            pageEls.push(pageEl);
+        }}
+
+        var firstCol = wrapper.querySelector('.col');
+        if (firstCol && firstCol.clientWidth < (window.COMPACT_COL_WIDTH || 320)) {{
+            wrapper.classList.add('compact-mode');
+        }}
+
+        // Feste Wrapper-Höhe → Seitenwechsel verändert die Sektionshöhe NICHT.
+        if (availReal) wrapper.style.height = availReal + 'px';
+
+        if (pages.length <= 1) return;
+
+        var ind = document.createElement('div');
+        ind.className = 'ov-pageind';
+        var label = isTomorrow ? 'Morgen' : 'Heute';
+        var txt = document.createElement('span');
+        var dots = [];
+        function setLabel(idx) {{
+            txt.textContent = label + ' ' + (idx + 1) + '/' + pages.length;
+            for (var d = 0; d < dots.length; d++) {{
+                dots[d].className = 'ovp-dot' + (d === idx ? ' active' : '');
+            }}
+        }}
+        ind.appendChild(txt);
+        for (var d2 = 0; d2 < pages.length; d2++) {{
+            var dot = document.createElement('span');
+            dot.className = 'ovp-dot';
+            ind.appendChild(dot); dots.push(dot);
+        }}
+        // Als Overlay in die Sektion hängen (position:absolute) → verbraucht KEINE
+        // Layout-Höhe, drückt die Spalten also nicht nach unten aus dem Sichtbereich.
+        (wrapper.closest('.plan-section') || wrapper.parentNode).appendChild(ind);
+        setLabel(0);
+
+        var cur = 0;
+        wrapper._ovTimer = setInterval(function () {{
+            pageEls[cur].style.display = 'none';
+            cur = (cur + 1) % pageEls.length;
+            pageEls[cur].style.display = 'flex';
+            setLabel(cur);
+        }}, (OV.page_seconds || 12) * 1000);
+    }}
+
     function layoutAll() {{
         var wrappers = document.querySelectorAll('.layout-wrapper');
-        for (var i = 0; i < wrappers.length; i++) {{
-            applyLayout(wrappers[i]);
+        var isMobile = window.matchMedia('(max-width: 600px)').matches;
+
+        // Mess-Vorlauf für den board-weiten Skalierungsfaktor: jede Sektion bei
+        // Faktor 1 rendern, ECHTE höchste Spalte messen, nötigen Faktor bestimmen.
+        var boardScale = 1.0;
+        if (!isMobile && OV.scale) {{
+            for (var i = 0; i < wrappers.length; i++) {{
+                var w = wrappers[i];
+                if (getBlocks(w).length === 0 || !w.querySelector('table')) continue;
+                w.style.removeProperty('--ov-scale');
+                w.style.removeProperty('height');
+                w.classList.remove('reduce-text', 'reduce-cancel');
+                var oi = w.parentNode && w.parentNode.querySelector('.ov-pageind');
+                if (oi) oi.remove();
+                var avail = availFor(w);
+                renderColumns(w, getBlocks(w), Math.max(60, avail - THEAD_RESERVE),
+                              false, maxColsByWidth(w));
+                var tall = realTallest(w);
+                if (tall > avail && avail > 0) {{
+                    var s = fitScale(tall, avail, OV.scale_min, 0.05);
+                    if (s < boardScale) boardScale = s;
+                }}
+            }}
+        }}
+        for (var j = 0; j < wrappers.length; j++) {{
+            applyLayout(wrappers[j], boardScale);
         }}
     }}
 
@@ -1623,6 +1964,7 @@ def main():
         if theme not in ("dark", "light"):
             theme = "dark"
 
+        overflow_cfg = parse_overflow_config(config)
         html = generate_html(
             groups_today, groups_tomorrow, today, tomorrow_date,
             teacher_lookup, period_nr, p_start, p_end,
@@ -1640,6 +1982,7 @@ def main():
             theme=theme,
             today_full_absent=today_full_absent,
             tomorrow_full_absent=tomorrow_full_absent,
+            overflow_cfg=overflow_cfg,
         )
         out = BASE_DIR / "index.html"
         out.write_text(html, encoding="utf-8")
