@@ -78,3 +78,10 @@ def distribute_uncapped(block_heights, available_height_per_col):
         cols[-1].append(i)
         h += bh
     return cols
+
+
+def paginate_columns(columns, max_cols):
+    """Teilt eine Liste von Spalten in Seiten zu je höchstens max_cols Spalten."""
+    if max_cols < 1:
+        max_cols = 1
+    return [columns[i:i + max_cols] for i in range(0, len(columns), max_cols)]

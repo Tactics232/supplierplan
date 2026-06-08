@@ -1,6 +1,6 @@
 import unittest
 
-from scripts._layout_logic import fit_scale, distribute_uncapped
+from scripts._layout_logic import fit_scale, distribute_uncapped, paginate_columns
 
 
 class TestFitScale(unittest.TestCase):
@@ -35,6 +35,22 @@ class TestDistributeUncapped(unittest.TestCase):
 
     def test_leere_eingabe(self):
         self.assertEqual(distribute_uncapped([], 100), [[]])
+
+
+class TestPaginateColumns(unittest.TestCase):
+    def test_passt_in_eine_seite(self):
+        cols = [[0], [1], [2]]
+        self.assertEqual(paginate_columns(cols, 4), [[[0], [1], [2]]])
+
+    def test_chunkt_in_seiten_zu_max_cols(self):
+        cols = [[0], [1], [2], [3], [4]]
+        self.assertEqual(
+            paginate_columns(cols, 2),
+            [[[0], [1]], [[2], [3]], [[4]]],
+        )
+
+    def test_max_cols_unter_eins_wird_eins(self):
+        self.assertEqual(paginate_columns([[0], [1]], 0), [[[0]], [[1]]])
 
 
 if __name__ == "__main__":
