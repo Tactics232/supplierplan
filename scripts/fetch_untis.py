@@ -825,20 +825,26 @@ def render_train_widget(enabled: bool) -> str:
 def parse_overflow_config(config):
     """Liest die OVERFLOW_*-Keys aus config.env und liefert ein dict für die
     Injektion als window.OVERFLOW. Werte werden geklemmt; ungültige → Default."""
+    def clean(v):
+        # load_config strippt KEINE Inline-Kommentare. Für die OVERFLOW-Keys hier
+        # tolerant abschneiden, damit "true   # Stufe 3" nicht als False gelesen wird.
+        # (Passwörter/Token laufen NICHT durch diese Funktion → unkritisch.)
+        return v.split("#")[0].strip()
+
     def flag(key, default):
-        v = config.get(key, "")
+        v = clean(config.get(key, ""))
         if v == "":
             return default
-        return v.strip().lower() == "true"
+        return v.lower() == "true"
 
     try:
-        smin = float(config.get("OVERFLOW_SCALE_MIN", "0.65"))
+        smin = float(clean(config.get("OVERFLOW_SCALE_MIN", "")) or "0.65")
     except ValueError:
         smin = 0.65
     smin = min(1.0, max(0.3, smin))
 
     try:
-        psec = int(config.get("OVERFLOW_PAGE_SECONDS", "12"))
+        psec = int(clean(config.get("OVERFLOW_PAGE_SECONDS", "")) or "12")
     except ValueError:
         psec = 12
     psec = max(3, psec)
