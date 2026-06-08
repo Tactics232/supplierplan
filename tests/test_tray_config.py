@@ -18,5 +18,38 @@ class TestResolveDataDir(unittest.TestCase):
         self.assertEqual(result, Path("/users/x/AppData/Local") / "Supplierplan")
 
 
+from tray.config_io import parse_config_text, render_config_env
+
+
+class TestConfigIO(unittest.TestCase):
+    def test_parse_ignoriert_kommentare_und_inline(self):
+        text = "# Kommentar\nUNTIS_USER=Monitor\nOVERFLOW_PAGINATE=true   # an\n\n"
+        self.assertEqual(parse_config_text(text), {
+            "UNTIS_USER": "Monitor", "OVERFLOW_PAGINATE": "true",
+        })
+
+    def test_render_aktualisiert_vorhandenen_wert(self):
+        existing = "# Login\nUNTIS_USER=Alt\nUNTIS_PASSWORD=geheim\n"
+        out = render_config_env(existing, {"UNTIS_USER": "Neu"})
+        self.assertIn("UNTIS_USER=Neu", out)
+        self.assertIn("UNTIS_PASSWORD=geheim", out)
+        self.assertIn("# Login", out)
+        self.assertEqual(out.count("UNTIS_USER="), 1)
+
+    def test_render_haengt_neue_keys_an(self):
+        out = render_config_env("UNTIS_USER=Mon\n", {"SERVER_PORT": "8080"})
+        self.assertIn("UNTIS_USER=Mon", out)
+        self.assertIn("SERVER_PORT=8080", out)
+
+    def test_render_passwort_mit_sonderzeichen_wird_nicht_zerstoert(self):
+        out = render_config_env("", {"UNTIS_PASSWORD": "p#ss=wort"})
+        self.assertIn("UNTIS_PASSWORD=p#ss=wort", out)
+
+    def test_render_leeren_wert_setzt_leeres_feld(self):
+        out = render_config_env("CLOUDFLARE_HOST=alt\n", {"CLOUDFLARE_HOST": ""})
+        self.assertIn("CLOUDFLARE_HOST=", out)
+        self.assertNotIn("CLOUDFLARE_HOST=alt", out)
+
+
 if __name__ == "__main__":
     unittest.main()
