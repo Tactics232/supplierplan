@@ -1122,12 +1122,6 @@ if ('serviceWorker' in navigator) {{
         scale: true, scale_min: 0.65, reduce: true, paginate: true, page_seconds: 12
     }};
 
-    function sumHeights(blocks) {{
-        var t = 0;
-        for (var i = 0; i < blocks.length; i++) t += blocks[i].getBoundingClientRect().height;
-        return t;
-    }}
-
     function fitScale(contentH, availH, scaleMin, step) {{
         step = step || 0.05;
         if (contentH <= 0 || contentH <= availH) return 1.0;
@@ -1140,22 +1134,6 @@ if ('serviceWorker' in navigator) {{
         return scaleMin;
     }}
 
-    function tallestBucketHeight(buckets) {{
-        var max = 0;
-        for (var c = 0; c < buckets.length; c++) {{
-            var h = 0, hasCancel = false;
-            for (var m = 0; m < buckets[c].length; m++) {{
-                var b = buckets[c][m];
-                h += b.getBoundingClientRect().height;
-                if (b.getAttribute('data-block') === 'cancel' && !hasCancel) {{
-                    h += CANCEL_HEADER_H; hasCancel = true;
-                }}
-            }}
-            if (h > max) max = h;
-        }}
-        return max;
-    }}
-
     function availFor(wrapper) {{
         var tableWrap = wrapper.closest('.table-wrap');
         if (!tableWrap) return 100;
@@ -1164,13 +1142,45 @@ if ('serviceWorker' in navigator) {{
         return a < 100 ? 100 : a;
     }}
 
-    function neededScale(wrapper) {{
-        var blocks = getBlocks(wrapper);
-        if (!blocks.length) return 1.0;
-        wrapper.style.removeProperty('--ov-scale');
-        wrapper.classList.remove('cols-2','cols-3','cols-4','compact-mode');
-        wrapper.classList.add('cols-1');
-        return fitScale(sumHeights(blocks), MAX_COLS * availFor(wrapper), OV.scale_min, 0.05);
+    // Höhe der TATSÄCHLICH gerenderten höchsten Spalte (nicht im 1-Spalten-Zustand
+    // schätzen — das unterschätzt stark, weil schmale Spalten mehr umbrechen).
+    function realTallest(wrapper) {{
+        var cols = wrapper.querySelectorAll('.col');
+        var max = 0;
+        for (var i = 0; i < cols.length; i++) {{
+            var h = cols[i].getBoundingClientRect().height;
+            if (h > max) max = h;
+        }}
+        return max;
+    }}
+
+    function maxColsByWidth(wrapper) {{
+        return Math.max(1, Math.min(MAX_COLS,
+            Math.floor(wrapper.clientWidth / MIN_COL_WIDTH)));
+    }}
+
+    // Diagnose-Overlay: index.html mit ?ovdebug=1 öffnen → zeigt je Sektion, welche
+    // Überlauf-Stufe gegriffen hat und die gemessenen Höhen.
+    var OVDEBUG = (location.search.indexOf('ovdebug') >= 0);
+    function ovDebugReport(wrapper, info) {{
+        if (!OVDEBUG) return;
+        var id = wrapper.closest('.tomorrow-section') ? 'Morgen' : 'Heute';
+        var box = document.getElementById('ovdebug-box');
+        if (!box) {{
+            box = document.createElement('div');
+            box.id = 'ovdebug-box';
+            box.style.cssText = 'position:fixed;left:4px;bottom:4px;z-index:99999;'
+                + 'background:rgba(0,0,0,.85);color:#0f0;font:11px monospace;'
+                + 'padding:6px 8px;white-space:pre;border:1px solid #0f0;';
+            document.body.appendChild(box);
+        }}
+        box.setAttribute('data-ov-' + id, info);
+        var out = '', ks = ['Heute', 'Morgen'];
+        for (var i = 0; i < ks.length; i++) {{
+            var v = box.getAttribute('data-ov-' + ks[i]);
+            if (v) out += ks[i] + ': ' + v + '\\n';
+        }}
+        box.textContent = out;
     }}
 
     function distributeUncapped(blocks, availH) {{
@@ -1277,56 +1287,67 @@ if ('serviceWorker' in navigator) {{
     function applyLayout(wrapper, boardScale) {{
         if (boardScale === undefined) boardScale = 1.0;
         if (wrapper._ovTimer) {{ clearInterval(wrapper._ovTimer); wrapper._ovTimer = null; }}
+        wrapper._ovPages = 1;
         wrapper.style.removeProperty('--ov-scale');
         wrapper.classList.remove('reduce-text', 'reduce-cancel');
         var oldInd = wrapper.parentNode && wrapper.parentNode.querySelector('.ov-pageind');
         if (oldInd) oldInd.remove();
 
-        var blocks = getBlocks(wrapper);
-        if (blocks.length === 0) return;
+        if (getBlocks(wrapper).length === 0) return;
         if (!wrapper.querySelector('table')) return;
 
         var availablePerCol = availFor(wrapper);
-
-        wrapper.classList.remove('cols-1','cols-2','cols-3','cols-4','compact-mode');
-        wrapper.classList.add('cols-1');
-
         var isMobile = window.matchMedia('(max-width: 600px)').matches;
 
+        // Mobil: altes Scroll-Verhalten, keine Überlauf-Pipeline
+        if (isMobile) {{
+            renderColumns(wrapper, getBlocks(wrapper), availablePerCol, isMobile);
+            return;
+        }}
+
         // Stufe 1: Skalieren (board-weiter Faktor aus layoutAll)
-        if (!isMobile && OV.scale && boardScale < 1.0) {{
-            wrapper.style.setProperty('--ov-scale', boardScale);
+        if (OV.scale && boardScale < 1.0) wrapper.style.setProperty('--ov-scale', boardScale);
+
+        // Erst rendern, DANN echte Spaltenhöhen messen.
+        renderColumns(wrapper, getBlocks(wrapper), availablePerCol, isMobile);
+
+        // Bei Überlauf zuerst die maximal mögliche Spaltenzahl (Breite) ausreizen.
+        if (realTallest(wrapper) > availablePerCol) {{
+            renderColumns(wrapper, getBlocks(wrapper), availablePerCol, isMobile,
+                          maxColsByWidth(wrapper));
         }}
 
-        function stillOverflows() {{
-            var cols = chooseColCount(wrapper, blocks, availablePerCol);
-            var buckets = distributeGreedy(blocks, cols, availablePerCol);
-            // Überlauf, sobald die höchste Spalte das Höhenbudget sprengt — egal ob
-            // die Spaltenzahl durch MAX_COLS ODER durch die Fensterbreite begrenzt ist.
-            return tallestBucketHeight(buckets) > availablePerCol;
-        }}
-
-        // Stufe 2: Reduzieren
-        if (!isMobile && OV.reduce && stillOverflows()) {{
+        // Stufe 2: Reduzieren (Text-Spalte aus, dann Entfall-Sektion kompakt)
+        if (OV.reduce && realTallest(wrapper) > availablePerCol) {{
             wrapper.classList.add('reduce-text');
-            if (stillOverflows()) {{
+            renderColumns(wrapper, getBlocks(wrapper), availablePerCol, isMobile,
+                          maxColsByWidth(wrapper));
+            if (realTallest(wrapper) > availablePerCol) {{
                 applyCancelCompact(wrapper);
                 wrapper.classList.add('reduce-cancel');
-                blocks = getBlocks(wrapper);
+                renderColumns(wrapper, getBlocks(wrapper), availablePerCol, isMobile,
+                              maxColsByWidth(wrapper));
             }}
         }}
 
         // Stufe 3: Blättern
-        if (!isMobile && OV.paginate && stillOverflows()) {{
-            renderPaginated(wrapper, blocks, availablePerCol);
-        }} else {{
-            renderColumns(wrapper, blocks, availablePerCol, isMobile);
+        if (OV.paginate && realTallest(wrapper) > availablePerCol) {{
+            renderPaginated(wrapper, getBlocks(wrapper), availablePerCol);
+        }}
+
+        if (OVDEBUG) {{
+            var stage = (wrapper._ovPages > 1) ? ('blaettern(' + wrapper._ovPages + ')')
+                : wrapper.classList.contains('reduce-cancel') ? 'reduzieren-2'
+                : wrapper.classList.contains('reduce-text')   ? 'reduzieren-1'
+                : (boardScale < 1.0 ? 'skalieren(' + boardScale + ')' : 'normal');
+            ovDebugReport(wrapper, 'avail=' + Math.round(availablePerCol)
+                + ' maxSpalte=' + Math.round(realTallest(wrapper)) + ' Stufe=' + stage);
         }}
     }}
 
-    function renderColumns(wrapper, blocks, availablePerCol, isMobile) {{
-        var cols = chooseColCount(wrapper, blocks, availablePerCol);
-        wrapper.classList.remove('cols-1');
+    function renderColumns(wrapper, blocks, availablePerCol, isMobile, forceCols) {{
+        var cols = forceCols || chooseColCount(wrapper, blocks, availablePerCol);
+        wrapper.classList.remove('cols-1','cols-2','cols-3','cols-4','compact-mode');
         wrapper.classList.add('cols-' + cols);
 
         var origTable = wrapper.querySelector('table');
@@ -1416,8 +1437,9 @@ if ('serviceWorker' in navigator) {{
 
         var allCols = distributeUncapped(blocks, availablePerCol);
         var pages = paginateColumns(allCols, MAX_COLS);
+        wrapper._ovPages = pages.length;
 
-        wrapper.classList.remove('cols-1');
+        wrapper.classList.remove('cols-1','cols-2','cols-3','cols-4','compact-mode');
         wrapper.classList.add('cols-' + MAX_COLS);
 
         wrapper.innerHTML = '';
@@ -1489,11 +1511,23 @@ if ('serviceWorker' in navigator) {{
     function layoutAll() {{
         var wrappers = document.querySelectorAll('.layout-wrapper');
         var isMobile = window.matchMedia('(max-width: 600px)').matches;
+
+        // Mess-Vorlauf für den board-weiten Skalierungsfaktor: jede Sektion bei
+        // Faktor 1 rendern, ECHTE höchste Spalte messen, nötigen Faktor bestimmen.
         var boardScale = 1.0;
         if (!isMobile && OV.scale) {{
             for (var i = 0; i < wrappers.length; i++) {{
-                var s = neededScale(wrappers[i]);
-                if (s < boardScale) boardScale = s;
+                var w = wrappers[i];
+                if (getBlocks(w).length === 0 || !w.querySelector('table')) continue;
+                w.style.removeProperty('--ov-scale');
+                w.classList.remove('reduce-text', 'reduce-cancel');
+                var avail = availFor(w);
+                renderColumns(w, getBlocks(w), avail, false, maxColsByWidth(w));
+                var tall = realTallest(w);
+                if (tall > avail && avail > 0) {{
+                    var s = fitScale(tall, avail, OV.scale_min, 0.05);
+                    if (s < boardScale) boardScale = s;
+                }}
             }}
         }}
         for (var j = 0; j < wrappers.length; j++) {{
