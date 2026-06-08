@@ -1,6 +1,6 @@
 """tkinter-Konfigurationsfenster. Liest/schreibt config.env über config_io."""
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk
 from pathlib import Path
 
 from tray.config_io import read_config_env, write_config_env
