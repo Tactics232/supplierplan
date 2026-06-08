@@ -3,15 +3,17 @@ from pathlib import Path
 
 
 def parse_config_text(text: str) -> dict:
-    """KEY=value-Paare aus config.env-Text. Inline-Kommentare (#) werden vom WERT
-    abgeschnitten; reine Kommentar-/Leerzeilen ignoriert."""
+    """KEY=value-Paare aus config.env-Text. Reine Kommentar-/Leerzeilen werden
+    ignoriert. Der WERT wird NICHT an '#' abgeschnitten — sonst würde ein Passwort/
+    Token mit '#' beim GUI-Round-Trip (Laden→Speichern) verstümmelt. (Konsistent zu
+    load_config in den fetch-Scripts; Inline-Kommentare in config.env vermeiden.)"""
     out = {}
     for line in text.splitlines():
         s = line.strip()
         if not s or s.startswith("#") or "=" not in s:
             continue
         key, _, val = s.partition("=")
-        out[key.strip()] = val.split("#")[0].strip()
+        out[key.strip()] = val.strip()
     return out
 
 

@@ -22,11 +22,17 @@ from tray.config_io import parse_config_text, render_config_env
 
 
 class TestConfigIO(unittest.TestCase):
-    def test_parse_ignoriert_kommentare_und_inline(self):
-        text = "# Kommentar\nUNTIS_USER=Monitor\nOVERFLOW_PAGINATE=true   # an\n\n"
+    def test_parse_ignoriert_kommentar_und_leerzeilen(self):
+        text = "# Kommentar\nUNTIS_USER=Monitor\n\nSERVER_PORT=8080\n"
         self.assertEqual(parse_config_text(text), {
-            "UNTIS_USER": "Monitor", "OVERFLOW_PAGINATE": "true",
+            "UNTIS_USER": "Monitor", "SERVER_PORT": "8080",
         })
+
+    def test_parse_erhaelt_rautezeichen_im_wert(self):
+        # Passwort/Token mit '#' darf beim Lesen NICHT abgeschnitten werden
+        # (sonst Round-Trip-Korruption Laden->Speichern).
+        text = "UNTIS_PASSWORD=p#ss=wort\n"
+        self.assertEqual(parse_config_text(text), {"UNTIS_PASSWORD": "p#ss=wort"})
 
     def test_render_aktualisiert_vorhandenen_wert(self):
         existing = "# Login\nUNTIS_USER=Alt\nUNTIS_PASSWORD=geheim\n"
