@@ -1340,8 +1340,13 @@ if ('serviceWorker' in navigator) {{
                 : wrapper.classList.contains('reduce-cancel') ? 'reduzieren-2'
                 : wrapper.classList.contains('reduce-text')   ? 'reduzieren-1'
                 : (boardScale < 1.0 ? 'skalieren(' + boardScale + ')' : 'normal');
+            var flags = (OV.scale ? 'S' : '-') + (OV.reduce ? 'R' : '-') + (OV.paginate ? 'P' : '-');
             ovDebugReport(wrapper, 'avail=' + Math.round(availablePerCol)
-                + ' maxSpalte=' + Math.round(realTallest(wrapper)) + ' Stufe=' + stage);
+                + ' max=' + Math.round(realTallest(wrapper))
+                + ' blocks=' + getBlocks(wrapper).length
+                + ' cols=' + wrapper.querySelectorAll('.col').length
+                + ' pages=' + wrapper._ovPages
+                + ' flags=' + flags + ' bScale=' + boardScale + ' Stufe=' + stage);
         }}
     }}
 
