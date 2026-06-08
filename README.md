@@ -180,6 +180,11 @@ Die erste Zeile setzt `SUPPLIERPLAN_CONFIG` für beide Jobs, damit sie die
 | `SHOW_CLOCK` | – | `true` | Datum + Uhr im Header anzeigen |
 | `TIMEZONE` | – | `Europe/Vienna` | IANA-Zeitzone (heute/morgen + Uhr) |
 | `COMPACT_COL_WIDTH_PX` | – | `320` | Schwelle für Compact-Mode (Badges rund, „Aufs.") |
+| `OVERFLOW_SCALE` | – | `true` | Bei Überlauf alles verkleinern (Stufe 1) |
+| `OVERFLOW_SCALE_MIN` | – | `0.65` | kleinster Skalierungsfaktor (0.3–1.0) |
+| `OVERFLOW_REDUCE` | – | `true` | Bei Überlauf Text-Spalte aus / Entfall kompakt (Stufe 2) |
+| `OVERFLOW_PAGINATE` | – | `true` | Bei Überlauf seitenweise blättern (Stufe 3) |
+| `OVERFLOW_PAGE_SECONDS` | – | `12` | Sekunden pro Seite beim Blättern |
 | **WebUntis-Feinjustierung** | | | |
 | `SKIP_TEACHERS` | – | `Z Entfall` | Schul-eigene Pseudo-Lehrer (wie `---` ignorieren) |
 | `TEXT_BADGES` | – | `b,ub,MA` | Bemerkungs-Codes, die als Badge erscheinen |

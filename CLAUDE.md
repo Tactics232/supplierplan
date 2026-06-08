@@ -45,6 +45,14 @@ Konfiguration in `config.env` über `TRAIN_*`-Variablen. Wenn `TRAIN_STATION` le
 
 **Weitere Layout-Variablen:**
 - `COMPACT_COL_WIDTH_PX` (Default 320): Schwelle für Badge-Rundung + Aufs.-Kürzung
+- **Überlauf-Strategie** (`OVERFLOW_*`): greift, wenn der Plan zu voll für den
+  Bildschirm ist — gestuft **Skalieren → Reduzieren → Blättern**, jede Stufe einzeln
+  schaltbar. `OVERFLOW_SCALE`/`OVERFLOW_SCALE_MIN` (Default true / 0.65, board-weiter
+  Faktor), `OVERFLOW_REDUCE` (Text-Spalte aus, dann Entfall-Sektion kompakt),
+  `OVERFLOW_PAGINATE` + `OVERFLOW_PAGE_SECONDS` (Default 12). „Morgen" bleibt in jeder
+  Stufe sichtbar. Logik im JS-`applyLayout`/`layoutAll`, testbarer Mirror in
+  `_layout_logic.py` (`fit_scale`, `distribute_uncapped`, `paginate_columns`),
+  Parsing in `parse_overflow_config`, Config via `window.OVERFLOW` injiziert.
 - `SCHOOL_NAME` / `SCHOOL_TYPE` / `SCHOOL_LOCATION`: Schul-Bezeichnung im Header,
   Footer und Browser-Titel. Sub-Zeile = `TYPE · LOCATION`, Footer = `NAME · LOCATION`
   (leere Teile fallen aus der `·`-Kette). Defaults = MS Roda-Roda-Gasse-Werte.
