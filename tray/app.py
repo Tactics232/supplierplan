@@ -35,18 +35,25 @@ def _ensure_data_dir():
     app = paths.app_dir()
     assets = app / "assets"
     import shutil
+    # Gebaute .exe: Assets liegen unter assets/. Dev (kein assets/): direkt aus dem
+    # Projektordner (css/fonts/logo/sw.js) — so funktioniert `python -m tray.app`
+    # mit gestylter Seite ohne vorheriges Bauen.
     if assets.exists():
-        for item in assets.iterdir():
-            if item.name == "config.env.example":
-                continue
-            dest = dd / "web" / item.name
-            if not dest.exists():
-                if item.is_dir():
-                    shutil.copytree(item, dest)
-                else:
-                    shutil.copy2(item, dest)
+        src_items = [p for p in assets.iterdir() if p.name != "config.env.example"]
+    else:
+        src_items = [app / n for n in ("css", "fonts", "logo.png", "sw.js")
+                     if (app / n).exists()]
+    for item in src_items:
+        dest = dd / "web" / item.name
+        if not dest.exists():
+            if item.is_dir():
+                shutil.copytree(item, dest)
+            else:
+                shutil.copy2(item, dest)
     cfg = dd / "config.env"
     tmpl = assets / "config.env.example"
+    if not tmpl.exists():
+        tmpl = app / "config.env.example"
     if not cfg.exists() and tmpl.exists():
         write_config_env({}, cfg, template=tmpl)
     return dd
