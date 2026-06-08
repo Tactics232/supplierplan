@@ -1316,6 +1316,7 @@ if ('serviceWorker' in navigator) {{
         if (wrapper._ovTimer) {{ clearInterval(wrapper._ovTimer); wrapper._ovTimer = null; }}
         wrapper._ovPages = 1;
         wrapper.style.removeProperty('--ov-scale');
+        wrapper.style.removeProperty('height');
         wrapper.classList.remove('reduce-text', 'reduce-cancel');
         var oldInd = wrapper.parentNode && wrapper.parentNode.querySelector('.ov-pageind');
         if (oldInd) oldInd.remove();
@@ -1358,9 +1359,11 @@ if ('serviceWorker' in navigator) {{
             }}
         }}
 
-        // Stufe 3: Blättern (Indikator ist ein Overlay → keine extra Höhe nötig)
+        // Stufe 3: Blättern (Indikator ist ein Overlay → keine extra Höhe nötig).
+        // avail wird mitgegeben, um den Wrapper auf feste Höhe zu setzen → beim
+        // Seitenwechsel ändert sich die Sektionshöhe nicht (sonst rutscht Morgen).
         if (OV.paginate && realTallest(wrapper) > avail) {{
-            renderPaginated(wrapper, getBlocks(wrapper), colBudget);
+            renderPaginated(wrapper, getBlocks(wrapper), colBudget, avail);
         }}
 
         if (OVDEBUG) {{
@@ -1460,7 +1463,7 @@ if ('serviceWorker' in navigator) {{
         for (var d = 0; d < cancelBlocks.length; d++) cancelBlocks[d].remove();
     }}
 
-    function renderPaginated(wrapper, blocks, availablePerCol) {{
+    function renderPaginated(wrapper, blocks, availablePerCol, availReal) {{
         var origTable = wrapper.querySelector('table');
         if (!origTable) return;
         var origColgroup = origTable.querySelector('colgroup');
@@ -1510,6 +1513,9 @@ if ('serviceWorker' in navigator) {{
             wrapper.classList.add('compact-mode');
         }}
 
+        // Feste Wrapper-Höhe → Seitenwechsel verändert die Sektionshöhe NICHT.
+        if (availReal) wrapper.style.height = availReal + 'px';
+
         if (pages.length <= 1) return;
 
         var ind = document.createElement('div');
@@ -1555,6 +1561,7 @@ if ('serviceWorker' in navigator) {{
                 var w = wrappers[i];
                 if (getBlocks(w).length === 0 || !w.querySelector('table')) continue;
                 w.style.removeProperty('--ov-scale');
+                w.style.removeProperty('height');
                 w.classList.remove('reduce-text', 'reduce-cancel');
                 var oi = w.parentNode && w.parentNode.querySelector('.ov-pageind');
                 if (oi) oi.remove();
