@@ -8,11 +8,14 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-# Build-Ausgabe außerhalb von OneDrive (Temp) -> keine Sync-Sperren.
-BUILD_ROOT = Path(tempfile.gettempdir()) / "Supplierplan-build"
+# Build-Ausgabe außerhalb von OneDrive (Temp) UND in ein frisches, eindeutiges
+# Verzeichnis je Build -> PyInstaller muss nie einen (evtl. gesperrten) alten
+# dist-Ordner aufräumen (Defender/Indexer/Handles bei Neubau).
+BUILD_ROOT = Path(tempfile.gettempdir()) / f"Supplierplan-build-{int(time.time())}"
 DIST = BUILD_ROOT / "dist"
 WORK = BUILD_ROOT / "build"
 APP_OUT = DIST / "Supplierplan"
