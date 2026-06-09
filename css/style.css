@@ -583,6 +583,11 @@ thead th {
     padding: 0 10px calc(6px * var(--ov-scale, 1));
     border-bottom: 1px solid var(--c-border);
     vertical-align: bottom;
+    /* Kopf-Label NIE über die Spalte hinaus (sonst quetscht sich z.B. "Klasse(n)"
+       in die Lehrer-Spalte und Kopf/Daten wirken versetzt). */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 thead th.c-std,
