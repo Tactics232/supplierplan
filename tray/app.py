@@ -2,17 +2,18 @@
 import os
 import sys
 import threading
+import traceback
 import webbrowser
 from pathlib import Path
 
-import pystray
-
-from tray import paths, icons
+# Riskante Imports (pystray, PIL via icons, tkinter via gui) werden LAZY in main()
+# importiert, damit ein fehlender/kaputter Import vom Crash-Handler unten gefangen
+# und als Fenster + crash.log angezeigt wird (statt --windowed: lautlos abstürzen).
+from tray import paths
 from tray.service import Service
 from tray.config_io import read_config_env, write_config_env
 from tray.autostart import (WinRegistry, APP_NAME, enable_autostart,
                             disable_autostart, is_autostart)
-from tray.gui import open_config_window
 
 SINGLE_INSTANCE_PORT = 50573
 
@@ -67,6 +68,10 @@ def _test_connection(values):
 
 
 def main():
+    import pystray
+    from tray import icons
+    from tray.gui import open_config_window
+
     lock = _acquire_single_instance()
     if lock is None:
         print("Supplierplan läuft bereits.")
@@ -147,5 +152,32 @@ def main():
     icon.run(setup)
 
 
+def _report_crash(text):
+    """Schreibt den Traceback in crash.log (neben der .exe und in %TEMP%) und zeigt
+    ihn als Fenster (MessageBox), weil --windowed die Konsole verschluckt."""
+    import tempfile
+    targets = []
+    try:
+        targets.append(paths.app_dir() / "crash.log")
+    except Exception:
+        pass
+    targets.append(Path(tempfile.gettempdir()) / "Supplierplan-crash.log")
+    for p in targets:
+        try:
+            p.write_text(text, encoding="utf-8")
+            break
+        except Exception:
+            continue
+    try:
+        import ctypes
+        ctypes.windll.user32.MessageBoxW(
+            0, text[-1500:], "Supplierplan – Fehler beim Start", 0x10)
+    except Exception:
+        pass
+
+
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        _report_crash(traceback.format_exc())
