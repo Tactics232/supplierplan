@@ -902,6 +902,7 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
     date_str = f"{WEEKDAYS[now.weekday()]}, {now.day}. {MONTHS[now.month-1]} {now.year}"
     time_str = now.strftime("%H:%M")
     upd_str  = now.strftime("%H:%M Uhr")
+    css_v    = int(now.timestamp())  # Cache-Bust: erzwingt frische CSS bei jeder Neugenerierung
 
     if period_nr is not None:
         period_block = (
@@ -1025,7 +1026,7 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>{esc(PLAN_TITLE)} – {esc(school_name)}</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v={css_v}">
     <!-- PWA -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#c8102e">
