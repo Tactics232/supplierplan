@@ -834,6 +834,12 @@ tr.cancel-header.cont .ch-label {
     padding-left: 6px;
     padding-right: 2px;
 }
+/* Kopfzeile der Stunden-Spalte an den linksbündigen Body angleichen, sonst sitzt
+   "STD." (zentriert) verschoben über den linksbündigen Zahlen. */
+.layout-wrapper.compact-mode thead th.c-std {
+    text-align: left;
+    padding-left: 6px;
+}
 
 /* ── Footer ─────────────────────────────────────────── */
 footer {
