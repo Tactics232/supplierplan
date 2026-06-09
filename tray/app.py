@@ -30,10 +30,12 @@ def _acquire_single_instance():
 
 def _static_dir():
     """Wurzel der statischen Assets: assets/ neben der .exe (gebaut) oder der
-    Projektordner (Dev, css/fonts/logo/sw.js liegen direkt dort)."""
+    Projektordner (Dev, css/fonts/logo/sw.js liegen direkt dort). assets/ wird nur
+    genommen, wenn es die Assets WIRKLICH enthält (assets/css) — ein leerer
+    Stray-assets/-Ordner darf nicht gewinnen."""
     app = paths.app_dir()
     assets = app / "assets"
-    return assets if assets.exists() else app
+    return assets if (assets / "css").exists() else app
 
 
 def _ensure_data_dir():
