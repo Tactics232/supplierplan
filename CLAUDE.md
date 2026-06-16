@@ -45,6 +45,10 @@ Konfiguration in `config.env` über `TRAIN_*`-Variablen. Wenn `TRAIN_STATION` le
 
 **Weitere Layout-Variablen:**
 - `COMPACT_COL_WIDTH_PX` (Default 320): Schwelle für Badge-Rundung + Aufs.-Kürzung
+- `MAX_COLUMNS` (Default 4, geklemmt 1–4): Obergrenze der Spaltenanzahl im
+  Multi-Column-Layout. Wird als `window.MAX_COLUMNS` injiziert und in der JS-Engine
+  als `MAX_COLS` verwendet (greift in `maxColsByWidth`, `chooseColCount`,
+  `paginateColumns`).
 - **Überlauf-Strategie** (`OVERFLOW_*`): greift, wenn der Plan zu voll für den
   Bildschirm ist — gestuft **Skalieren → Reduzieren → Blättern**, jede Stufe einzeln
   schaltbar. `OVERFLOW_SCALE`/`OVERFLOW_SCALE_MIN` (Default true / 0.65, board-weiter

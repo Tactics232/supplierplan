@@ -52,6 +52,25 @@ class TestPaginateColumns(unittest.TestCase):
     def test_max_cols_unter_eins_wird_eins(self):
         self.assertEqual(paginate_columns([[0], [1]], 0), [[[0]], [[1]]])
 
+    def test_verteilt_spalten_gleichmaessig(self):
+        # 4 Spalten bei max 3 -> 2 Seiten, gleichmaessig 2+2 (nicht 3+1)
+        cols = [[0], [1], [2], [3]]
+        self.assertEqual(
+            paginate_columns(cols, 3),
+            [[[0], [1]], [[2], [3]]],
+        )
+
+    def test_balanciert_letzte_seite_nicht_zu_leer(self):
+        # 5 Spalten bei max 4 -> 2 Seiten, 3+2 (nicht 4+1)
+        cols = [[0], [1], [2], [3], [4]]
+        self.assertEqual(
+            paginate_columns(cols, 4),
+            [[[0], [1], [2]], [[3], [4]]],
+        )
+
+    def test_leere_eingabe(self):
+        self.assertEqual(paginate_columns([], 4), [])
+
 
 if __name__ == "__main__":
     unittest.main()

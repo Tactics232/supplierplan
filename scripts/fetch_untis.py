@@ -876,7 +876,7 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
                   teacher_lookup, period_nr, period_start, period_end,
                   show_logo=False, import_time=None, train_enabled=False,
                   today_classes_override=None, tomorrow_classes_override=None,
-                  compact_col_width=320,
+                  compact_col_width=320, max_columns=4,
                   school_name="MS Roda-Roda-Gasse", school_type="Mittelschule",
                   school_location="1210 Wien", show_clock=True,
                   tz_name="Europe/Vienna", theme="dark",
@@ -1038,6 +1038,7 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
     <link rel="apple-touch-icon" href="{esc(LOGO_FILE)}">
     <link rel="icon" href="{esc(LOGO_FILE)}">
     <script>window.COMPACT_COL_WIDTH = {compact_col_width};</script>
+    <script>window.MAX_COLUMNS = {max_columns};</script>
     <script>window.OVERFLOW = {json.dumps(overflow_cfg)};</script>
     <script>
     // Theme-Auflösung: Breit/Schmal folgen der Config, Mobil-Ansicht darf via
@@ -1138,7 +1139,7 @@ if ('serviceWorker' in navigator) {{
 // ── Multi-Column Layout-Engine v2 ──
 (function () {{
     var MIN_COL_WIDTH = 280;  // für Spaltenzahl-Berechnung
-    var MAX_COLS = 4;
+    var MAX_COLS = Math.min(4, Math.max(1, window.MAX_COLUMNS || 4));
     var THEAD_RESERVE = 34;   // Kopfzeile sitzt in JEDER Spalte oben → vom Block-Budget abziehen
 
     var OV = window.OVERFLOW || {{
@@ -1240,8 +1241,14 @@ if ('serviceWorker' in navigator) {{
 
     function paginateColumns(cols, maxCols) {{
         if (maxCols < 1) maxCols = 1;
+        var n = cols.length;
+        if (n === 0) return [];
+        // Erst die nötige Seitenzahl bestimmen, dann die Spalten gleichmäßig
+        // darauf verteilen (4 Spalten bei max 3 -> 2+2 statt 3+1).
+        var nPages = Math.ceil(n / maxCols);
+        var perPage = Math.ceil(n / nPages);  // <= maxCols
         var pages = [];
-        for (var i = 0; i < cols.length; i += maxCols) pages.push(cols.slice(i, i + maxCols));
+        for (var i = 0; i < n; i += perPage) pages.push(cols.slice(i, i + perPage));
         return pages;
     }}
 
@@ -1972,6 +1979,12 @@ def main():
         except ValueError:
             compact_col_width = 320
 
+        try:
+            max_columns = int(config.get("MAX_COLUMNS", "4"))
+        except ValueError:
+            max_columns = 4
+        max_columns = min(4, max(1, max_columns))
+
         school_name     = config.get("SCHOOL_NAME", "MS Roda-Roda-Gasse").strip() or "MS Roda-Roda-Gasse"
         school_type     = config.get("SCHOOL_TYPE", "Mittelschule").strip()
         school_location = config.get("SCHOOL_LOCATION", "1210 Wien").strip()
@@ -1990,6 +2003,7 @@ def main():
             today_classes_override=today_absent_classes_override,
             tomorrow_classes_override=tomorrow_absent_classes_override,
             compact_col_width=compact_col_width,
+            max_columns=max_columns,
             school_name=school_name,
             school_type=school_type,
             school_location=school_location,
