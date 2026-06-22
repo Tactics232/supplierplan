@@ -1230,11 +1230,22 @@ if ('serviceWorker' in navigator) {{
     function distributeUncapped(blocks, availH) {{
         var cols = [[]];
         var h = 0;
+        var colHasCancel = false;
         for (var i = 0; i < blocks.length; i++) {{
+            var isCancel = blocks[i].getAttribute('data-block') === 'cancel';
             var bh = blocks[i].getBoundingClientRect().height;
-            if (cols[cols.length - 1].length && h + bh > availH) {{ cols.push([]); h = 0; }}
+            // Wie in distributeGreedy: pro Spalte mit Entfällen die später
+            // eingefügte „Entfallende Stunden"-Überschrift (CANCEL_HEADER_H)
+            // mitbudgetieren — sonst läuft die Spalte beim Blättern um die
+            // Überschriftshöhe über und die letzte Entfall-Zeile wird abgeschnitten.
+            var extra = (isCancel && !colHasCancel) ? CANCEL_HEADER_H : 0;
+            if (cols[cols.length - 1].length && h + bh + extra > availH) {{
+                cols.push([]); h = 0; colHasCancel = false;
+                extra = isCancel ? CANCEL_HEADER_H : 0;
+            }}
             cols[cols.length - 1].push(blocks[i]);
-            h += bh;
+            h += bh + extra;
+            if (isCancel) colHasCancel = true;
         }}
         return cols;
     }}

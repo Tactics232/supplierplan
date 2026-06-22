@@ -36,6 +36,28 @@ class TestDistributeUncapped(unittest.TestCase):
     def test_leere_eingabe(self):
         self.assertEqual(distribute_uncapped([], 100), [[]])
 
+    def test_cancel_header_reserviert_platz(self):
+        # 2 reguläre (je 40) + 1 Entfall (40). Ohne Reserve passen alle 3 in
+        # eine 120er-Spalte. Mit 46px Header-Reserve sprengt der Entfall die
+        # erste Spalte (40+40+40+46 > 120) und rutscht in eine zweite.
+        self.assertEqual(
+            distribute_uncapped([40, 40, 40], 120,
+                                cancel_flags=[False, False, True],
+                                cancel_header_h=46),
+            [[0, 1], [2]],
+        )
+
+    def test_cancel_header_nur_einmal_pro_spalte(self):
+        # Mehrere Entfälle in einer Spalte reservieren den Header nur EINMAL:
+        # 40 + 40(Entfall) + 46(Header) = 126 ≤ 130, der zweite Entfall (10)
+        # würde 136 > 130 → eigene Spalte (ohne erneute Header-Reserve passt 10).
+        self.assertEqual(
+            distribute_uncapped([40, 40, 10], 130,
+                                cancel_flags=[False, True, True],
+                                cancel_header_h=46),
+            [[0, 1], [2]],
+        )
+
 
 class TestPaginateColumns(unittest.TestCase):
     def test_passt_in_eine_seite(self):

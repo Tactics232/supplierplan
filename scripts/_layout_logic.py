@@ -65,18 +65,32 @@ def fit_scale(content_height, available_height, scale_min, step=0.05):
     return round(scale_min, 4)
 
 
-def distribute_uncapped(block_heights, available_height_per_col):
+def distribute_uncapped(block_heights, available_height_per_col,
+                        cancel_flags=None, cancel_header_h=0):
     """Greedy-Verteilung in BELIEBIG viele Spalten (kein MAX_COLS-Limit).
     Gibt eine Liste von Spalten zurück, jede Spalte eine Liste von Block-Indizes.
-    Ein übergroßer Block bekommt eine eigene Spalte (kein Überspringen)."""
+    Ein übergroßer Block bekommt eine eigene Spalte (kein Überspringen).
+
+    `cancel_flags` (optional, parallel zu `block_heights`): markiert Entfall-Blöcke.
+    Für den ersten Entfall-Block je Spalte wird `cancel_header_h` mitbudgetiert,
+    weil im Browser pro Spalte eine „Entfallende Stunden"-Überschrift eingefügt
+    wird. Ohne diese Reserve liefe die Spalte beim Blättern um die Überschriftshöhe
+    über und die letzte Entfall-Zeile würde abgeschnitten."""
     cols = [[]]
     h = 0
+    col_has_cancel = False
     for i, bh in enumerate(block_heights):
-        if cols[-1] and h + bh > available_height_per_col:
+        is_cancel = bool(cancel_flags[i]) if cancel_flags else False
+        extra = cancel_header_h if (is_cancel and not col_has_cancel) else 0
+        if cols[-1] and h + bh + extra > available_height_per_col:
             cols.append([])
             h = 0
+            col_has_cancel = False
+            extra = cancel_header_h if is_cancel else 0
         cols[-1].append(i)
-        h += bh
+        h += bh + extra
+        if is_cancel:
+            col_has_cancel = True
     return cols
 
 
