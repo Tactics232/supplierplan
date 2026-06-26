@@ -1,108 +1,120 @@
-# Supplierplan-Anzeige
+# Supplierplan Display
 
-Selbstgehostete Live-Webanzeige für den Supplierplan einer Wiener Schule.
-Ersetzt die unübersichtliche WebUntis-Monitor-Ansicht durch ein eigenes, dunkles,
-auf große Bildschirme optimiertes Layout. Läuft auf einem Proxmox-LXC, wird im
-Schulgebäude auf einem Monitor im Fullscreen Hochkant angezeigt.
+Self-hosted live web display for a Viennese school's substitution plan
+(*Supplierplan*). It replaces the cluttered WebUntis monitor view with a dedicated,
+dark, portrait-oriented layout optimised for large screens. It runs on a Proxmox LXC
+(or directly on a school PC via a Windows tray app) and is shown fullscreen on a
+hallway monitor.
+
+> **Looking for the deep dive?** This README is the comprehensive reference. For the
+> internals — substitution heuristics, absence logic, the render pipeline, the
+> browser-side layout engine, and a glossary of the Austrian school terms — see the
+> technical documentation in **[`docs/index.html`](docs/index.html)**.
 
 ---
 
 ## Features
 
-- **Echtzeit-Supplierplan** mit WebUntis-JSON-RPC-API
-  - Heutige Vertretungen + nächster Schultag (Wochenenden & Ferien werden übersprungen)
-  - Automatisches Filtern echter Vertretungen (Co-Lehrer & doppelte Einträge raus)
-  - Eigene Cancel-Sektion am Tagesende
-- **Abwesende Lehrer & Klassen** prominent im Header
-  - Lehrer aus Substitutionen abgeleitet
-  - Klassen aus echter WebUntis-Abwesenheitsliste (`weekly/data`-API)
-  - „ab X", „Ganzer Tag" oder Range pro Person
-- **Echtzeit-Zuganzeige** im Header (optional)
-  - ÖBB HAFAS `mgate.exe`-Direct-Call (stdlib only, keine externen Deps)
-  - Anzahl der Züge über config.env pro Richtung einstellbar(Wien Innenstadt / weg), 60s Auto-Refresh
-  - Verspätungs-Anzeige, Linienfilter (z.B. nur S-Bahnen)
-- **PWA-fähig** für Smart-TV-Vollbild-Installation
-- **Selbst-aktualisierend** im Browser
-  - 60s Soft-Reload, alle 5 min Hard-Reload mit Cache-Bust
-  - Cloudflare Cache-Purge nach jedem Cron-Run (optional)
-- **Robuste UI-Logik**
-  - Heute leer → automatisch auf Morgen wechseln
-  - Solo-Morgen → Datum wandert ins Plan-Tag oben
-  - Dynamisches Layout (Morgen rückt hoch wenn Heute schrumpft)
+- **Real-time substitution plan** via the WebUntis JSON-RPC API
+  - Today's substitutions + the next school day (weekends & holidays are skipped)
+  - Automatic filtering of genuine substitutions (co-teachers & duplicate entries removed)
+  - Dedicated cancellations section at the end of each day
+- **Absent teachers & classes** prominently in the header
+  - Teachers derived from the substitutions
+  - Classes from the real WebUntis absence list (`weekly/data` API)
+  - “from period X”, “whole day”, or a precise range per person
+- **Live train departures** in the header (optional)
+  - Direct ÖBB HAFAS `mgate.exe` call (stdlib only, no external deps)
+  - Configurable number of trains per direction (towards / away from the city), 60 s auto-refresh
+  - Delay display, line filter (e.g. S-Bahn only)
+- **PWA-capable** for fullscreen install on a Smart-TV
+- **Self-refreshing** in the browser
+  - 60 s soft reload, hard reload with cache-bust every 5 min
+  - Cloudflare cache purge after each cron run (optional)
+- **Robust UI logic**
+  - Today empty → automatically switch to tomorrow
+  - Solo-tomorrow → the date moves up into the plan-day header
+  - Dynamic layout (tomorrow rises as today shrinks through the day)
 
 ---
 
-## Tech-Stack
+## Tech stack
 
-| Layer | Wahl | Begründung |
+| Layer | Choice | Rationale |
 |---|---|---|
-| Frontend | Statisches HTML5 + CSS3 + Vanilla JS | Kein Build-Step, lädt sofort, läuft überall |
-| Backend | Python 3.9+ (**stdlib only**) | Keine externen Dependencies, einfaches Deployment |
-| Datenquellen | WebUntis JSON-RPC + ÖBB HAFAS mgate.exe | Beide direkt via `urllib`, kein Wrapper-Lib |
-| Webserver | `python3 -m http.server` als systemd-Service | Minimaler Footprint, reicht für statische Files |
-| Hosting | Proxmox-LXC + Cloudflare Tunnel | Interne IP, von außen via HTTPS erreichbar |
-| Deployment | `rsync` von Entwickler-Workstation | Schnell, idempotent, kein CI-Setup nötig |
+| Frontend | Static HTML5 + CSS3 + vanilla JS | No build step, loads instantly, runs anywhere |
+| Backend | Python 3.9+ (**stdlib only**) | No external dependencies, trivial deployment |
+| Data sources | WebUntis JSON-RPC + ÖBB HAFAS `mgate.exe` | Both called directly via `urllib`, no wrapper library |
+| Web server | `python3 -m http.server` as a systemd service | Minimal footprint, enough for static files |
+| Hosting | Proxmox LXC + Cloudflare Tunnel | Internal IP, reachable over HTTPS from outside |
+| Deployment | `rsync` from the developer workstation | Fast, idempotent, no CI required |
 
 ---
 
-## Projektstruktur
+## Project structure
 
 ```
 supplierplan/
-├── index.html                     # Generiert vom Cron (gitignored)
-├── manifest.json                  # PWA-Manifest
-├── sw.js                          # Service-Worker für Offline + Cache
-├── config.env                     # Geheimnisse (gitignored)
-├── config.env.example             # Vorlage ohne Werte
+├── index.html                     # Generated by cron (gitignored)
+├── manifest.json                  # PWA manifest (generated)
+├── sw.js                          # Service worker for offline + cache
+├── config.env                     # Secrets (gitignored)
+├── config.env.example             # Template without values
 ├── css/
-│   └── style.css                  # Komplettes Styling, eigene Custom Properties
-├── fonts/                         # Roboto + Roboto Condensed (lokal, kein CDN)
-├── logo.png                       # Schullogo / PWA-Icon
+│   └── style.css                  # Complete styling, own custom properties
+├── fonts/                         # Roboto + Roboto Condensed (local, no CDN)
+├── logo.png                       # School logo / PWA icon
 ├── scripts/
-│   ├── fetch_untis.py             # Hauptscript: holt Supplierplan, baut index.html
-│   ├── fetch_trains.py            # Cron-Skript: schreibt data/trains.json
-│   ├── discover_api.py            # Einmaliges API-Discovery-Tool
-│   └── diagnose_api.py            # Diagnose-Helper für die WebUntis-API
+│   ├── fetch_untis.py             # Main script: pulls the plan, builds index.html
+│   ├── fetch_trains.py            # Cron script: writes data/trains.json
+│   ├── _layout_logic.py           # Testable Python mirror of the JS layout engine
+│   ├── discover_api.py            # One-off API discovery tool
+│   └── diagnose_api.py            # WebUntis API diagnostics helper
+├── tray/                          # Windows tray app (alternative to LXC + cron)
 ├── tests/
-│   └── test_fetch_trains.py       # 22 unittest-Tests für Pure-Logic
-├── data/                          # Laufzeit-Output (gitignored)
-│   ├── trains.json                # Aktueller Zugplan (atomar geschrieben)
-│   ├── last_raw.json              # Roh-API-Daten zur Diagnose
-│   └── last_overview.html         # Lesbare API-Übersicht für Browser
-└── docs/superpowers/
-    ├── specs/2026-05-28-zuganzeige-design.md
-    └── plans/2026-05-28-train-widget.md
+│   └── test_fetch_trains.py       # unittest suite for the pure-logic functions
+├── data/                          # Runtime output (gitignored)
+│   ├── trains.json                # Current train plan (written atomically)
+│   ├── last_raw.json              # Raw API data for diagnostics
+│   └── last_overview.html         # Human-readable API overview
+└── docs/
+    ├── index.html                 # Technical documentation (this project)
+    └── superpowers/               # Design specs & implementation plans
 ```
 
 ---
 
 ## Setup
 
-### 1. Repository klonen
+### 1. Clone the repository
 
 ```bash
 git clone https://github.com/Tactics232/supplierplan.git
 cd supplierplan
 ```
 
-### 2. Konfiguration
+### 2. Configure
 
 ```bash
 cp config.env.example config.env
 ```
 
-Dann `config.env` mit deinen Werten füllen — siehe **Konfiguration** unten.
+Then fill `config.env` with your values — see **Configuration** below.
 
-### 3. Lokal testen
+### 3. Run locally
 
 ```bash
-python3 scripts/fetch_untis.py     # erzeugt index.html
-python3 -m http.server 8080        # statischer Webserver
+python3 scripts/fetch_untis.py     # generates index.html
+python3 -m http.server 8080        # static web server
 ```
 
 Browser: `http://localhost:8080/`
 
-### 4. Deployment auf LXC (Production)
+> **Windows / WSL:** if there is no native Python, use the Windows interpreter and force
+> UTF-8 output (`PYTHONIOENCODING=utf-8 python.exe scripts/fetch_untis.py`). Timezone
+> handling needs `pip install tzdata`.
+
+### 4. Deploy to the LXC (production)
 
 ```bash
 rsync -avz --exclude='.claude' --exclude='.git' --exclude='data/' \
@@ -110,25 +122,24 @@ rsync -avz --exclude='.claude' --exclude='.git' --exclude='data/' \
       ./ root@<lxc-ip>:/var/www/supplierplan/
 ```
 
-> ⚠️ **`config.env` wird bewusst NICHT mitkopiert.** Der statische Webserver würde
-> jede Datei im Verzeichnis ausliefern — also auch Passwort und Token. Lege die
-> Datei stattdessen außerhalb des Webroots ab und schütze sie:
+> ⚠️ **`config.env` is deliberately NOT copied.** The static web server would serve every
+> file in the directory — including the password and token. Place it outside the web root
+> and protect it:
 > ```bash
 > mkdir -p /etc/supplierplan
-> # config.env einmalig nach /etc/supplierplan/config.env kopieren, dann:
+> # copy config.env once to /etc/supplierplan/config.env, then:
 > chmod 600 /etc/supplierplan/config.env
 > ```
-> Die Scripts finden sie über die Umgebungsvariable `SUPPLIERPLAN_CONFIG`
-> (siehe Cron unten). Ohne die Variable greift der Fallback auf den Projekt-Root —
-> nur für lokale Entwicklung gedacht.
+> The scripts find it via the `SUPPLIERPLAN_CONFIG` environment variable (see cron below).
+> Without that variable they fall back to the project root — local development only.
 
-Auf dem LXC einmal:
+One-time on the LXC:
 
 ```bash
-# Webserver als systemd-Service
+# Web server as a systemd service
 sudo tee /etc/systemd/system/supplierplan.service <<'EOF'
 [Unit]
-Description=Supplierplan-Webserver
+Description=Supplierplan web server
 After=network.target
 
 [Service]
@@ -143,7 +154,7 @@ EOF
 
 sudo systemctl enable --now supplierplan
 
-# Cron einrichten
+# Set up cron
 crontab -e
 ```
 
@@ -154,94 +165,94 @@ SUPPLIERPLAN_CONFIG=/etc/supplierplan/config.env
 *   * * * *  cd /var/www/supplierplan && /usr/bin/python3 scripts/fetch_trains.py >> /var/log/supplierplan-trains.log 2>&1
 ```
 
-Die erste Zeile setzt `SUPPLIERPLAN_CONFIG` für beide Jobs, damit sie die
-`config.env` außerhalb des Webroots lesen.
+The first line sets `SUPPLIERPLAN_CONFIG` for both jobs so they read the `config.env`
+from outside the web root.
 
 ---
 
-## Konfiguration (`config.env`)
+## Configuration (`config.env`)
 
-| Variable | Pflicht? | Beispiel | Beschreibung |
+| Variable | Required? | Example | Description |
 |---|---|---|---|
-| `UNTIS_URL` | ✅ | `https://s123456.webuntis.com` | WebUntis-Instanz der Schule |
-| `UNTIS_SCHOOL_ID` | ✅ | `s123456` | Schul-Subdomain-ID |
-| `UNTIS_USER` | ✅ | `Monitor` | Service-Account-User (mit Lese-Rechten) |
-| `UNTIS_PASSWORD` | ✅ | `…` | Passwort zum User |
-| `SHOW_TOMORROW_AFTER` | – | `12:30` | Ab welcher Uhrzeit der nächste Schultag angezeigt wird |
-| `UNTIS_DEPARTMENT_ID` | – | `0` | Abteilungs-Filter (0 = alle) |
-| **Schul-Bezeichnung & Aussehen** | | | |
-| `SCHOOL_NAME` | – | `MS Roda-Roda-Gasse` | Überschrift, Footer, Browser-Titel |
-| `SCHOOL_TYPE` | – | `Mittelschule` | Sub-Zeile (1. Teil) |
-| `SCHOOL_LOCATION` | – | `1210 Wien` | Sub-Zeile (2. Teil) + Footer |
-| `PLAN_TITLE` | – | `Supplierplan` | Plan-Titel (z.B. „Vertretungsplan") |
-| `SHOW_LOGO` | – | `false` | Logo im Header rendern |
-| `LOGO_FILE` | – | `logo.png` | Logo-Dateiname (PNG/SVG/JPG/WebP) |
-| `THEME` | – | `dark` | `dark` oder `light` (Mobil per Schalter überschreibbar) |
-| `SHOW_CLOCK` | – | `true` | Datum + Uhr im Header anzeigen |
-| `TIMEZONE` | – | `Europe/Vienna` | IANA-Zeitzone (heute/morgen + Uhr) |
-| `COMPACT_COL_WIDTH_PX` | – | `320` | Schwelle für Compact-Mode (Badges rund, „Aufs.") |
-| `OVERFLOW_SCALE` | – | `true` | Bei Überlauf alles verkleinern (Stufe 1) |
-| `OVERFLOW_SCALE_MIN` | – | `0.65` | kleinster Skalierungsfaktor (0.3–1.0) |
-| `OVERFLOW_REDUCE` | – | `true` | Bei Überlauf Text-Spalte aus / Entfall kompakt (Stufe 2) |
-| `OVERFLOW_PAGINATE` | – | `true` | Bei Überlauf seitenweise blättern (Stufe 3) |
-| `OVERFLOW_PAGE_SECONDS` | – | `12` | Sekunden pro Seite beim Blättern |
-| **WebUntis-Feinjustierung** | | | |
-| `SKIP_TEACHERS` | – | `Z Entfall` | Schul-eigene Pseudo-Lehrer (wie `---` ignorieren) |
-| `TEXT_BADGES` | – | `b,ub,MA` | Bemerkungs-Codes, die als Badge erscheinen |
-| **Cloudflare Cache-Purge** (optional) | | | |
-| `CLOUDFLARE_ZONE_ID` | – | – | Aus dem Cloudflare-Dashboard |
+| `UNTIS_URL` | ✅ | `https://s123456.webuntis.com` | The school's WebUntis instance |
+| `UNTIS_SCHOOL_ID` | ✅ | `s123456` | School subdomain ID |
+| `UNTIS_USER` | ✅ | `Monitor` | Service-account user (with read rights) |
+| `UNTIS_PASSWORD` | ✅ | `…` | Password for that user |
+| `SHOW_TOMORROW_AFTER` | – | `12:30` | Time of day from which the next school day is shown |
+| `UNTIS_DEPARTMENT_ID` | – | `0` | Department filter (0 = all) |
+| **Branding & appearance** | | | |
+| `SCHOOL_NAME` | – | `MS Roda-Roda-Gasse` | Heading, footer, browser title |
+| `SCHOOL_TYPE` | – | `Mittelschule` | Sub-line (part 1) |
+| `SCHOOL_LOCATION` | – | `1210 Wien` | Sub-line (part 2) + footer |
+| `PLAN_TITLE` | – | `Supplierplan` | Plan title (e.g. “Vertretungsplan”) |
+| `SHOW_LOGO` | – | `false` | Render the logo in the header |
+| `LOGO_FILE` | – | `logo.png` | Logo filename (PNG/SVG/JPG/WebP) |
+| `THEME` | – | `dark` | `dark` or `light` (mobile can override via a toggle) |
+| `SHOW_CLOCK` | – | `true` | Show date + clock in the header |
+| `TIMEZONE` | – | `Europe/Vienna` | IANA timezone (today/tomorrow + clock) |
+| `COMPACT_COL_WIDTH_PX` | – | `320` | Compact-mode threshold (round badges, “Aufs.”) |
+| `MAX_COLUMNS` | – | `4` | Upper bound on columns in the multi-column layout (1–4) |
+| `OVERFLOW_SCALE` | – | `true` | On overflow, shrink everything (stage 1) |
+| `OVERFLOW_SCALE_MIN` | – | `0.65` | Smallest scale factor (0.3–1.0) |
+| `OVERFLOW_REDUCE` | – | `true` | On overflow, drop text column / compact cancellations (stage 2) |
+| `OVERFLOW_PAGINATE` | – | `true` | On overflow, page through content (stage 3) |
+| `OVERFLOW_PAGE_SECONDS` | – | `12` | Seconds per page when paginating |
+| **WebUntis tuning** | | | |
+| `SKIP_TEACHERS` | – | `Z Entfall` | School-specific pseudo teachers (treated like `---`) |
+| `TEXT_BADGES` | – | `b,ub,MA` | Remark codes rendered as badges |
+| **Cloudflare cache purge** (optional) | | | |
+| `CLOUDFLARE_ZONE_ID` | – | – | From the Cloudflare dashboard |
 | `CLOUDFLARE_API_TOKEN` | – | – | Permission: *Zone:Cache Purge* |
-| `CLOUDFLARE_HOST` | – | `supp.example.tld` | Nur diese Subdomain purgen (sicher) |
-| **Zug-Widget** (optional) | | | |
-| `TRAIN_STATION` | – | `Wien Hütteldorf` | Stationsname (HAFAS-Suche) |
-| `TRAIN_DIR_TOWARDS` | – | `Wien Hbf,Wien Westbf,…` | Substrings für „Richtung Wien" |
-| `TRAIN_PER_DIRECTION` | – | `1` | Anzahl Züge je Richtung |
-| `TRAIN_DISABLED` | – | `false` | Widget komplett ausschalten |
-| `TRAIN_PRODUCTS` | – | `S` | Komma-getrennte Linien-Präfixe (leer = alle) |
+| `CLOUDFLARE_HOST` | – | `supp.example.tld` | Purge only this subdomain (safe) |
+| **Train widget** (optional) | | | |
+| `TRAIN_STATION` | – | `Wien Hütteldorf` | Station name (HAFAS search) |
+| `TRAIN_DIR_TOWARDS` | – | `Wien Hbf,Wien Westbf,…` | Substrings meaning “towards the city” |
+| `TRAIN_PER_DIRECTION` | – | `1` | Number of trains per direction |
+| `TRAIN_DISABLED` | – | `false` | Disable the widget entirely |
+| `TRAIN_PRODUCTS` | – | `S` | Comma-separated line prefixes (empty = all) |
 
 ---
 
-## Für andere Schulen einrichten
+## Setting it up for another school
 
-Das Projekt ist mandantenfähig: **eine neue Schule braucht nur eine eigene
-`config.env` und ein Logo — kein Code-Edit.** Alle schul-spezifischen Stellen
-(Pseudo-Lehrer, Abteilung, Logo, Bemerkungs-Codes, Plan-Titel, Branding, Theme,
-Zeitzone) sind Config-Keys (siehe Tabelle oben).
+The project is multi-tenant: **a new school needs only its own `config.env` and a logo
+— no code changes.** Every school-specific aspect (pseudo teachers, department, logo,
+remark codes, plan title, branding, theme, timezone) is a config key (see the table
+above).
 
-1. **Klonen** und `config.env` aus `config.env.example` anlegen.
-2. **WebUntis-Zugang** eintragen: `UNTIS_URL`, `UNTIS_SCHOOL_ID`, `UNTIS_USER`,
-   `UNTIS_PASSWORD` (am besten ein dedizierter Lese-Service-Account).
-3. **Branding**: `SCHOOL_NAME`, `SCHOOL_TYPE`, `SCHOOL_LOCATION`, `PLAN_TITLE`
-   setzen; eigenes Logo als Datei ablegen und `LOGO_FILE` + `SHOW_LOGO=true` setzen.
-4. **Region**: `TIMEZONE` anpassen. Train-Widget ist ÖBB-spezifisch → für Schulen
-   außerhalb Österreichs `TRAIN_DISABLED=true`.
-5. **WebUntis-Eigenheiten**: ggf. eigene Pseudo-Lehrer in `SKIP_TEACHERS` und
-   Bemerkungs-Codes in `TEXT_BADGES` eintragen; bei Abteilungsbetrieb
-   `UNTIS_DEPARTMENT_ID`.
-6. **Cron** einrichten (siehe Deployment) — `index.html` **und** `manifest.json`
-   werden bei jedem Run aus der Config generiert.
+1. **Clone** and create `config.env` from `config.env.example`.
+2. **WebUntis access**: set `UNTIS_URL`, `UNTIS_SCHOOL_ID`, `UNTIS_USER`,
+   `UNTIS_PASSWORD` (ideally a dedicated read-only service account).
+3. **Branding**: set `SCHOOL_NAME`, `SCHOOL_TYPE`, `SCHOOL_LOCATION`, `PLAN_TITLE`; drop
+   in your own logo and set `LOGO_FILE` + `SHOW_LOGO=true`.
+4. **Region**: adjust `TIMEZONE`. The train widget is ÖBB-specific → outside Austria set
+   `TRAIN_DISABLED=true`.
+5. **WebUntis quirks**: add local pseudo teachers to `SKIP_TEACHERS` and remark codes to
+   `TEXT_BADGES`; set `UNTIS_DEPARTMENT_ID` when departments are used.
+6. **Cron**: set it up (see Deployment) — `index.html` **and** `manifest.json` are
+   generated from the config on every run.
 
-> Hinweis: `index.html` und `manifest.json` sind generierte Artefakte (gitignored).
-> Spaltenreihenfolge der Tabelle ist in `scripts/fetch_untis.py` über die zentrale
-> `COLUMNS`-Liste definiert (eine Stelle umsortieren).
+> Note: `index.html` and `manifest.json` are generated artifacts (gitignored). The
+> table's column order is defined in `scripts/fetch_untis.py` via the central `COLUMNS`
+> list (reorder in one place).
 
 ---
 
-## Architektur
+## Architecture
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│ Proxmox-LXC                                                       │
+│ Proxmox LXC                                                       │
 │  ┌──────────────────────────────────────────────────────────┐    │
 │  │ Cron */5 min  → scripts/fetch_untis.py                    │    │
-│  │   ├─→ WebUntis JSON-RPC (Login als Service-Account)       │    │
-│  │   ├─→ weekly/data (Klassen-Abwesenheiten)                 │    │
-│  │   ├─→ index.html  (Haupt-Anzeige)                         │    │
+│  │   ├─→ WebUntis JSON-RPC (login as service account)        │    │
+│  │   ├─→ weekly/data (class & teacher absences)              │    │
+│  │   ├─→ index.html  (the display)                           │    │
 │  │   └─→ data/last_overview.html + last_raw.json             │    │
 │  │                                                           │    │
 │  │ Cron */1 min  → scripts/fetch_trains.py                   │    │
-│  │   ├─→ urllib → ÖBB HAFAS mgate.exe (Direct, stdlib only)  │    │
-│  │   └─→ data/trains.json  (atomar geschrieben)              │    │
+│  │   ├─→ urllib → ÖBB HAFAS mgate.exe (direct, stdlib only)  │    │
+│  │   └─→ data/trains.json  (written atomically)              │    │
 │  │                                                           │    │
 │  │ systemd       → python3 -m http.server 8080               │    │
 │  └──────────────────────────────────────────────────────────┘    │
@@ -249,19 +260,25 @@ Zeitzone) sind Config-Keys (siehe Tabelle oben).
 └──────────────────────────────────────────────────────────────────┘
               │ via Cloudflare Tunnel
               ▼
-┌────────────────────────┐    ┌───────────────────────────┐
-│ Browser am Schulmonitor │   │ Smart-TV (PWA installiert) │
-│  Auto-Refresh 60s soft  │   │  Display: fullscreen       │
-│  Alle 5 min: Cache-Bust │   │  via manifest.json         │
-└────────────────────────┘    └───────────────────────────┘
+┌─────────────────────────┐    ┌────────────────────────────┐
+│ Browser on the monitor  │    │ Smart-TV (PWA installed)   │
+│  Auto-refresh 60 s soft │    │  Display: fullscreen       │
+│  Every 5 min: cache-bust│    │  via manifest.json         │
+└─────────────────────────┘    └────────────────────────────┘
 ```
 
-### Datenfluss-Highlights
+### Data-flow highlights
 
-- **Atomares JSON-Schreiben** (`os.replace`) — der Browser sieht nie eine halbe Datei
-- **`weekly/data?elementId=0`** liefert in einem Call alle ABSENT-Markierungen einer Woche
-- **XSS-sicher**: Werte aus externen APIs landen via `textContent` im DOM, niemals via `innerHTML`
-- **Service-Worker** cached statische Assets (CSS, Fonts, Logo), für `index.html` und `data/*.json` gilt Network-First
+- **Atomic JSON writes** (`os.replace`) — the browser never sees a half-written file.
+- **`weekly/data`** delivers all ABSENT markers in one call per element.
+- **XSS-safe**: values from external APIs are escaped with `esc()` (= `html.escape`)
+  before they enter HTML.
+- **Service worker** caches static assets (CSS, fonts, logo); `index.html` and
+  `data/*.json` are network-first.
+
+For the full internals — the two-stage substitution filter, the `---`/`Z Entfall`
+heuristics, the FDKM-style cancellation case, full-vs-partial absence logic, and the
+browser-side layout engine — see **[`docs/index.html`](docs/index.html)**.
 
 ---
 
@@ -271,71 +288,74 @@ Zeitzone) sind Config-Keys (siehe Tabelle oben).
 python3 -m unittest discover tests -v
 ```
 
-22 Tests für die Pure-Logic-Funktionen in `fetch_trains.py`:
-- `classify_direction` (Wien-Whitelist-Match)
-- `extract_departure` (HAFAS-Leg → JSON-Dict)
-- `split_by_direction` (towards/away, Limit, Cancelled-Skip)
-- `atomic_write_json` (Race-Safety, Overwrite)
-- `load_config` (.env-Parser)
-- `filter_by_product_prefix` (Linien-Filter)
+Tests for the pure-logic functions in `fetch_trains.py`:
+- `classify_direction` (Wien whitelist match)
+- `extract_departure` (HAFAS leg → JSON dict)
+- `split_by_direction` (towards/away, limit, cancelled skip)
+- `atomic_write_json` (race safety, overwrite)
+- `load_config` (.env parser)
+- `filter_by_product_prefix` (line filter)
+
+…plus the layout mirror in `scripts/_layout_logic.py`.
 
 ---
 
-## PWA-Installation auf dem Smart-TV
+## PWA install on the Smart-TV
 
-1. Im TV-Browser die URL aufrufen
-2. Browser-Menü → *Zum Startbildschirm hinzufügen* / *Als App installieren*
-3. App-Icon erscheint → starten → läuft Fullscreen, ohne Adressleiste
+1. Open the URL in the TV browser.
+2. Browser menu → *Add to home screen* / *Install as app*.
+3. The app icon appears → launch → runs fullscreen, no address bar.
 
-Voraussetzung: Aufruf via HTTPS (Cloudflare Tunnel reicht).
-
----
-
-## Sicherheitsregeln (für Beiträge)
-
-- **`config.env` ist gitignored** und enthält Geheimnisse — niemals committen
-- **Alle externen API-Werte werden mit `esc()` (= `html.escape`) escaped** bevor sie in HTML fließen
-- HTTP-Requests haben Timeout (`timeout=15`)
-- Login-Cookie wird nach jedem Lauf invalidiert
+Requirement: served over HTTPS (the Cloudflare Tunnel is enough).
 
 ---
 
-## Lizenz
+## Windows app (school PC)
 
-Privates Schulprojekt, kein offizielles Release. Code-Reuse für ähnliche
-Schulanzeigen ist willkommen — aber: keine Garantien, eigenes Risiko.
+The tray app (`tray/`) runs the fetching + a local web server directly on the school PC;
+the page is reachable on the LAN at `http://<pc-ip>:<SERVER_PORT>`. Cloudflare is
+optional (leave the fields empty = not reachable from outside).
 
----
-
-## Windows-App (Schul-PC)
-
-Die Tray-App (`tray/`) betreibt Holen + lokalen Webserver direkt auf dem Schul-PC;
-die Seite ist im LAN unter `http://<PC-IP>:<SERVER_PORT>` erreichbar. Cloudflare ist
-optional (Felder leer lassen = nicht extern erreichbar).
-
-### Build (auf dem Entwickler-PC, Python nötig)
+### Build (on a developer PC, Python required)
 ```
 pip install pyinstaller pystray pillow
 python tray/build.py
 ```
-Ergebnis: `dist/Supplierplan/` (portabel) und – falls Inno Setup installiert –
+Result: `dist/Supplierplan/` (portable) and — if Inno Setup is installed —
 `dist/Supplierplan-Setup.exe`.
 
-### Installation (Schul-PC, kein Python nötig)
-- Portabel: Ordner `dist/Supplierplan/` kopieren, `Supplierplan.exe` starten.
-- Oder `Supplierplan-Setup.exe` ausführen.
-- Tray-Icon → „Einstellungen…" ausfüllen → „Start" (Icon wird grün).
-- „Mit Windows starten" anhaken.
+### Install (school PC, no Python required)
+- Portable: copy the `dist/Supplierplan/` folder, run `Supplierplan.exe`.
+- Or run `Supplierplan-Setup.exe`.
+- Tray icon → “Einstellungen…” → fill in → “Start” (icon turns green).
+- Tick “Mit Windows starten” (start with Windows).
 
-Daten/Config liegen im beschreibbaren Datenverzeichnis (portabel: neben der `.exe`;
-installiert: `%LOCALAPPDATA%\Supplierplan`). `config.env` liegt außerhalb des
-ausgelieferten `web/` und ist nicht über die URL abrufbar.
+Data/config live in a writable data directory (portable: next to the `.exe`; installed:
+`%LOCALAPPDATA%\Supplierplan`). `config.env` sits outside the served `web/` directory
+and is not reachable via the URL.
 
 ---
 
-## Hintergrund
+## Security rules (for contributors)
 
-Entstanden als Ersatz für die schwer lesbare WebUntis-Monitor-Anzeige der. Die offizielle
-Dieses Projekt sortiert nach Lehrer, gruppiert Cancels
-am Tagesende, zeigt Abwesenheits-Stunden präzise (z.B. „ab 6", „Ganzer Tag")
-und ergänzt eine Live-Zuganzeige für die nahegelegene Bahnstation.
+- **`config.env` is gitignored** and contains secrets — never commit it.
+- **All external API values are escaped** with `esc()` (= `html.escape`) before they
+  enter HTML.
+- HTTP requests have a timeout (`timeout=15`).
+- The login cookie is invalidated after each run.
+
+---
+
+## License
+
+Private school project, not an official release. Reuse for similar school displays is
+welcome — but: no warranties, use at your own risk.
+
+---
+
+## Background
+
+Built as a replacement for the hard-to-read WebUntis monitor view. The official display
+is cramped and hard to parse at a glance; this project sorts by teacher, groups
+cancellations at the end of the day, shows absence periods precisely (e.g. “from 6”,
+“whole day”), and adds a live train departure board for the nearby railway station.
