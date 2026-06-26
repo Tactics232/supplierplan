@@ -1,5 +1,5 @@
 config.env
-index.html
+/index.html
 .claude/
 Screenshot*
 __pycache__/

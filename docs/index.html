@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Supplierplan Display — Technical Documentation</title>
+<style>
+  /* Minimal, content-first documentation styling. Self-contained, no external assets. */
+  :root {
+    --fg: #1a1a1a;
+    --muted: #666;
+    --accent: #1f6feb;
+    --line: #e2e2e2;
+    --bg: #ffffff;
+    --code-bg: #f5f5f5;
+    --note-bg: #fff8e6;
+    --note-line: #e6c200;
+    --sidebar-w: 250px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--fg);
+    background: var(--bg);
+  }
+  /* Layout: fixed sidebar + scrollable content */
+  nav.sidebar {
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    width: var(--sidebar-w);
+    overflow-y: auto;
+    border-right: 1px solid var(--line);
+    padding: 1.2rem 1rem 3rem;
+    background: #fafafa;
+  }
+  nav.sidebar h1 { font-size: 1rem; margin: 0 0 .2rem; }
+  nav.sidebar .sub { color: var(--muted); font-size: .8rem; margin-bottom: 1rem; }
+  nav.sidebar a { display: block; color: var(--fg); text-decoration: none; padding: .15rem 0; font-size: .9rem; }
+  nav.sidebar a:hover { color: var(--accent); }
+  nav.sidebar a.section { font-weight: 600; margin-top: .9rem; }
+  nav.sidebar a.sub-link { padding-left: .8rem; font-size: .85rem; color: var(--muted); }
+  main {
+    margin-left: var(--sidebar-w);
+    max-width: 860px;
+    padding: 2rem 2.5rem 6rem;
+  }
+  h2 { font-size: 1.55rem; margin-top: 2.6rem; padding-bottom: .3rem; border-bottom: 2px solid var(--line); }
+  h2:first-of-type { margin-top: .5rem; }
+  h3 { font-size: 1.2rem; margin-top: 1.8rem; }
+  h4 { font-size: 1rem; margin-top: 1.3rem; margin-bottom: .3rem; }
+  p, li { color: #222; }
+  a { color: var(--accent); }
+  code { background: var(--code-bg); padding: .12em .35em; border-radius: 3px; font-size: .88em; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  pre { background: var(--code-bg); padding: 1rem; border-radius: 5px; overflow-x: auto; line-height: 1.45; }
+  pre code { background: none; padding: 0; font-size: .82rem; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: .9rem; }
+  th, td { border: 1px solid var(--line); padding: .5rem .7rem; text-align: left; vertical-align: top; }
+  th { background: #f0f0f0; }
+  .note {
+    background: var(--note-bg);
+    border-left: 4px solid var(--note-line);
+    padding: .7rem 1rem;
+    margin: 1rem 0;
+    border-radius: 0 4px 4px 0;
+    font-size: .92rem;
+  }
+  .note strong { color: #7a5d00; }
+  .why {
+    border-left: 4px solid var(--accent);
+    background: #eef4fd;
+    padding: .7rem 1rem;
+    margin: 1rem 0;
+    border-radius: 0 4px 4px 0;
+    font-size: .92rem;
+  }
+  .why strong { color: var(--accent); }
+  dl.glossary dt { font-weight: 600; margin-top: .9rem; }
+  dl.glossary dd { margin: .1rem 0 0 0; color: #333; }
+  dl.glossary dd .de { color: var(--muted); font-style: italic; }
+  footer { margin-left: var(--sidebar-w); padding: 1.5rem 2.5rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; max-width: 860px; }
+  .lead { font-size: 1.05rem; color: #333; }
+  kbd { background: #eee; border: 1px solid #ccc; border-bottom-width: 2px; border-radius: 3px; padding: 0 .35em; font-size: .85em; }
+  @media (max-width: 800px) {
+    nav.sidebar { position: static; width: auto; height: auto; border-right: none; border-bottom: 1px solid var(--line); }
+    main, footer { margin-left: 0; padding: 1.2rem; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <h1>Supplierplan Display</h1>
+  <div class="sub">Technical documentation</div>
+  <a class="section" href="#overview">Overview</a>
+  <a class="section" href="#glossary">Glossary</a>
+  <a class="section" href="#architecture">Architecture</a>
+  <a class="sub-link" href="#data-flow">Data flow</a>
+  <a class="sub-link" href="#components">Components</a>
+  <a class="section" href="#setup">Setup &amp; deployment</a>
+  <a class="sub-link" href="#local">Local run</a>
+  <a class="sub-link" href="#production">Production (LXC)</a>
+  <a class="sub-link" href="#tray">Windows tray app</a>
+  <a class="section" href="#config">Configuration</a>
+  <a class="section" href="#multitenant">Multi-tenant</a>
+  <a class="section" href="#internals">Technical internals</a>
+  <a class="sub-link" href="#api">WebUntis API</a>
+  <a class="sub-link" href="#processing">Substitution processing</a>
+  <a class="sub-link" href="#absence">Absence bars</a>
+  <a class="sub-link" href="#render">Render pipeline</a>
+  <a class="sub-link" href="#layout">Multi-column layout</a>
+  <a class="sub-link" href="#overflow">Overflow strategy</a>
+  <a class="sub-link" href="#trains">Train widget</a>
+  <a class="sub-link" href="#refresh">Refresh &amp; caching</a>
+  <a class="section" href="#security">Security</a>
+  <a class="section" href="#tests">Tests</a>
+</nav>
+
+<main>
+
+<h2 id="overview">Overview</h2>
+<p class="lead">
+  Self-hosted live web display for a Viennese school's substitution plan
+  (<em>Supplierplan</em>), built as a replacement for the cluttered WebUntis monitor
+  view. It renders a dark, portrait-oriented, large-screen layout that runs fullscreen
+  on a hallway monitor.
+</p>
+<p>
+  A Python script pulls data from the WebUntis JSON-RPC API on a schedule, applies
+  school-specific filtering and absence logic, and writes a static <code>index.html</code>.
+  A minimal static web server serves it; the browser auto-refreshes. An optional train
+  widget shows live departures from the nearby railway station via the ÖBB HAFAS API.
+</p>
+<p>
+  This document is the <strong>technical companion</strong> to the
+  <a href="../README.md">README</a>. The README is the comprehensive, self-contained
+  reference (overview, features, setup, full configuration table, architecture). This
+  page goes deeper on the internals the README intentionally keeps brief: the
+  substitution-processing heuristics, the absence logic, the render pipeline, the
+  browser-side layout engine, and the domain vocabulary.
+</p>
+<div class="note">
+  <strong>Source of truth.</strong> The authoritative, always-current description of
+  behaviour lives in <code>CLAUDE.md</code> at the repository root and in the code
+  itself (<code>scripts/fetch_untis.py</code>). This page is a readable rendering of
+  that knowledge; when in doubt, the code wins.
+</div>
+
+<h2 id="glossary">Glossary</h2>
+<p>
+  The domain is Austrian school scheduling. Several terms are German and have no clean
+  one-word English equivalent — they are kept verbatim throughout the code and this
+  documentation.
+</p>
+<dl class="glossary">
+  <dt>Supplierplan <span class="de">(de)</span></dt>
+  <dd>The substitution / cover plan: which teacher covers which class when the regular
+      teacher is absent. The product's central data set, fetched via WebUntis
+      <code>getSubstitutions</code>.</dd>
+
+  <dt>Supplieren <span class="de">(de)</span></dt>
+  <dd>To substitute / cover another teacher's lesson. A <em>Supplierung</em> is a single
+      cover assignment.</dd>
+
+  <dt>Vertretung <span class="de">(de)</span></dt>
+  <dd>Substitution — a lesson taught by a replacement teacher. Rendered with an arrow
+      <code>old&nbsp;→&nbsp;new</code> (the original teacher struck through).</dd>
+
+  <dt>Entfall <span class="de">(de)</span></dt>
+  <dd>A cancelled lesson (it simply does not take place). Collected into a dedicated
+      <em>“Entfallende Stunden”</em> (cancelled lessons) section at the end of each day.</dd>
+
+  <dt>Aufsicht / Pausenaufsicht <span class="de">(de)</span></dt>
+  <dd>Break supervision — a teacher supervising a corridor/yard during a break.
+      Represented in the API as lesson type <code>bs</code> (<code>lstype="bs"</code>)
+      and rendered distinctly.</dd>
+
+  <dt>Raumwechsel <span class="de">(de)</span></dt>
+  <dd>Room change. Shown as <code>oldRoom&nbsp;→&nbsp;newRoom</code> (old room struck
+      through). Driven by the <code>orgid</code> on a room (<code>ro[]</code>) entry.</dd>
+
+  <dt>Klasse <span class="de">(de)</span></dt>
+  <dd>A class group (cohort of pupils), e.g. <code>4A</code>. Deduplicated per row.</dd>
+
+  <dt>Stunde <span class="de">(de)</span></dt>
+  <dd>A lesson period (0–10), mapped from start/end times via the WebUntis
+      <em>timegrid</em>.</dd>
+
+  <dt>Nächster Schultag <span class="de">(de)</span></dt>
+  <dd>“Next school day” — the upcoming day with lessons, skipping weekends and holidays.
+      Shown alongside or instead of today's plan.</dd>
+
+  <dt>Pseudo teacher</dt>
+  <dd>A non-person placeholder in the school's WebUntis master data, e.g.
+      <code>Z&nbsp;Entfall</code> (“cancellation marker”) or <code>Mr.&nbsp;X</code>
+      (“filler”). Treated like the empty marker <code>---</code> via the
+      <code>SKIP_TEACHERS</code> setting.</dd>
+
+  <dt><code>---</code> marker</dt>
+  <dd>WebUntis' convention for “no teacher”. Used by the processing logic to infer that
+      a named teacher is absent (see <a href="#processing">Substitution processing</a>).</dd>
+
+  <dt>Compact mode</dt>
+  <dd>A width-triggered rendering mode (narrow columns): art badges become single round
+      letters, “Aufsicht” is abbreviated to “Aufs.”, room column widens.</dd>
+</dl>
+
+<h2 id="architecture">Architecture</h2>
+
+<h3 id="data-flow">Data flow</h3>
+<pre><code>┌──────────────────────────────────────────────────────────────┐
+│ Host (Proxmox LXC  ·  or Windows tray app)                   │
+│                                                              │
+│  Schedule */5 min → scripts/fetch_untis.py                   │
+│    ├─→ WebUntis JSON-RPC  (login as service account)         │
+│    ├─→ weekly/data REST   (per-teacher / class absence)      │
+│    ├─→ index.html         (the display)                      │
+│    └─→ data/last_overview.html + last_raw.json  (diagnostics)│
+│                                                              │
+│  Schedule */1 min → scripts/fetch_trains.py                  │
+│    ├─→ urllib POST → ÖBB HAFAS mgate.exe (stdlib only)       │
+│    └─→ data/trains.json  (written atomically)                │
+│                                                              │
+│  Web server → python3 -m http.server  (static files only)    │
+└──────────────────────────────────────────────────────────────┘
+            │ via Cloudflare Tunnel (optional)
+            ▼
+   Browser on the monitor / Smart-TV (PWA, fullscreen)
+   Auto-refresh: 60 s soft · every 5 min hard (cache-bust)</code></pre>
+<p>
+  The two data flows are independent. <code>fetch_untis.py</code> regenerates the whole
+  <code>index.html</code> on each run. <code>fetch_trains.py</code> only writes
+  <code>data/trains.json</code>, which the browser fetches every 60 s and injects into
+  the header train widget.
+</p>
+
+<h3 id="components">Components</h3>
+<table>
+  <tr><th>Layer</th><th>Choice</th><th>Why</th></tr>
+  <tr><td>Frontend</td><td>Static HTML5 + CSS3 + vanilla JS</td><td>No build step, loads instantly, runs anywhere.</td></tr>
+  <tr><td>Backend</td><td>Python 3.9+ (<strong>stdlib only</strong>)</td><td>No external dependencies; trivial deployment.</td></tr>
+  <tr><td>Data sources</td><td>WebUntis JSON-RPC + ÖBB HAFAS <code>mgate.exe</code></td><td>Both called directly via <code>urllib</code>, no wrapper library.</td></tr>
+  <tr><td>Web server</td><td><code>python3 -m http.server</code> (systemd service)</td><td>Minimal footprint, enough for static files.</td></tr>
+  <tr><td>Hosting</td><td>Proxmox LXC + Cloudflare Tunnel</td><td>Internal IP, reachable over HTTPS from outside.</td></tr>
+  <tr><td>Deployment</td><td><code>rsync</code> from the developer workstation</td><td>Fast, idempotent, no CI required.</td></tr>
+</table>
+<div class="why">
+  <strong>Why stdlib-only?</strong> The display runs unattended on a school PC / LXC
+  that nobody maintains day-to-day. Every external dependency is a future breakage
+  (pin drift, security updates, broken installs). The HAFAS train integration was
+  deliberately written against the raw <code>mgate.exe</code> JSON endpoint instead of
+  <code>pyhafas</code> because that library had no usable ÖBB profile.
+</div>
+
+<h2 id="setup">Setup &amp; deployment</h2>
+
+<h3 id="local">Local run</h3>
+<pre><code>cp config.env.example config.env   # then fill in your values
+python3 scripts/fetch_untis.py     # generates index.html
+python3 -m http.server 8080        # static web server
+# open http://localhost:8080/</code></pre>
+<div class="note">
+  <strong>Windows / WSL note.</strong> If running under WSL without a native Python,
+  use the Windows interpreter and force UTF-8 output:
+  <code>PYTHONIOENCODING=utf-8 python.exe scripts/fetch_untis.py</code>.
+  Timezone handling needs <code>pip install tzdata</code> on Windows.
+</div>
+
+<h3 id="production">Production (Proxmox LXC)</h3>
+<p>Deploy with <code>rsync</code>, run the web server under systemd, and schedule the
+   fetch scripts with cron.</p>
+<pre><code>rsync -avz --exclude='.claude' --exclude='.git' --exclude='data/' \
+      --exclude='config.env' \
+      ./ root@&lt;lxc-ip&gt;:/var/www/supplierplan/</code></pre>
+<div class="note">
+  <strong>Security-critical exclusion.</strong> <code>config.env</code> is deliberately
+  <em>not</em> deployed into the web root. <code>http.server</code> would serve every
+  file in the directory — including the WebUntis password and Cloudflare token. Place it
+  outside the web root instead:
+  <pre><code>mkdir -p /etc/supplierplan
+# copy config.env once to /etc/supplierplan/config.env, then:
+chmod 600 /etc/supplierplan/config.env</code></pre>
+  The scripts locate it via the <code>SUPPLIERPLAN_CONFIG</code> environment variable
+  (set in the crontab). Without it, they fall back to the project root — local
+  development only.
+</div>
+<p>Cron (note the env line shared by both jobs):</p>
+<pre><code>SUPPLIERPLAN_CONFIG=/etc/supplierplan/config.env
+*/5 * * * *  cd /var/www/supplierplan &amp;&amp; /usr/bin/python3 scripts/fetch_untis.py  &gt;&gt; /var/log/supplierplan-untis.log 2&gt;&amp;1
+*   * * * *  cd /var/www/supplierplan &amp;&amp; /usr/bin/python3 scripts/fetch_trains.py &gt;&gt; /var/log/supplierplan-trains.log 2&gt;&amp;1</code></pre>
+<div class="note">
+  <strong>Timezone caveat.</strong> If the host runs in UTC and the <code>tzdata</code>
+  package is missing, the “today” calculation is wrong after ~22:00 local. On Debian
+  LXCs run <code>apt install tzdata</code>.
+</div>
+
+<h3 id="tray">Windows tray app</h3>
+<p>
+  As an alternative to the LXC + cron setup, <code>tray/</code> is a Windows tray
+  application (packaged as a PyInstaller <code>.exe</code>) that calls the
+  <code>main()</code> of both fetch scripts on timers and runs a hardened local web
+  server. It serves only the <code>web/</code> directory and is reachable on the LAN at
+  <code>http://&lt;pc-ip&gt;:&lt;SERVER_PORT&gt;</code>. Cloudflare is optional.
+</p>
+<p>
+  Output is redirected into a writable data directory (next to the <code>.exe</code> or
+  <code>%LOCALAPPDATA%\Supplierplan</code>) via <code>SUPPLIERPLAN_CONFIG</code>,
+  <code>SUPPLIERPLAN_WEBROOT</code> and <code>SUPPLIERPLAN_DATA</code> — so
+  <code>config.env</code> never sits inside the served <code>web/</code> directory.
+  Configuration is a tkinter window writing <code>config.env</code>; a green/red tray
+  icon shows status; autostart is via an HKCU Run entry.
+</p>
+<p>Build (on a developer PC with Python):</p>
+<pre><code>pip install pyinstaller pystray pillow
+python tray/build.py
+# → dist/Supplierplan/  (portable)  and, if Inno Setup is present,
+#   dist/Supplierplan-Setup.exe</code></pre>
+
+<h2 id="config">Configuration</h2>
+<p>
+  Everything school-specific is a key in <code>config.env</code> — there is never a need
+  to edit code for a new school. The README holds the full reference table; the most
+  important groups:
+</p>
+<table>
+  <tr><th>Group</th><th>Keys</th><th>Purpose</th></tr>
+  <tr><td>WebUntis access</td><td><code>UNTIS_URL</code>, <code>UNTIS_SCHOOL_ID</code>, <code>UNTIS_USER</code>, <code>UNTIS_PASSWORD</code>, <code>UNTIS_DEPARTMENT_ID</code></td><td>Login for the read-only service account and optional department filter.</td></tr>
+  <tr><td>Branding</td><td><code>SCHOOL_NAME</code>, <code>SCHOOL_TYPE</code>, <code>SCHOOL_LOCATION</code>, <code>PLAN_TITLE</code>, <code>LOGO_FILE</code>, <code>SHOW_LOGO</code>, <code>THEME</code>, <code>SHOW_CLOCK</code></td><td>Header/footer text, logo, dark/light theme, clock.</td></tr>
+  <tr><td>Display tuning</td><td><code>SHOW_TOMORROW_AFTER</code>, <code>TIMEZONE</code>, <code>COMPACT_COL_WIDTH_PX</code>, <code>MAX_COLUMNS</code></td><td>When to show the next day, timezone, compact-mode threshold, column cap.</td></tr>
+  <tr><td>Overflow</td><td><code>OVERFLOW_SCALE</code>, <code>OVERFLOW_SCALE_MIN</code>, <code>OVERFLOW_REDUCE</code>, <code>OVERFLOW_PAGINATE</code>, <code>OVERFLOW_PAGE_SECONDS</code></td><td>Staged fit strategy when the plan is too big — see <a href="#overflow">Overflow strategy</a>.</td></tr>
+  <tr><td>WebUntis tuning</td><td><code>SKIP_TEACHERS</code>, <code>TEXT_BADGES</code></td><td>School-specific pseudo teachers and remark codes shown as badges.</td></tr>
+  <tr><td>Cloudflare purge</td><td><code>CLOUDFLARE_ZONE_ID</code>, <code>CLOUDFLARE_API_TOKEN</code>, <code>CLOUDFLARE_HOST</code></td><td>Optional cache purge after each successful run.</td></tr>
+  <tr><td>Train widget</td><td><code>TRAIN_STATION</code>, <code>TRAIN_DIR_TOWARDS</code>, <code>TRAIN_PER_DIRECTION</code>, <code>TRAIN_PRODUCTS</code>, <code>TRAIN_DISABLED</code></td><td>Nearby railway station departures — see <a href="#trains">Train widget</a>.</td></tr>
+</table>
+<div class="note">
+  <strong>Claude / contributors:</strong> <code>config.env</code> contains secrets and is
+  never read or quoted. To document a new variable, edit only
+  <code>config.env.example</code>.
+</div>
+
+<h2 id="multitenant">Multi-tenant (other schools)</h2>
+<p>
+  The project is multi-tenant by design: <strong>a new school needs only its own
+  <code>config.env</code> and a logo — no code changes.</strong>
+</p>
+<ol>
+  <li>Clone and create <code>config.env</code> from <code>config.env.example</code>.</li>
+  <li>Enter WebUntis access (ideally a dedicated read-only service account).</li>
+  <li>Branding: <code>SCHOOL_NAME</code>, <code>SCHOOL_TYPE</code>, <code>SCHOOL_LOCATION</code>, <code>PLAN_TITLE</code>; drop in a logo and set <code>LOGO_FILE</code> + <code>SHOW_LOGO=true</code>.</li>
+  <li>Region: adjust <code>TIMEZONE</code>. The train widget is ÖBB-specific — outside Austria set <code>TRAIN_DISABLED=true</code>.</li>
+  <li>WebUntis quirks: list local pseudo teachers in <code>SKIP_TEACHERS</code> and remark codes in <code>TEXT_BADGES</code>; set <code>UNTIS_DEPARTMENT_ID</code> if departments are used.</li>
+  <li>Schedule cron — <code>index.html</code> <em>and</em> <code>manifest.json</code> are generated from the config on every run.</li>
+</ol>
+
+<h2 id="internals">Technical internals</h2>
+
+<h3 id="api">WebUntis API</h3>
+<p>Server <code>https://&lt;school&gt;.webuntis.com</code>, JSON-RPC. Methods in active use:</p>
+<table>
+  <tr><th>Method</th><th>Purpose</th></tr>
+  <tr><td><code>authenticate</code> / <code>logout</code></td><td>Cookie-based session login/logout.</td></tr>
+  <tr><td><code>getTeachers</code></td><td>Teacher lookup (short code → first/last name).</td></tr>
+  <tr><td><code>getHolidays</code></td><td>Holidays/breaks for the “next school day” logic.</td></tr>
+  <tr><td><code>getTimegridUnits</code></td><td>Period grid (clock times of periods 0–10).</td></tr>
+  <tr><td><code>getLatestImportTime</code></td><td>Untis' own timestamp of the last change.</td></tr>
+  <tr><td><code>getSubstitutions(start, end, departmentId)</code></td><td><strong>The main data: the substitution plan.</strong></td></tr>
+  <tr><td><code>weekly/data</code> (REST)</td><td>Per-teacher day detail for full-vs-partial absence — see below.</td></tr>
+</table>
+<h4>Processed fields from <code>getSubstitutions</code></h4>
+<ul>
+  <li><code>type</code> → <code>subst</code>, <code>cancel</code>, <code>roomchange</code>, <code>free</code></li>
+  <li><code>startTime</code>/<code>endTime</code> → period number via the timegrid</li>
+  <li><code>kl[].name</code> → class(es), deduplicated</li>
+  <li><code>te[].name/.orgid/.orgname</code> → teacher + substitute (original struck through)</li>
+  <li><code>su[].name</code> → subject (shown even without a class, e.g. <code>TO (SIB)</code>)</li>
+  <li><code>ro[].name/.orgid/.orgname</code> → room + room change (original struck through)</li>
+  <li><code>txt</code> → remark text; badges only for the codes in <code>TEXT_BADGES</code></li>
+  <li><code>lstype == "bs"</code> → break supervision (rendered distinctly)</li>
+</ul>
+<div class="note">
+  <strong>The <code>orgid</code> signal.</strong> Across teacher and room entries,
+  <code>orgid</code> is the key marker that “something was replaced.” Its presence drives
+  almost every decision below: a substitute, a room change, or an inferred absence.
+</div>
+
+<h3 id="processing">Substitution processing</h3>
+<p>
+  <code>process_substitutions()</code> turns the raw API list into display rows. Two
+  filter stages ensure only <em>real</em> changes are shown.
+</p>
+<h4>Filter A — substitution level (<code>_is_meaningful_subst</code>)</h4>
+<p>A period is processed only if at least one of these holds:</p>
+<ul>
+  <li><code>type</code> is <code>cancel</code> or <code>free</code>, or</li>
+  <li>some <code>te[]</code> entry has an <code>orgid</code> (someone is absent / substituting), or</li>
+  <li>some <code>ro[]</code> entry has an <code>orgid</code> (room change).</li>
+</ul>
+<p>→ Regular lessons without a substitution (e.g. co-teacher mentions in break
+   supervisions with no <code>orgid</code> at all) are skipped entirely.</p>
+<h4>Filter B — teacher level</h4>
+<p>
+  When an explicit substitute (<code>orgid</code> present, name not in
+  <code>SKIP_NAMES</code>) is in <code>te[]</code>, other teachers without an
+  <code>orgid</code> are dropped as co-teachers. → Eliminates team-teaching duplicates
+  where the substitute appears twice (with and without <code>orgid</code>).
+</p>
+
+<h4>Heuristic: <code>---</code> / <code>Z Entfall</code> as a predecessor marker</h4>
+<p>
+  Pattern <code>te=[---/SaF, BuL]</code> means SaF is absent and BuL is present. For a
+  teacher with no <code>orgid</code>, the <code>orgname</code> from the <code>---</code>
+  entry is adopted as the original code → display <code>SaF&nbsp;→&nbsp;BuL</code>.
+</p>
+<h4>Heuristic: FDKM-style cancellation without a substitute</h4>
+<p>
+  For <em>every</em> teacher inferred absent via a <code>---</code> / <code>Z Entfall</code>
+  marker who is not already really covered, a <strong>virtual row</strong> is emitted:
+  short code = the absent teacher, art = <code>cancel</code>,
+  <code>kuerzel_absent=True</code> (render: struck-through name only, no arrow).
+</p>
+<div class="why">
+  <strong>Why this is subtle.</strong> It also fires in <em>mixed</em> entries, where a
+  real substitute covers a <em>different</em> teacher in the same period
+  (e.g. supervision <code>te=[LaI, SeM←FaM, Z&nbsp;Entfall←BrH]</code>: SeM covers FaM,
+  BrH is cancelled). An earlier <code>not&nbsp;real_teacher_names</code> guard wrongly
+  suppressed these cancel rows, so supervisions of absent teachers vanished on project
+  days. The fix tracks <code>covered_orgs</code> (every really-covered
+  <code>orgname</code>) to avoid duplicate/false cancellations for genuinely covered
+  teachers, without suppressing the legitimate ones.
+</div>
+<h4>Supervision type</h4>
+<p>
+  A break supervision (<code>lstype="bs"</code>) keeps <code>cancel</code>/<code>free</code>
+  as its art (→ cancelled section, teacher counts as absent); only a supervision that
+  actually takes place with a replacement becomes <code>pause</code>.
+</p>
+<h4>Separator: arrow vs. dash</h4>
+<ul>
+  <li><code>→</code> for a real substitution (<code>orgid</code> present)</li>
+  <li><code> - </code> for <code>txt = "Vtr. ohne Lehrer"</code> (no real substitute; the teacher is only the class's form teacher)</li>
+</ul>
+
+<h3 id="absence">Absence bars (full vs. partial)</h3>
+<p>
+  Each section shows an “absent teachers” bar at the top. Sources: <code>te[].orgname</code>
+  with <code>orgid</code> (the covered teacher is absent), <code>kuerzel_absent=True</code>
+  (FDKM-style), and <code>art="cancel"</code> (cancellation ⇒ teacher absent).
+</p>
+<p>Whether a teacher is shown as <strong>fully</strong> or <strong>partially</strong> absent
+   is data-driven, not heuristic:</p>
+<ul>
+  <li><strong>Fully absent → short code only</strong> (no period range). School convention.</li>
+  <li><strong>Partially absent → range <code>min–max</code></strong> of the missing periods
+      (e.g. <code>WöR&nbsp;(5–9)</code>); a single period → just the number (<code>SaI&nbsp;(6)</code>).</li>
+</ul>
+<p>
+  <code>determine_full_absent()</code> calls
+  <code>get_teacher_present_periods(teacher_id, date)</code> per absent teacher, hitting
+  the REST endpoint <code>weekly/data?elementType=2&amp;elementId=&lt;id&gt;</code>. If the
+  teacher has <em>no</em> period that day with <code>cellState ∈ {STANDARD,
+  BREAKSUPERVISION}</code>, they are fully absent → short code only. Otherwise →
+  partially absent → range.
+</p>
+<div class="why">
+  <strong>Why a separate call is needed.</strong> The substitution plan only contains
+  periods <em>with a change</em>, not the whole day — so it cannot tell whether
+  <code>1–5</code> is the full day or just the morning. Hence the extra
+  <code>weekly/data</code> call.
+</div>
+<div class="note">
+  <strong>Two field gotchas.</strong> Use <code>cellState</code>, <em>not</em>
+  <code>state</code> — the element-level <code>state</code> reads <code>REGULAR</code> even
+  for cancelled periods and is unusable. And <code>elementId=0</code> is a phantom
+  (returns arbitrary days) — always pass the real teacher ID. (<code>get_weekly_class_absences</code>
+  still uses <code>elementId=0</code> for classes and is therefore unreliable — a known TODO.)
+</div>
+<p>Cost: one REST call per absent teacher per displayed day. On API error or unknown ID,
+   the teacher safely falls back to the range display.</p>
+
+<h3 id="render">Render pipeline</h3>
+<h4>Data-driven columns</h4>
+<p>
+  Table columns are defined once in a single list <code>COLUMNS</code> — tuples of
+  <code>(key, header, css_class, cell_fn)</code>. <code>COLGROUP</code>, <code>THEAD</code>
+  and every data row (<code>render_row</code>) are generated from it, so reordering the
+  table is a one-place change. The section header's <code>colspan</code> uses
+  <code>NCOLS = len(COLUMNS)</code>. Current order:
+  <em>(stripe) · period · subject · class · teacher · art · room · text</em>.
+  Column widths stay in CSS (class-based), independent of order.
+</p>
+<h4>Teacher grouping &amp; the cancelled section</h4>
+<p>
+  Rows are grouped by the <em>current</em> teacher short code, one header per group
+  (<code>&lt;CODE&gt; First Last</code>). All <code>art=cancel</code> rows are pulled
+  <em>out</em> of the teacher groups into a single <em>“Entfallende Stunden”</em>
+  (cancelled lessons) section at the end of the day.
+</p>
+<div class="why">
+  <strong>Why split out cancellations.</strong> A teacher who only had cancellations
+  (e.g. NeS for FDKM) would otherwise get a whole group headline for nothing. In the
+  cancelled section the information stays compact, with the (struck-through) short code
+  in the teacher column.
+</div>
+
+<h3 id="layout">Multi-column layout (browser-side)</h3>
+<p>
+  The server emits the list as a <strong>flat table</strong>: one
+  <code>&lt;tbody data-block="teacher"&gt;</code> per teacher and one
+  <code>&lt;tbody data-block="cancel"&gt;</code> per cancellation row. A JavaScript
+  layout engine measures the available space after <code>DOMContentLoaded</code> and
+  distributes the blocks across 1–4 columns with a first-fit-min strategy, setting
+  <code>.cols-N</code> on the <code>.layout-wrapper</code>. From <code>.cols-3</code>,
+  CSS switches art badges to round single letters (V/E/R/F/P).
+</p>
+<p>
+  The cancelled rows flow <em>after</em> all teacher blocks into the greedy fill
+  (<code>distributeGreedy</code>) and break at the real column boundaries. The engine
+  generates the section header itself (<code>makeCancelHeader</code>), once per column:
+  the first affected column gets “Entfallende Stunden”, further columns get
+  “… (Forts.)”. Each column with cancellations reserves <code>CANCEL_HEADER_H</code> px
+  for the later-inserted header, so even very many cancellations (whole absent classes
+  on project days) spread cleanly instead of overflowing one column.
+</p>
+<p>
+  Re-layout runs on resize (250 ms debounced) and on every reload. Reading order is
+  top-left → bottom-left → top-right → bottom-right. The column cap is
+  <code>MAX_COLUMNS</code> (1–4); compact mode triggers when the actual column width is
+  below <code>COMPACT_COL_WIDTH_PX</code>.
+</p>
+<div class="note">
+  The layout math has a testable Python mirror in <code>scripts/_layout_logic.py</code>
+  (<code>fit_scale</code>, <code>distribute_uncapped</code>, <code>paginate_columns</code>),
+  kept in sync with the JS engine.
+</div>
+
+<h3 id="overflow">Overflow strategy</h3>
+<p>
+  When the plan is too full for the screen, a staged strategy kicks in — each stage
+  individually switchable, “tomorrow” stays visible at every stage:
+</p>
+<ol>
+  <li><strong>Scale</strong> (<code>OVERFLOW_SCALE</code>, min factor <code>OVERFLOW_SCALE_MIN</code> ≈ 0.65): shrink the whole board.</li>
+  <li><strong>Reduce</strong> (<code>OVERFLOW_REDUCE</code>): drop the text column, then compact the cancelled section.</li>
+  <li><strong>Paginate</strong> (<code>OVERFLOW_PAGINATE</code>, <code>OVERFLOW_PAGE_SECONDS</code> ≈ 12): page through the content.</li>
+</ol>
+<p>
+  Logic lives in the JS <code>applyLayout</code>/<code>layoutAll</code>, with the testable
+  mirror in <code>_layout_logic.py</code>, parsing in <code>parse_overflow_config</code>,
+  and config injected as <code>window.OVERFLOW</code>.
+</p>
+
+<h3 id="trains">Train widget (separate data flow)</h3>
+<p>
+  <code>fetch_trains.py</code> POSTs to <code>https://fahrplan.oebb.at/bin/mgate.exe</code>
+  — the direct JSON API the ÖBB app itself uses — and writes
+  <code>data/trains.json</code> atomically (the old file survives on error). The browser
+  fetches it every 60 s and fills <code>#train-widget</code> in the header.
+</p>
+<p>
+  Controlled by <code>TRAIN_*</code> variables. If <code>TRAIN_STATION</code> is empty or
+  <code>TRAIN_DISABLED=true</code>, the widget is not built into the HTML at all.
+  <code>TRAIN_DIR_TOWARDS</code> classifies each departure as “towards the city” vs.
+  “away”; <code>TRAIN_PER_DIRECTION</code> caps the count; <code>TRAIN_PRODUCTS</code>
+  filters by line prefix (e.g. only S-Bahn).
+</p>
+
+<h3 id="refresh">Refresh &amp; caching</h3>
+<ul>
+  <li><code>&lt;meta http-equiv="refresh" content="300"&gt;</code> as a JS-disabled fallback.</li>
+  <li>JS: clock tick every second; <code>location.reload()</code> every 60 s (soft); every 5th tick a hard reload with <code>?cb=&lt;timestamp&gt;</code> cache-bust (CSS/images re-fetched).</li>
+  <li>HTTP header <code>Cache-Control: no-cache, no-store, must-revalidate</code>.</li>
+  <li>Optional Cloudflare cache purge after each successful <code>index.html</code> write — purges only <code>CLOUDFLARE_HOST</code> if set, otherwise the whole zone.</li>
+</ul>
+
+<h2 id="security">Security</h2>
+<ul>
+  <li><strong>XSS:</strong> every value from the WebUntis API is escaped with
+      <code>esc()</code> (= <code>html.escape</code>) before entering HTML — including
+      fallbacks (“—”) and new fields. Each cell function escapes its own values.</li>
+  <li><strong>Secrets:</strong> <code>config.env</code> holds the WebUntis password and
+      Cloudflare token. It is gitignored, never deployed into the web root, and never
+      read or quoted by the assistant. New variables are documented only in
+      <code>config.env.example</code>.</li>
+  <li><strong>HTTP:</strong> all Untis requests use <code>timeout=15</code>; the login
+      cookie is invalidated via guaranteed <code>logout</code>.</li>
+</ul>
+
+<h2 id="tests">Tests</h2>
+<pre><code>python3 -m unittest discover tests -v</code></pre>
+<p>
+  Pure-logic unit tests cover <code>fetch_trains.py</code> (<code>classify_direction</code>,
+  <code>extract_departure</code>, <code>split_by_direction</code>,
+  <code>atomic_write_json</code>, <code>load_config</code>,
+  <code>filter_by_product_prefix</code>) and the layout mirror in
+  <code>scripts/_layout_logic.py</code>.
+</p>
+
+</main>
+
+<footer>
+  Supplierplan Display — technical documentation. Companion to the
+  <a href="../README.md">README</a>; the authoritative reference is
+  <code>CLAUDE.md</code> and the source.
+</footer>
+
+</body>
+</html>
