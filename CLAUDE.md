@@ -1,5 +1,13 @@
 # Projekt: Supplierplan-Anzeige – MS Roda-Roda-Gasse Wien
 
+> 🧭 **Erst die Code-Map, dann den Code.** Bevor du eine Funktion suchst oder eine
+> große Datei (z.B. `scripts/fetch_untis.py`, 2000+ Zeilen) komplett liest, konsultiere
+> **[`docs/CODEMAP.md`](docs/CODEMAP.md)** — ein auto-generierter Index aller Funktionen
+> (Signatur, Zeilennummer, Docstring-Zeile). So springst du gezielt zur richtigen Stelle.
+> Die Datei wird von `scripts/gen_codemap.py` erzeugt und bei jedem Commit per
+> pre-commit-Hook neu generiert — also nie von Hand editieren. Das *Warum* (Heuristiken,
+> Design-Entscheidungen) steht hier in der CLAUDE.md, die tiefe Doku in `docs/index.html`.
+
 ## Projektübersicht
 Selbst gehostete Webanzeige für den Supplierplan unserer Schule (MS Roda-Roda-Gasse,
 1210 Wien) als Ersatz für die WebUntis-Monitor-Ansicht. Läuft auf einem dedizierten

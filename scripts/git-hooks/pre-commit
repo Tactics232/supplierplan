@@ -1,0 +1,27 @@
+#!/bin/sh
+# Auto-regenerate docs/CODEMAP.md before each commit and stage it.
+# Installed from scripts/install-hooks.sh — see CLAUDE.md (Code-Map).
+#
+# Finds a working Python: $SUPPLIERPLAN_PYTHON, then python3, then the known
+# Windows interpreter used on this WSL setup (WSL itself has no python3).
+
+set -e
+
+ROOT="$(git rev-parse --show-toplevel)"
+
+PY=""
+if [ -n "$SUPPLIERPLAN_PYTHON" ]; then
+  PY="$SUPPLIERPLAN_PYTHON"
+elif command -v python3 >/dev/null 2>&1; then
+  PY="python3"
+elif command -v python >/dev/null 2>&1; then
+  PY="python"
+elif [ -x "/mnt/c/Users/Admin/AppData/Local/Python/bin/python.exe" ]; then
+  PY="/mnt/c/Users/Admin/AppData/Local/Python/bin/python.exe"
+else
+  echo "pre-commit: no Python found — skipping CODEMAP regeneration" >&2
+  exit 0
+fi
+
+PYTHONIOENCODING=utf-8 "$PY" "$ROOT/scripts/gen_codemap.py" >&2
+git add "$ROOT/docs/CODEMAP.md"
