@@ -241,6 +241,45 @@ def find_current_period(timegrid):
             return nr, fmt_time(s), fmt_time(e)
     return None, None, None
 
+def lesson_indicator(timegrid, now_t, today, holiday_set):
+    """Zustand für den Header-„Laufende/Nächste Stunde"-Block (ADR 0001).
+
+    Gibt die gerade laufende Stunde zurück, sonst die nächste — rollend in den
+    nächsten Schultag, wenn heute keine mehr kommt. Nie „leer": einziges None ist
+    ein leeres Zeitraster (dann wird das Element weggelassen).
+
+    Rückgabe-dict:
+      state         : "running" | "upcoming"
+      nr            : Stundennummer (wie im Plan)
+      start, end    : "HH:MM"
+      day_offset    : 0 = heute, >0 = künftiger Schultag (Kalendertage Differenz)
+      weekday_short : Wochentag-Kürzel des Tages (nur bei day_offset > 0)
+    """
+    if not timegrid:
+        return None
+    periods = sorted(timegrid.values(), key=lambda t: t[1])  # nach Startzeit
+    school_today = today.weekday() < 5 and today not in holiday_set
+
+    if school_today:
+        # Läuft gerade eine Stunde?
+        for nr, s, e in periods:
+            if s <= now_t <= e:
+                return {"state": "running", "nr": nr,
+                        "start": fmt_time(s), "end": fmt_time(e), "day_offset": 0}
+        # Sonst: nächste Stunde heute?
+        for nr, s, e in periods:
+            if s > now_t:
+                return {"state": "upcoming", "nr": nr,
+                        "start": fmt_time(s), "end": fmt_time(e), "day_offset": 0}
+
+    # Heute nichts mehr (oder kein Schultag) → erste Stunde des nächsten Schultags
+    nxt = next_school_day(today, holiday_set)
+    nr, s, e = periods[0]
+    return {"state": "upcoming", "nr": nr,
+            "start": fmt_time(s), "end": fmt_time(e),
+            "day_offset": (nxt - today).days,
+            "weekday_short": WEEKDAYS_SHORT[nxt.weekday()]}
+
 def now_hhmm():
     n = now_local()
     return n.hour * 100 + n.minute
@@ -269,6 +308,66 @@ def next_school_day(start, holiday_set):
     while d.weekday() >= 5 or d in holiday_set:
         d += timedelta(days=1)
     return d
+
+def _usable_holiday_name(name):
+    """Untis-`name` nur wenn menschenlesbar: enthält Buchstaben UND ist nicht das
+    generische `FerienN`. Sonst None (→ Fallback Feiertag/Ferien).
+    `longName` wird bewusst ignoriert (stale, falsches Jahr — siehe CONTEXT.md)."""
+    name = (name or "").strip()
+    if not any(c.isalpha() for c in name):
+        return None            # reine Datums-Namen wie "1.1."
+    if re.fullmatch(r"Ferien\d+", name):
+        return None            # generisch benannte Ferien
+    return name
+
+def build_holiday_info(holidays):
+    """Untis-Ferienliste → dict[date] -> (name|None, is_multiday).
+    Additiv zu parse_holidays; liefert die Anzeige-Namen für übersprungene Tage."""
+    info = {}
+    if not holidays:
+        return info
+    for h in holidays:
+        try:
+            start = datetime.strptime(str(h["startDate"]), "%Y%m%d").date()
+            end   = datetime.strptime(str(h["endDate"]),   "%Y%m%d").date()
+        except (KeyError, ValueError):
+            continue
+        name = _usable_holiday_name(h.get("name"))
+        is_multiday = end > start
+        d = start
+        while d <= end:
+            info[d] = (name, is_multiday)
+            d += timedelta(days=1)
+    return info
+
+def skipped_free_days(today, next_day, holiday_info):
+    """Liste der zwischen `today` und `next_day` (exklusiv) übersprungenen FREIEN
+    Schultage als [(label, span_str), …]. Wochenenden werden nie angezeigt.
+    Label = Untis-Name (wo brauchbar), sonst Ferien (Block) / Feiertag (Einzeltag).
+    Aufeinanderfolgende Tage gleichen Labels werden zu einer Spanne gemerged
+    (Wochenenden unterbrechen ein Segment nicht)."""
+    segments = []   # [[label, start_date, end_date], …]
+    d = today + timedelta(days=1)
+    while d < next_day:
+        if d.weekday() >= 5:
+            d += timedelta(days=1)
+            continue            # Wochenende: nie anzeigen, Segment nicht brechen
+        name, is_multiday = holiday_info.get(d, (None, False))
+        label = name or ("Ferien" if is_multiday else "Feiertag")
+        if segments and segments[-1][0] == label:
+            segments[-1][2] = d
+        else:
+            segments.append([label, d, d])
+        d += timedelta(days=1)
+
+    out = []
+    for label, s, e in segments:
+        if s == e:
+            span = WEEKDAYS_SHORT[s.weekday()]
+        else:
+            span = f"{WEEKDAYS_SHORT[s.weekday()]}–{WEEKDAYS_SHORT[e.weekday()]}"
+        out.append((label, span))
+    return out
 
 # ── Lehrer-Lookup ─────────────────────────────────────
 # "---" und "" sind strukturelle Untis-Platzhalter (immer überspringen).
@@ -937,7 +1036,7 @@ def parse_overflow_config(config):
 
 
 def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
-                  teacher_lookup, period_nr, period_start, period_end,
+                  teacher_lookup, indicator,
                   show_logo=False, import_time=None, train_enabled=False,
                   today_classes_override=None, tomorrow_classes_override=None,
                   today_teachers_override=None, tomorrow_teachers_override=None,
@@ -946,7 +1045,7 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
                   school_location="", show_clock=True,
                   tz_name="Europe/Vienna", theme="dark",
                   today_full_absent=None, tomorrow_full_absent=None,
-                  overflow_cfg=None):
+                  overflow_cfg=None, tomorrow_skipped=None):
 
     overflow_cfg = overflow_cfg or parse_overflow_config({})
     logo_html = f'<div class="logo"><img src="{esc(LOGO_FILE)}" alt="Logo"></div>\n            ' if show_logo else ''
@@ -970,21 +1069,27 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
     upd_str  = now.strftime("%H:%M Uhr")
     css_v    = int(now.timestamp())  # Cache-Bust: erzwingt frische CSS bei jeder Neugenerierung
 
-    if period_nr is not None:
+    # Lesson indicator (ADR 0001): laufende oder nächste Stunde, nie „leer".
+    # Nur bei leerem Zeitraster (indicator None) entfällt das Element ganz.
+    if indicator is None:
+        period_block = ''
+    else:
+        running = indicator["state"] == "running"
+        label   = "Laufende Stunde" if running else "Nächste Stunde"
+        dot_cls = "period-dot running" if running else "period-dot next"
+        if running:
+            time_str = f'{indicator["start"]} – {indicator["end"]}'
+        elif indicator.get("day_offset", 0) > 0:
+            time_str = f'{esc(indicator["weekday_short"])} {indicator["start"]}'
+        else:
+            time_str = f'ab {indicator["start"]}'
         period_block = (
             f'<div class="current-period">'
-            f'<span class="period-label">Laufende Stunde</span>'
-            f'<span class="period-value"><span class="period-dot"></span>{period_nr}. Stunde</span>'
-            f'<span class="period-time">{period_start} – {period_end}</span>'
+            f'<span class="period-label">{label}</span>'
+            f'<span class="period-value"><span class="{dot_cls}"></span>'
+            f'{indicator["nr"]}.<span class="period-unit"> Stunde</span></span>'
+            f'<span class="period-time">{time_str}</span>'
             f'</div>'
-        )
-    else:
-        period_block = (
-            '<div class="current-period">'
-            '<span class="period-label">Laufende Stunde</span>'
-            '<span class="period-value">—</span>'
-            '<span class="period-time">&nbsp;</span>'
-            '</div>'
         )
 
     # Uhr + Datum (optional via SHOW_CLOCK); Divider nur wenn Uhr sichtbar.
@@ -1056,18 +1161,42 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
             f'<div class="day-title-bar"><span class="day-title-text">{esc(day_label)}</span></div>'
             if show_today else ''
         )
+        # Übersprungene freie Schultage (CONTEXT.md „Skipped day"): nur wenn eine
+        # Lücke mit benanntem/freiem Tag existiert. Wochenenden tauchen nie auf.
+        skipped_html = ''
+        if tomorrow_skipped:
+            chips = " · ".join(
+                f'<span class="skip-day">{esc(span)} ({esc(label)})</span>'
+                for label, span in tomorrow_skipped
+            )
+            skipped_html = (
+                f'<div class="skipped-days">'
+                f'<span class="skip-lead">übersprungen</span> {chips}'
+                f'</div>'
+            )
         tomorrow_section = (
             f'<div class="plan-section tomorrow-section">'
             f'{title_bar_html}'
+            f'{skipped_html}'
             f'{render_summary_bar(tom_absent, tom_classes)}'
             f'{build_day_content(groups_tomorrow, teacher_lookup, "tomorrow")}'
             f'</div>'
         )
 
     if not show_today and not show_tomorrow:
+        # Leer = gute Nachricht: keine Vertretungen, regulärer Unterricht
+        # (CONTEXT.md „Empty state"). Mit Untis-Datenstand.
+        if import_time:
+            stand = f'Stand: {import_time.strftime("%d.%m.%Y, %H:%M")} Uhr'
+        else:
+            stand = 'nach aktuellem Stand'
         main_content = (
             '<div class="plan-section">'
-            f'<div class="empty-state"><p>Kein {esc(PLAN_TITLE)} verfügbar</p></div>'
+            '<div class="empty-state center">'
+            '<div class="empty-check" aria-hidden="true">✓</div>'
+            '<p class="empty-title">Keine Vertretungen</p>'
+            f'<p class="empty-stand">{esc(stand)}</p>'
+            '</div>'
             '</div>'
         )
     else:
@@ -1990,6 +2119,7 @@ def main():
         break_lookup   = build_break_lookup(grid_raw)
         teacher_lookup = build_teacher_lookup(teachers)
         holiday_set    = parse_holidays(holidays_raw)
+        holiday_info   = build_holiday_info(holidays_raw)
 
         now_t   = now_hhmm()
         today   = today_local()
@@ -2033,6 +2163,7 @@ def main():
         tom_rows        = []
         tomorrow_absent_classes_override = []
         tomorrow_absent_teachers_override = []
+        tomorrow_skipped = []
 
         if show_tomorrow:
             tomorrow      = next_school_day(today, holiday_set)
@@ -2045,6 +2176,11 @@ def main():
 
             tomorrow_absent_teachers_override, tomorrow_absent_classes_override = absences_for(tomorrow)
 
+            # Übersprungene freie Schultage zwischen heute und nächstem Schultag
+            # (nur bei echter Lücke; Wochenenden werden nie angezeigt).
+            if (tomorrow - today).days > 1:
+                tomorrow_skipped = skipped_free_days(today, tomorrow, holiday_info)
+
         # Cache nur schreiben, wenn neu gesweept (Refresh oder Self-Heal). Alte Tage
         # (< heute) dabei wegputzen, damit data/absences.json nicht wächst.
         if _cache_state["dirty"]:
@@ -2052,7 +2188,7 @@ def main():
             pruned = {k: v for k, v in absence_cache.items() if k >= today_key}
             save_absence_cache(pruned)
 
-        period_nr, p_start, p_end = find_current_period(timegrid)
+        indicator = lesson_indicator(timegrid, now_t, today, holiday_set)
 
         today_count   = sum(len(v) for v in groups_today.values())
         tomorrow_count = sum(len(v) for v in groups_tomorrow.values())
@@ -2085,7 +2221,7 @@ def main():
         overflow_cfg = parse_overflow_config(config)
         html = generate_html(
             groups_today, groups_tomorrow, today, tomorrow_date,
-            teacher_lookup, period_nr, p_start, p_end,
+            teacher_lookup, indicator,
             show_logo=show_logo,
             import_time=import_time,
             train_enabled=bool(train_enabled),
@@ -2102,6 +2238,7 @@ def main():
             tz_name=tz_name,
             theme=theme,
             overflow_cfg=overflow_cfg,
+            tomorrow_skipped=tomorrow_skipped,
         )
         out = resolve_webroot() / "index.html"
         out.write_text(html, encoding="utf-8")

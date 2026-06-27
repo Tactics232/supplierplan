@@ -259,6 +259,31 @@ stattfindende Aufsichts-Vertretung wird zu `pause`.
 - **Solo-Morgen (heute leer):**
   Das Datum-Label wandert nach oben ins `plan-tag` (in hellblau `#6aacf0`),
   die `day-title-bar` über der Tabelle entfällt.
+- **Übersprungene freie Schultage** (`skipped_free_days` + `build_holiday_info`):
+  dezente Sub-Zeile unter dem „Nächster Schultag"-Titel, **nur** wenn die Lücke
+  einen freien Schultag enthält (Feiertag/Ferien/schulautonom). **Wochenenden
+  werden nie angezeigt.** Label = Untis-`name` wo menschenlesbar, sonst Fallback
+  `Feiertag` (Einzeltag) / `Ferien` (Block); gleiche Gründe werden zu einer Spanne
+  gemerged. ⚠️ Der Untis-`longName` ist unbrauchbar (stale, falsches Jahr) → nur
+  `name` + `startDate`/`endDate`. Vokabular: CONTEXT.md „Skipped day".
+
+### Lesson indicator (Header „Laufende/Nächste Stunde")
+`lesson_indicator(timegrid, now_t, today, holiday_set)` ersetzt das alte
+`find_current_period` am Aufrufer. Es ist **immer sichtbar** (kein „—" mehr): läuft
+gerade eine Stunde → „Laufende Stunde" (gefüllter Puls-Punkt), sonst die **nächste**
+Stunde → „Nächste Stunde" (hohler Punkt). Nach der letzten Stunde / an Nicht-Schul-
+tagen rollt es auf die 1. Stunde des nächsten Schultags (`day_offset>0`, Zeit als
+`Mo 08:00`; gleicher Tag → `ab 08:15`). Einziges Ausblenden: leeres Zeitraster
+(`indicator is None`). **Warum** (bewusste Umkehr der ursprünglichen „nur an
+Schultagen"-Idee): siehe `docs/adr/0001-lesson-indicator-always-visible.md`.
+Mobil (≤600px) kollabiert das Element auf **Punkt + Zahl** (`● 3.`): `.period-unit`
+(„ Stunde") und `.period-time` sind ausgeblendet.
+
+### Leer-Zustand (keine Vertretungen)
+Wenn **weder** heute **noch** der nächste Schultag Zeilen haben: mittiger, on-brand
+Panel mit ✓, „Keine Vertretungen" und Untis-Datenstand („Stand: … Uhr", Fallback
+„nach aktuellem Stand"). Das ist eine **gute Nachricht** (regulärer Unterricht),
+kein Fehler. Vokabular: CONTEXT.md „Empty state".
 
 ### Layout (CSS)
 - **Heute leer + Morgen vorhanden:** Heute-Section wird komplett ausgeblendet
