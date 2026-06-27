@@ -58,3 +58,21 @@ else the generic "Feiertag" (single day) / "Ferien" (multi-day block). Weekends
 are **not** labelled and never appear in the line.
 _Avoid_: naming weekends here; relying on the Untis `longName` (it is a stale,
 wrong-year date string).
+
+## Tray service
+
+Vocabulary for the local Windows tray application's background service.
+
+**Regulärer Lauf (regular run)**:
+A full board render that **reads** the absence cache rather than re-deriving it.
+The cheap, frequent run. The Empty state, Lesson indicator and substitution rows
+are all produced by it.
+_Avoid_: "refresh" alone — it does not refresh absences.
+
+**Abwesenheits-Lauf (absence run)**:
+A full board render that additionally **forces a fresh weekly/data sweep**,
+rewriting the absence cache. The expensive run (~94 element calls). Fires on a
+small fixed set of clock times and on the manual "Abwesenheiten aktualisieren"
+trigger. A Regulärer Lauf falls back to one self-healing sweep only when the
+cache is missing the day it needs.
+_Avoid_: "sweep" used for the whole run — the sweep is the absence step inside it.

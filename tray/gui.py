@@ -7,6 +7,7 @@ Feldtypen (kind):
   "choice"   – Dropdown mit festen Optionen (extra = (optionen, default))
 Auswahlfelder verhindern Tippfehler/leere Werte bei Enums und Schaltern.
 """
+import threading
 import tkinter as tk
 from tkinter import ttk
 from pathlib import Path
@@ -45,6 +46,12 @@ TABS = [
         ("SHOW_LOGO", "Logo zeigen", "bool", "false"),
         ("COMPACT_COL_WIDTH_PX", "Compact-Schwelle px", "text", None),
         ("TEXT_BADGES", "Text-Badges", "text", None),
+        ("MAX_COLUMNS", "Max. Spalten", "choice", (["1", "2", "3", "4"], "4")),
+        ("CANCEL_PLACEMENT", "Entfall-Platzierung", "choice",
+         (["section", "inline"], "section")),
+        ("PWA_ORIENTATION", "PWA-Orientierung", "choice",
+         (["any", "natural", "portrait", "landscape", "portrait-primary",
+           "portrait-secondary", "landscape-primary", "landscape-secondary"], "any")),
     ]),
     ("Überlauf", [
         ("OVERFLOW_SCALE", "Skalieren", "bool", "true"),
@@ -88,8 +95,14 @@ def _make_widget(frame, kind, extra, current_value):
 
 
 def open_config_window(config_path, template_path=None, on_saved=None,
-                       test_connection=None):
-    """Öffnet das Fenster (modal). config_path: Pfad zur config.env."""
+                       test_connection=None, on_refresh=None,
+                       on_refresh_absences=None):
+    """Öffnet das Fenster (modal). config_path: Pfad zur config.env.
+
+    Alle Callbacks (on_saved/on_refresh/on_refresh_absences) müssen
+    nicht-blockierend sein bzw. werden vom Fenster in einen Thread gelegt —
+    so friert das GUI bei Netzwerk-Läufen nie ein. `test_connection` liefert
+    ein Ergebnis zurück und wird daher hier threaded + via root.after angezeigt."""
     config_path = Path(config_path)
     current = read_config_env(config_path)
 
@@ -122,20 +135,45 @@ def open_config_window(config_path, template_path=None, on_saved=None,
         write_config_env(collect(), config_path, template=template_path)
         status.config(text="Gespeichert.")
         if on_saved:
-            on_saved()
+            # In Thread, damit ein (evtl. blockierender) Fetch das Fenster nie einfriert.
+            threading.Thread(target=on_saved, daemon=True).start()
 
     def do_test():
         if not test_connection:
             return
+        test_btn.config(state="disabled")
         status.config(text="Teste Verbindung …")
-        root.update_idletasks()
-        ok, msg = test_connection(collect())
-        status.config(text=("OK: " + msg) if ok else ("Fehler: " + msg))
+        values = collect()
+
+        def work():
+            ok, msg = test_connection(values)
+
+            def show():
+                status.config(text=("OK: " + msg) if ok else ("Fehler: " + msg))
+                test_btn.config(state="normal")
+            root.after(0, show)   # zurück in den tkinter-Thread
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def trigger(fn, msg):
+        status.config(text=msg)
+        threading.Thread(target=fn, daemon=True).start()
 
     btns = ttk.Frame(root)
     btns.pack(fill="x", padx=8, pady=8)
+    test_btn = None
     if test_connection:
-        ttk.Button(btns, text="Verbindung testen", command=do_test).pack(side="left")
+        test_btn = ttk.Button(btns, text="Verbindung testen", command=do_test)
+        test_btn.pack(side="left")
+    if on_refresh:
+        ttk.Button(btns, text="Jetzt aktualisieren",
+                   command=lambda: trigger(on_refresh, "Aktualisierung gestartet …")
+                   ).pack(side="left", padx=6)
+    if on_refresh_absences:
+        ttk.Button(btns, text="Abwesenheiten aktualisieren",
+                   command=lambda: trigger(on_refresh_absences,
+                                           "Abwesenheiten-Aktualisierung gestartet …")
+                   ).pack(side="left", padx=6)
     ttk.Button(btns, text="Speichern", command=do_save).pack(side="right")
     ttk.Button(btns, text="Schließen", command=root.destroy).pack(side="right", padx=6)
 

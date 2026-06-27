@@ -107,5 +107,119 @@ class TestServerGuard(unittest.TestCase):
         self.assertFalse(is_path_allowed("/..%2fconfig.env"))
 
 
+from datetime import datetime
+
+from tray.schedule import next_run_time, parse_times
+
+
+class TestNextRunTime(unittest.TestCase):
+    TIMES = ["07:35", "11:00", "16:00"]
+
+    def test_vor_allen_zeiten_heute(self):
+        now = datetime(2026, 6, 27, 6, 0)
+        self.assertEqual(next_run_time(now, self.TIMES),
+                         datetime(2026, 6, 27, 7, 35))
+
+    def test_zwischen_zeiten_naechste_heute(self):
+        now = datetime(2026, 6, 27, 9, 0)
+        self.assertEqual(next_run_time(now, self.TIMES),
+                         datetime(2026, 6, 27, 11, 0))
+
+    def test_nach_allen_zeiten_morgen_frueheste(self):
+        now = datetime(2026, 6, 27, 18, 0)
+        self.assertEqual(next_run_time(now, self.TIMES),
+                         datetime(2026, 6, 28, 7, 35))
+
+    def test_exakt_auf_zeit_nimmt_naechste(self):
+        # Strikt nach now: 11:00 selbst zaehlt nicht, 16:00 ist dran.
+        now = datetime(2026, 6, 27, 11, 0)
+        self.assertEqual(next_run_time(now, self.TIMES),
+                         datetime(2026, 6, 27, 16, 0))
+
+    def test_unsortierte_zeiten_egal(self):
+        now = datetime(2026, 6, 27, 6, 0)
+        self.assertEqual(next_run_time(now, ["16:00", "07:35", "11:00"]),
+                         datetime(2026, 6, 27, 7, 35))
+
+    def test_letzte_zeit_exakt_rollt_auf_morgen(self):
+        now = datetime(2026, 6, 27, 16, 0)
+        self.assertEqual(next_run_time(now, self.TIMES),
+                         datetime(2026, 6, 28, 7, 35))
+
+    def test_leere_liste_wirft(self):
+        with self.assertRaises(ValueError):
+            next_run_time(datetime(2026, 6, 27, 6, 0), [])
+
+
+import tempfile
+import threading
+import time
+
+from tray.service import Service
+
+
+class TestServiceRun(unittest.TestCase):
+    def test_refresh_flag_durchgereicht_und_serialisiert(self):
+        from scripts import fetch_untis
+        with tempfile.TemporaryDirectory() as d:
+            svc = Service(d)
+            calls = []
+            counter = {"cur": 0, "max": 0}
+            guard = threading.Lock()
+            orig = fetch_untis.main
+
+            def fake(refresh_absences=False):
+                calls.append(refresh_absences)
+                with guard:
+                    counter["cur"] += 1
+                    counter["max"] = max(counter["max"], counter["cur"])
+                time.sleep(0.05)        # Überlappungsfenster
+                with guard:
+                    counter["cur"] -= 1
+
+            fetch_untis.main = fake
+            try:
+                t1 = threading.Thread(target=svc.run_untis_once)
+                t2 = threading.Thread(
+                    target=svc.run_untis_once, kwargs={"refresh_absences": True})
+                t1.start(); t2.start(); t1.join(); t2.join()
+            finally:
+                fetch_untis.main = orig
+
+            self.assertEqual(counter["max"], 1)            # nie 2 Läufe parallel
+            self.assertCountEqual(calls, [False, True])    # beide Modi durchgereicht
+
+
+class TestGuiConfigSync(unittest.TestCase):
+    """Jeder Schlüssel in config.env.example muss im Einstellungen-Fenster
+    bearbeitbar sein (und umgekehrt) — sonst driften Vorlage und GUI auseinander."""
+
+    def test_keys_deckungsgleich(self):
+        import re
+        from tray.gui import TABS
+
+        root = Path(__file__).resolve().parent.parent
+        text = (root / "config.env.example").read_text(encoding="utf-8")
+        cfg_keys = set(re.findall(r"(?m)^([A-Z_][A-Z0-9_]*)=", text))
+        gui_keys = {field[0] for _, fields in TABS for field in fields}
+
+        self.assertEqual(cfg_keys, gui_keys,
+                         msg=f"Nur in config: {cfg_keys - gui_keys}; "
+                             f"nur im GUI: {gui_keys - cfg_keys}")
+
+
+class TestParseTimes(unittest.TestCase):
+    def test_gueltige_zeiten(self):
+        self.assertEqual(parse_times("07:35, 11:00 ,16:00"),
+                         [(7, 35), (11, 0), (16, 0)])
+
+    def test_muell_faellt_raus(self):
+        self.assertEqual(parse_times("07:35,quatsch,25:99,11:00"),
+                         [(7, 35), (11, 0)])
+
+    def test_leer_gibt_leer(self):
+        self.assertEqual(parse_times(""), [])
+
+
 if __name__ == "__main__":
     unittest.main()

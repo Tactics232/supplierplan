@@ -2069,7 +2069,11 @@ s     {{ color: #888; }}
     (data_dir / "last_overview.html").write_text(html_out, encoding="utf-8")
 
 # ── Main ──────────────────────────────────────────────
-def main():
+def main(refresh_absences=None):
+    """refresh_absences: True erzwingt einen frischen weekly/data-Sweep (sonst Cache).
+    None (Default) = aus sys.argv ableiten — so funktioniert der Cron-Aufruf
+    `--refresh-absences` unverändert, während die Tray-App den Parameter setzt
+    (kein thread-racy sys.argv)."""
     global PLAN_TITLE, LOGO_FILE, PWA_ORIENTATION, CANCEL_PLACEMENT
     config = load_config()
     tz_name = config.get("TIMEZONE", "").strip() or "Europe/Vienna"
@@ -2136,7 +2140,8 @@ def main():
         #    (data/absences.json) 3×/Tag gesweept via --refresh-absences, dazwischen
         #    nur gelesen. Self-Heal: fehlt ein Tag im Cache, wird er einmalig geholt.
         #    Siehe docs/superpowers/specs/2026-06-27-absence-from-weekly-data-design.md
-        refresh_absences = "--refresh-absences" in sys.argv
+        if refresh_absences is None:
+            refresh_absences = "--refresh-absences" in sys.argv
         absence_cache    = load_absence_cache()
         _cache_state     = {"dirty": False}
 

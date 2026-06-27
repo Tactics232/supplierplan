@@ -1,6 +1,6 @@
 # Code Map
 
-_162 functions across 18 modules._
+_167 functions across 19 modules._
 
 > **Auto-generated** by `scripts/gen_codemap.py` — do not edit by hand.
 > Regenerated on every commit (git pre-commit hook). The narrative *why*
@@ -26,6 +26,7 @@ _162 functions across 18 modules._
 - [`tray/gui.py`](#trayguipy)
 - [`tray/icons.py`](#trayiconspy)
 - [`tray/paths.py`](#traypathspy)
+- [`tray/schedule.py`](#trayschedulepy)
 - [`tray/server.py`](#trayserverpy)
 - [`tray/service.py`](#trayservicepy)
 
@@ -189,7 +190,7 @@ _fetch_untis.py – WebUntis Supplierplan Fetcher_
 | 1927 | `purge_cloudflare_cache(zone_id, token, host=None)` | Löscht den Cloudflare-Cache nach dem Generieren der index.html. |
 | 1948 | `write_manifest(school_name, school_location, theme)` | Erzeugt manifest.json passend zu Schulname, Logo, Plan-Titel und Theme. |
 | 1978 | `write_data_dump(today_substs, tomorrow_substs, today_rows, tomorrow_rows, holidays, import_time, today_date, tomorrow_date)` | Schreibt zwei Dateien ins data/-Verzeichnis: |
-| 2072 | `main()` | — |
+| 2072 | `main(refresh_absences=None)` | refresh_absences: True erzwingt einen frischen weekly/data-Sweep (sonst Cache). |
 
 <h2 id="scriptsgencodemappy">scripts/gen_codemap.py</h2>
 
@@ -216,12 +217,12 @@ _Einstieg der Tray-App: pystray-Icon, Menü, Single-Instance, Wiring._
 
 | Line | Definition | Summary |
 |---:|---|---|
-| 21 | `_acquire_single_instance()` | — |
-| 32 | `_static_dir()` | Wurzel der statischen Assets: assets/ neben der .exe (gebaut) oder der |
-| 42 | `_ensure_data_dir()` | Legt das beschreibbare Datenverzeichnis an (web/, data/, config.env aus |
-| 57 | `_test_connection(values)` | — |
-| 70 | `main()` | — |
-| 155 | `_report_crash(text)` | Schreibt den Traceback in crash.log (neben der .exe und in %TEMP%) und zeigt |
+| 18 | `_acquire_single_instance(data_dir)` | Single-Instance über eine exklusiv gesperrte Lock-Datei im Datenverzeichnis. |
+| 42 | `_static_dir()` | Wurzel der statischen Assets: assets/ neben der .exe (gebaut) oder der |
+| 52 | `_ensure_data_dir()` | Legt das beschreibbare Datenverzeichnis an (web/, data/, config.env aus |
+| 67 | `_test_connection(values)` | — |
+| 80 | `main()` | — |
+| 175 | `_report_crash(text)` | Schreibt den Traceback in crash.log (neben der .exe und in %TEMP%) und zeigt |
 
 <h2 id="trayautostartpy">tray/autostart.py</h2>
 
@@ -265,8 +266,8 @@ _tkinter-Konfigurationsfenster. Liest/schreibt config.env über config_io._
 
 | Line | Definition | Summary |
 |---:|---|---|
-| 69 | `_make_widget(frame, kind, extra, current_value)` | Erzeugt das passende Eingabe-Widget + StringVar. Auswahlfelder (bool/choice) |
-| 90 | `open_config_window(config_path, template_path=None, on_saved=None, test_connection=None)` | Öffnet das Fenster (modal). config_path: Pfad zur config.env. |
+| 76 | `_make_widget(frame, kind, extra, current_value)` | Erzeugt das passende Eingabe-Widget + StringVar. Auswahlfelder (bool/choice) |
+| 97 | `open_config_window(config_path, template_path=None, on_saved=None, test_connection=None, on_refresh=None, on_refresh_absences=None)` | Öffnet das Fenster (modal). config_path: Pfad zur config.env. |
 
 <h2 id="trayiconspy">tray/icons.py</h2>
 
@@ -286,6 +287,15 @@ _Pfad-Auflösung für die Tray-App (beschreibbares Datenverzeichnis)._
 | 19 | `resolve_data_dir(exe_dir: Path, localappdata: Path, can_write=None)` | Beschreibbares Datenverzeichnis: bevorzugt neben der .exe (portabel), |
 | 28 | `app_dir()` | Verzeichnis der laufenden .exe bzw. des Scripts (PyInstaller-kompatibel). |
 | 35 | `data_dir()` | Konkret aufgelöstes Datenverzeichnis für diese Maschine. |
+
+<h2 id="trayschedulepy">tray/schedule.py</h2>
+
+_Reine Zeitplan-Logik für den Abwesenheits-Lauf (testbar, ohne Threads/IO)._
+
+| Line | Definition | Summary |
+|---:|---|---|
+| 14 | `parse_times(spec)` | "HH:MM,HH:MM,…" → sortierte Liste von (hour, minute). Müll/ungültige |
+| 32 | `next_run_time(now: datetime, times)` | Nächster Zeitpunkt strikt nach `now`, der einer der `times` entspricht. |
 
 <h2 id="trayserverpy">tray/server.py</h2>
 
@@ -307,13 +317,16 @@ _Hintergrund-Dienst: ruft die bestehenden Fetch-main() auf Timern auf und_
 
 | Line | Definition | Summary |
 |---:|---|---|
-| 15 | **`class Service`** | — |
-| 16 | &nbsp;&nbsp;`Service.__init__(self, data_dir: Path, static_dir=None, log=print)` | — |
-| 29 | &nbsp;&nbsp;`Service._apply_env(self)` | — |
-| 34 | &nbsp;&nbsp;`Service._cfg_int(self, key, default)` | — |
-| 40 | &nbsp;&nbsp;`Service.run_untis_once(self)` | — |
-| 51 | &nbsp;&nbsp;`Service.run_trains_once(self)` | — |
-| 59 | &nbsp;&nbsp;`Service._record_error(self, what, exc)` | — |
-| 71 | &nbsp;&nbsp;`Service._schedule(self, fn, interval)` | — |
-| 80 | &nbsp;&nbsp;`Service.start(self)` | — |
-| 99 | &nbsp;&nbsp;`Service.stop(self)` | — |
+| 16 | **`class Service`** | — |
+| 17 | &nbsp;&nbsp;`Service.__init__(self, data_dir: Path, static_dir=None, log=print)` | — |
+| 32 | &nbsp;&nbsp;`Service._apply_env(self)` | — |
+| 37 | &nbsp;&nbsp;`Service._cfg_int(self, key, default)` | — |
+| 43 | &nbsp;&nbsp;`Service.run_untis_once(self, refresh_absences=False)` | Ein Untis-Lauf. refresh_absences=True erzwingt den weekly/data-Sweep |
+| 59 | &nbsp;&nbsp;`Service.refresh_now(self)` | Manueller regulärer Lauf (Button), nicht-blockierend für den Aufrufer. |
+| 63 | &nbsp;&nbsp;`Service.refresh_absences_now(self)` | Manueller Abwesenheits-Lauf (Button), nicht-blockierend für den Aufrufer. |
+| 68 | &nbsp;&nbsp;`Service.run_trains_once(self)` | — |
+| 76 | &nbsp;&nbsp;`Service._record_error(self, what, exc)` | — |
+| 88 | &nbsp;&nbsp;`Service._schedule(self, fn, interval)` | — |
+| 97 | &nbsp;&nbsp;`Service._schedule_absences(self)` | Plant den nächsten Abwesenheits-Lauf zur nächsten festen Lokalzeit |
+| 117 | &nbsp;&nbsp;`Service.start(self)` | — |
+| 137 | &nbsp;&nbsp;`Service.stop(self)` | — |

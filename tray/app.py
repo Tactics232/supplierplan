@@ -15,16 +15,26 @@ from tray.config_io import read_config_env, write_config_env
 from tray.autostart import (WinRegistry, APP_NAME, enable_autostart,
                             disable_autostart, is_autostart)
 
-SINGLE_INSTANCE_PORT = 50573
+def _acquire_single_instance(data_dir):
+    """Single-Instance über eine exklusiv gesperrte Lock-Datei im Datenverzeichnis.
+    Das OS gibt die Sperre beim Prozessende automatisch frei → kein stale lock nach
+    Absturz. Rückgabe: offenes File-Handle (Sperre hält, solange es offen bleibt)
+    oder None, wenn bereits eine Instanz läuft.
 
-
-def _acquire_single_instance():
-    import socket
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    Warum kein Port: WSL2/Hyper-V reserviert wechselnde TCP-Portbereiche (bind →
+    WinError 10013), die sich bei jedem Reboot verschieben. Ein fester Port ist
+    damit unbrauchbar. Siehe `netsh interface ipv4 show excludedportrange`."""
+    lock_path = data_dir / ".instance.lock"
     try:
-        s.bind(("127.0.0.1", SINGLE_INSTANCE_PORT))
-        s.listen(1)
-        return s
+        f = open(lock_path, "a+")
+        f.seek(0)
+        if os.name == "nt":
+            import msvcrt
+            msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return f
     except OSError:
         return None
 
@@ -72,12 +82,12 @@ def main():
     from tray import icons
     from tray.gui import open_config_window
 
-    lock = _acquire_single_instance()
+    data_dir = _ensure_data_dir()
+    lock = _acquire_single_instance(data_dir)
     if lock is None:
         print("Supplierplan läuft bereits.")
         return
 
-    data_dir = _ensure_data_dir()
     service = Service(data_dir, static_dir=_static_dir())
     reg = WinRegistry() if os.name == "nt" else None
 
@@ -99,9 +109,17 @@ def main():
             target=lambda: open_config_window(
                 data_dir / "config.env",
                 template_path=paths.app_dir() / "assets" / "config.env.example",
-                on_saved=service.run_untis_once,
-                test_connection=_test_connection),
+                on_saved=service.refresh_now,
+                test_connection=_test_connection,
+                on_refresh=service.refresh_now,
+                on_refresh_absences=service.refresh_absences_now),
             daemon=True).start()
+
+    def on_refresh_now(icon, item):
+        service.refresh_now()
+
+    def on_refresh_absences(icon, item):
+        service.refresh_absences_now()
 
     def on_open_browser(icon, item):
         port = service._cfg_int("SERVER_PORT", 8080)
@@ -125,6 +143,8 @@ def main():
         pystray.MenuItem("Start", on_start, enabled=lambda i: not service.running),
         pystray.MenuItem("Stopp", on_stop, enabled=lambda i: service.running),
         pystray.MenuItem("Einstellungen…", on_settings, default=True),
+        pystray.MenuItem("Jetzt aktualisieren", on_refresh_now, enabled=lambda i: service.running),
+        pystray.MenuItem("Abwesenheiten aktualisieren", on_refresh_absences, enabled=lambda i: service.running),
         pystray.MenuItem("Im Browser öffnen", on_open_browser),
         pystray.MenuItem("Mit Windows starten", toggle_autostart, checked=autostart_checked),
         pystray.MenuItem("Beenden", on_quit),
