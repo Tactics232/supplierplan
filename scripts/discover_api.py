@@ -150,7 +150,7 @@ def main():
     config = load_config()
     untis  = WebUntis(
         url       = config["UNTIS_URL"],
-        school_id = config.get("UNTIS_SCHOOL_ID", "s921092"),
+        school_id = config.get("UNTIS_SCHOOL_ID", ""),
         user      = config["UNTIS_USER"],
         password  = config["UNTIS_PASSWORD"],
     )

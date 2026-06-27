@@ -8,6 +8,7 @@ import html as _html
 import json
 import os
 import re
+import sys
 import urllib.request
 import urllib.parse
 import http.cookiejar
@@ -78,6 +79,16 @@ CONFIG_FILE = resolve_config_path()
 # (PLAN_TITLE/LOGO_FILE). Als Modul-Globals, weil an mehreren Render-Stellen genutzt.
 PLAN_TITLE = "Supplierplan"
 LOGO_FILE  = "logo.png"
+# PWA-Orientierung im Manifest. Default "any" = Gerät darf frei drehen (Handy!).
+# Ein fest montierter Monitor/TV dreht ohnehin nie, dem ist der Wert egal; nur
+# drehbare Geräte (Handy, Tablet-Kiosk) folgen ihm. Über config.env überschreibbar.
+PWA_ORIENTATION = "any"
+# Gültige Manifest-Werte (W3C). Alles andere fällt auf "any" zurück.
+VALID_ORIENTATIONS = {
+    "any", "natural", "landscape", "portrait",
+    "portrait-primary", "portrait-secondary",
+    "landscape-primary", "landscape-secondary",
+}
 
 # ── Config ────────────────────────────────────────────
 def load_config():
@@ -90,9 +101,14 @@ def load_config():
                 config[key.strip()] = val.strip()
     return config
 
-# cellState-Werte aus weekly/data, in denen ein Lehrer wirklich anwesend ist
-# (normaler Unterricht / Pausenaufsicht). CANCEL + SUBSTITUTION = nicht anwesend.
-PRESENT_CELLSTATES = {"STANDARD", "BREAKSUPERVISION"}
+# cellState-Klassifikation aus weekly/data — verifiziert gegen die Schul-API, siehe
+# docs/superpowers/specs/2026-06-27-absence-from-weekly-data-design.md
+# Lehrer (elementType=2): anwesend = Unterricht/Pausenaufsicht; weg = vertreten/entfallen.
+PRESENT_CELLSTATES      = {"STANDARD", "BREAKSUPERVISION"}
+TEACHER_ABSENT_STATES   = {"SUBSTITUTION", "CANCEL"}
+# Klasse (elementType=1): anwesend = Stunde findet statt (auch vertreten); weg = entfällt.
+CLASS_PRESENT_STATES    = {"STANDARD", "SUBSTITUTION", "ADDITIONAL"}
+CLASS_ABSENT_STATES     = {"CANCEL"}
 
 # ── WebUntis JSON-RPC Client ──────────────────────────
 class WebUntis:
@@ -151,53 +167,26 @@ class WebUntis:
     def get_klassen(self):
         return self._rpc("getKlassen")
 
-    def get_weekly_class_absences(self, date_obj):
-        """REST weekly/data → {classId: set(startTime)} mit state=ABSENT für Klassen."""
+    def get_element_periods(self, element_type, element_id, date_obj):
+        """REST weekly/data für EIN Element an `date_obj` → [(startTime, cellState), …]
+        der an dem Tag verplanten Perioden. `element_type`: 2=Lehrer, 1=Klasse.
+
+        ⚠️ `elementId=0` ist ein Phantom (leer/falscher Tag) — immer echte ID.
+        ⚠️ Maßgeblich ist `cellState` der Periode, NICHT das `state`-Feld am Element
+        (das steht selbst bei Entfall auf REGULAR)."""
         date_str = date_obj.strftime("%Y-%m-%d")
         url = (f"{self.base_url}/WebUntis/api/public/timetable/weekly/data"
-               f"?elementType=1&elementId=0&date={date_str}")
+               f"?elementType={element_type}&elementId={element_id}&date={date_str}")
         req = urllib.request.Request(url, headers={"Accept": "application/json"})
         with self.opener.open(req, timeout=15) as resp:
             data = json.loads(resp.read())
         periods = data.get("data", {}).get("result", {}).get("data", {}).get("elementPeriods", {})
         target_int = int(date_obj.strftime("%Y%m%d"))
-        absent = {}
-        for bucket in periods.values():
-            for p in bucket:
-                if p.get("date") != target_int:
-                    continue
-                for e in p.get("elements", []):
-                    if (e.get("type") == 1
-                            and e.get("state") == "ABSENT"
-                            and e.get("orgId", 0) > 0):
-                        absent.setdefault(e["orgId"], set()).add(p["startTime"])
-        return absent
-
-    def get_teacher_present_periods(self, teacher_id, date_obj):
-        """REST weekly/data für EINEN Lehrer → Set der startTimes, in denen er an
-        `date_obj` tatsächlich anwesend ist (cellState STANDARD oder
-        BREAKSUPERVISION). Entfallene (CANCEL) und weg-vertretene (SUBSTITUTION)
-        Stunden zählen NICHT als anwesend.
-
-        ⚠️ Das `state`-Feld am Lehrer-Element ist unbrauchbar (steht auch bei
-        entfallenen Stunden auf REGULAR) — maßgeblich ist `cellState` der Periode.
-        `elementId=0` liefert Phantom-Daten (falscher Tag); daher echte Lehrer-ID.
-        """
-        date_str = date_obj.strftime("%Y-%m-%d")
-        url = (f"{self.base_url}/WebUntis/api/public/timetable/weekly/data"
-               f"?elementType=2&elementId={teacher_id}&date={date_str}")
-        req = urllib.request.Request(url, headers={"Accept": "application/json"})
-        with self.opener.open(req, timeout=15) as resp:
-            data = json.loads(resp.read())
-        periods = data.get("data", {}).get("result", {}).get("data", {}).get("elementPeriods", {})
-        target_int = int(date_obj.strftime("%Y%m%d"))
-        present = set()
-        for p in periods.get(str(teacher_id), []):
-            if p.get("date") != target_int:
-                continue
-            if p.get("cellState") in PRESENT_CELLSTATES:
-                present.add(p.get("startTime"))
-        return present
+        out = []
+        for p in periods.get(str(element_id), []):
+            if p.get("date") == target_int:
+                out.append((p.get("startTime"), p.get("cellState")))
+        return out
 
     def get_latest_import_time(self):
         ms = self._rpc("getLatestImportTime")
@@ -289,35 +278,112 @@ def configure_skip_teachers(value):
         if name:
             SKIP_NAMES.add(name)
 
-def build_class_id_lookup(klassen):
-    """Klassen-ID → Klassen-Name."""
-    return {k["id"]: k.get("name", "").strip() for k in (klassen or []) if k.get("id")}
+# ── Abwesenheit autoritativ aus weekly/data (siehe Spec 2026-06-27) ───
+def teacher_absence_entry(periods, timegrid):
+    """`periods` = [(startTime, cellState), …] eines Lehrers an einem Tag.
+    Returns None (nicht abwesend) oder eine Range-Angabe:
+      ""        = komplett abwesend (keine anwesende Stunde) → nur Kürzel anzeigen
+      "n"/"a–b" = teil-abwesend → Spanne der weg-Stunden (vertreten/entfallen)."""
+    if not periods:
+        return None
+    present = any(cs in PRESENT_CELLSTATES for _, cs in periods)
+    absent_starts = [st for st, cs in periods if cs in TEACHER_ABSENT_STATES]
+    if not absent_starts:
+        return None                      # voll anwesend
+    if not present:
+        return ""                        # komplett abwesend → nur Kürzel
+    nums = sorted({timegrid[st][0] for st in absent_starts if st in timegrid})
+    if not nums:
+        return ""
+    return str(nums[0]) if len(nums) == 1 else f"{nums[0]}–{nums[-1]}"
 
 
-def class_absences_to_list(absent_by_id, id_to_name, timegrid):
-    """Wandelt {classId: set(startTime)} in [(name, range_str), ...].
-    Range-Logik: einzelne Std → '7', sonst 'min–max'."""
-    def start_to_nr(start):
-        info = timegrid.get(start)
-        return info[0] if info else None
+def _consecutive_runs(nums):
+    """Sortierte Ganzzahlen → Liste zusammenhängender Läufe (konsekutive Werte)."""
+    runs, run = [], []
+    for n in sorted(nums):
+        if run and n == run[-1] + 1:
+            run.append(n)
+        else:
+            if run:
+                runs.append(run)
+            run = [n]
+    if run:
+        runs.append(run)
+    return runs
 
-    by_name = {}
-    for cid, starts in absent_by_id.items():
-        name = id_to_name.get(cid)
-        if not name:
+
+def class_absence_entry(periods, timegrid, min_block=2):
+    """`periods` = [(startTime, cellState), …] einer Klasse an einem Tag.
+    Eine Klasse gilt nur als abwesend, wenn sie einen zusammenhängenden Block von
+    >= `min_block` CANCEL-Stunden hat (eine einzelne Ausfallstunde ist kein
+    'Klasse weg'-Signal). Returns None oder 'a–b' (Spanne der qualifizierenden Blöcke)."""
+    cancel_nrs = sorted({timegrid[st][0] for st, cs in periods
+                         if cs in CLASS_ABSENT_STATES and st in timegrid})
+    if not cancel_nrs:
+        return None
+    qual = [r for r in _consecutive_runs(cancel_nrs) if len(r) >= min_block]
+    if not qual:
+        return None
+    lo = min(r[0] for r in qual)
+    hi = max(r[-1] for r in qual)
+    return str(lo) if lo == hi else f"{lo}–{hi}"
+
+
+def sweep_absences(untis, teachers, klassen, date_obj, timegrid):
+    """Voll-Sweep via weekly/data über ALLE Lehrer + Klassen für `date_obj`.
+    Returns {"teachers": [[name, range], …], "classes": [[name, range], …]}.
+    Pseudo-Lehrer (SKIP_NAMES) werden ausgelassen. Pro Element try/except →
+    ein Fehler überspringt nur dieses Element (sichere Rückfallebene)."""
+    t_list = []
+    for t in teachers or []:
+        name = (t.get("name") or "").strip()
+        tid  = t.get("id")
+        if not name or not tid or name in SKIP_NAMES:
             continue
-        nrs = {start_to_nr(s) for s in starts}
-        nrs.discard(None)
-        if nrs:
-            by_name[name] = nrs
+        try:
+            r = teacher_absence_entry(untis.get_element_periods(2, tid, date_obj), timegrid)
+        except Exception as e:
+            print(f"weekly/data Lehrer {name} ({date_obj}): {e}", flush=True)
+            continue
+        if r is not None:
+            t_list.append([name, r])
+    c_list = []
+    for k in klassen or []:
+        name = (k.get("name") or "").strip()
+        cid  = k.get("id")
+        if not name or not cid:
+            continue
+        try:
+            r = class_absence_entry(untis.get_element_periods(1, cid, date_obj), timegrid)
+        except Exception as e:
+            print(f"weekly/data Klasse {name} ({date_obj}): {e}", flush=True)
+            continue
+        if r is not None:
+            c_list.append([name, r])
+    t_list.sort(); c_list.sort()
+    return {"teachers": t_list, "classes": c_list}
 
-    def period_range(nrs):
-        nums = sorted(nrs)
-        if len(nums) == 1:
-            return str(nums[0])
-        return f"{nums[0]}–{nums[-1]}"
 
-    return [(name, period_range(nrs)) for name, nrs in sorted(by_name.items())]
+def _absence_cache_path():
+    return resolve_data_out() / "absences.json"
+
+
+def load_absence_cache():
+    """{date_iso: {"teachers": [...], "classes": [...]}}; {} bei Fehler/fehlend."""
+    try:
+        return json.loads(_absence_cache_path().read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def save_absence_cache(cache):
+    """Atomar schreiben (alte Datei bleibt bei Fehler intakt)."""
+    p = _absence_cache_path()
+    p.parent.mkdir(exist_ok=True)
+    tmp = p.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(cache, ensure_ascii=False, indent=2), encoding="utf-8")
+    os.replace(tmp, p)
 
 
 def build_teacher_lookup(teachers):
@@ -501,9 +567,10 @@ def group_by_teacher(rows):
     return dict(sorted(groups.items()))
 
 def extract_absent_periods(groups):
-    """{lehrer_kuerzel: set(std)} aller abwesenden Lehrer eines Tages — gemeinsame
-    Quelle für die Anzeige (compute_absent) und für die weekly/data-Abfrage in
-    main() (determine_full_absent)."""
+    """{lehrer_kuerzel: set(std)} aller abwesenden Lehrer eines Tages, abgeleitet aus
+    dem Supplierplan. Nur noch Rückfallebene für `compute_absent`, falls der
+    weekly/data-Cache (data/absences.json) fehlt — die Leiste kommt normal aus
+    `sweep_absences`/`teacher_absence_entry`."""
     absent_periods = {}
     for rows in groups.values():
         for r in rows:
@@ -561,28 +628,6 @@ def compute_absent(groups, full_absent_kuerzel=None):
 
     classes = [(k, classes_range(v)) for k, v in sorted(classes_periods.items())]
     return absent, classes
-
-
-def determine_full_absent(untis, groups, kuerzel_to_id, date_obj):
-    """Set der Lehrer-Kürzel, die an `date_obj` komplett abwesend sind: Lehrer aus
-    der Abwesenheitsliste, die laut weekly/data keine einzige anwesende Stunde
-    (STANDARD/BREAKSUPERVISION) haben. Pro betroffenem Lehrer ein REST-Call.
-
-    Bei unbekannter ID oder API-Fehler bleibt der Lehrer aus dem Set → er bekommt
-    die Stunden-Range (sichere, informativere Rückfallebene)."""
-    full = set()
-    for kuerzel in extract_absent_periods(groups):
-        tid = kuerzel_to_id.get(kuerzel)
-        if not tid:
-            continue
-        try:
-            present = untis.get_teacher_present_periods(tid, date_obj)
-        except Exception as e:
-            print(f"weekly/data Fehler für {kuerzel} ({date_obj}): {e}", flush=True)
-            continue
-        if not present:
-            full.add(kuerzel)
-    return full
 
 
 def render_summary_bar(teachers, classes):
@@ -876,9 +921,10 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
                   teacher_lookup, period_nr, period_start, period_end,
                   show_logo=False, import_time=None, train_enabled=False,
                   today_classes_override=None, tomorrow_classes_override=None,
+                  today_teachers_override=None, tomorrow_teachers_override=None,
                   compact_col_width=320, max_columns=4,
-                  school_name="MS Roda-Roda-Gasse", school_type="Mittelschule",
-                  school_location="1210 Wien", show_clock=True,
+                  school_name="", school_type="",
+                  school_location="", show_clock=True,
                   tz_name="Europe/Vienna", theme="dark",
                   today_full_absent=None, tomorrow_full_absent=None,
                   overflow_cfg=None):
@@ -890,6 +936,7 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
     # Schul-Bezeichnungen (config.env) — leere Teile fallen aus der " · "-Kette.
     school_sub_str  = " · ".join(p for p in (school_type, school_location) if p)
     school_foot_str = " · ".join(p for p in (school_name, school_location) if p)
+    title_str       = " – ".join(p for p in (PLAN_TITLE, school_name) if p)
     tz_js    = json.dumps(tz_name)  # sicheres JS-String-Literal für die Uhr-Logik
     theme_js = json.dumps(theme)    # Config-Theme fürs Head-Script
 
@@ -939,7 +986,8 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
 
     today_section = ""
     if show_today:
-        today_absent, today_classes_derived = compute_absent(groups_today, today_full_absent)
+        today_absent_derived, today_classes_derived = compute_absent(groups_today, today_full_absent)
+        today_absent  = today_teachers_override if today_teachers_override is not None else today_absent_derived
         today_classes = today_classes_override if today_classes_override is not None else today_classes_derived
         date_str_today = (
             f"{WEEKDAYS[today_date.weekday()]}, "
@@ -963,7 +1011,8 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
     tomorrow_only_label_full = ""
     tomorrow_only_label_short = ""
     if show_tomorrow:
-        tom_absent, tom_classes_derived = compute_absent(groups_tomorrow, tomorrow_full_absent)
+        tom_absent_derived, tom_classes_derived = compute_absent(groups_tomorrow, tomorrow_full_absent)
+        tom_absent  = tomorrow_teachers_override if tomorrow_teachers_override is not None else tom_absent_derived
         tom_classes = tomorrow_classes_override if tomorrow_classes_override is not None else tom_classes_derived
         days_ahead = (tomorrow_date - today_date).days
         date_str_tom = (
@@ -1025,7 +1074,7 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>{esc(PLAN_TITLE)} – {esc(school_name)}</title>
+    <title>{esc(title_str)}</title>
     <link rel="stylesheet" href="css/style.css?v={css_v}">
     <!-- PWA -->
     <link rel="manifest" href="manifest.json">
@@ -1755,16 +1804,18 @@ def write_manifest(school_name, school_location, theme):
     mime = {"png": "image/png", "svg": "image/svg+xml", "jpg": "image/jpeg",
             "jpeg": "image/jpeg", "webp": "image/webp"}.get(ext, "image/png")
     desc_loc = f", {school_location}" if school_location else ""
+    description = (f"{PLAN_TITLE} der {school_name}{desc_loc}"
+                  if school_name else f"{PLAN_TITLE}{desc_loc}")
     icon = lambda size, purpose: {"src": LOGO_FILE, "sizes": size, "type": mime, "purpose": purpose}
     manifest = {
         "name":              f"{PLAN_TITLE} {school_name}".strip(),
         "short_name":        PLAN_TITLE,
-        "description":       f"{PLAN_TITLE} der {school_name}{desc_loc}",
+        "description":       description,
         "start_url":         "./",
         "scope":             "./",
         "display":           "fullscreen",
         "display_override":  ["fullscreen", "standalone"],
-        "orientation":       "landscape",
+        "orientation":       PWA_ORIENTATION,
         "background_color":  "#eef0f4" if theme == "light" else "#0c0c11",
         "theme_color":       "#c8102e",
         "lang":              "de",
@@ -1871,7 +1922,7 @@ s     {{ color: #888; }}
 
 # ── Main ──────────────────────────────────────────────
 def main():
-    global PLAN_TITLE, LOGO_FILE
+    global PLAN_TITLE, LOGO_FILE, PWA_ORIENTATION
     config = load_config()
     tz_name = config.get("TIMEZONE", "").strip() or "Europe/Vienna"
     set_timezone(tz_name)
@@ -1881,6 +1932,8 @@ def main():
     configure_text_badges(config.get("TEXT_BADGES", "b,ub,MA"))
     PLAN_TITLE = config.get("PLAN_TITLE", "Supplierplan").strip() or "Supplierplan"
     LOGO_FILE  = config.get("LOGO_FILE", "logo.png").strip() or "logo.png"
+    _orient = config.get("PWA_ORIENTATION", "any").strip().lower() or "any"
+    PWA_ORIENTATION = _orient if _orient in VALID_ORIENTATIONS else "any"
     try:
         department_id = int(config.get("UNTIS_DEPARTMENT_ID", "0"))
     except ValueError:
@@ -1888,7 +1941,7 @@ def main():
 
     untis  = WebUntis(
         url       = config["UNTIS_URL"],
-        school_id = config.get("UNTIS_SCHOOL_ID", "s921092"),
+        school_id = config["UNTIS_SCHOOL_ID"],
         user      = config["UNTIS_USER"],
         password  = config["UNTIS_PASSWORD"],
     )
@@ -1915,11 +1968,7 @@ def main():
         timegrid       = build_timegrid(grid_raw)
         break_lookup   = build_break_lookup(grid_raw)
         teacher_lookup = build_teacher_lookup(teachers)
-        class_id_lk    = build_class_id_lookup(klassen_raw)
         holiday_set    = parse_holidays(holidays_raw)
-        # Kürzel → Lehrer-ID für die weekly/data-Abfrage (komplett vs. teil-abwesend)
-        kuerzel_to_id  = {t.get("name", "").strip(): t["id"]
-                          for t in (teachers or []) if t.get("id") and t.get("name")}
 
         now_t   = now_hhmm()
         today   = today_local()
@@ -1932,16 +1981,24 @@ def main():
         today_rows   = [r for r in today_rows if r["end_time"] >= now_t]
         groups_today = group_by_teacher(today_rows)
 
-        # Echte Klassen-Abwesenheits-Liste aus weekly/data (statt aus cancel-Einträgen abgeleitet)
-        try:
-            today_abs_classes_raw = untis.get_weekly_class_absences(today)
-        except Exception as e:
-            print(f"Klassen-Abwesenheits-API Fehler (heute): {e}", flush=True)
-            today_abs_classes_raw = {}
-        today_absent_classes_override = class_absences_to_list(today_abs_classes_raw, class_id_lk, timegrid)
+        # ── Abwesende Lehrer & Klassen: autoritativ aus weekly/data, per Cache
+        #    (data/absences.json) 3×/Tag gesweept via --refresh-absences, dazwischen
+        #    nur gelesen. Self-Heal: fehlt ein Tag im Cache, wird er einmalig geholt.
+        #    Siehe docs/superpowers/specs/2026-06-27-absence-from-weekly-data-design.md
+        refresh_absences = "--refresh-absences" in sys.argv
+        absence_cache    = load_absence_cache()
+        _cache_state     = {"dirty": False}
 
-        # Komplett abwesende Lehrer (weekly/data) → zeigen nur das Kürzel ohne Std-Range
-        today_full_absent = determine_full_absent(untis, groups_today, kuerzel_to_id, today)
+        def absences_for(date_obj):
+            key = date_obj.isoformat()
+            if refresh_absences or key not in absence_cache:
+                absence_cache[key] = sweep_absences(untis, teachers, klassen_raw, date_obj, timegrid)
+                _cache_state["dirty"] = True
+            entry = absence_cache.get(key, {})
+            return ([tuple(x) for x in entry.get("teachers", [])],
+                    [tuple(x) for x in entry.get("classes", [])])
+
+        today_absent_teachers_override, today_absent_classes_override = absences_for(today)
 
         # Morgen: ab konfigurierter Uhrzeit ODER wenn heute schon leer ist
         threshold_str = config.get("SHOW_TOMORROW_AFTER", "14:00")
@@ -1954,7 +2011,7 @@ def main():
         tom_substs      = []
         tom_rows        = []
         tomorrow_absent_classes_override = []
-        tomorrow_full_absent = set()
+        tomorrow_absent_teachers_override = []
 
         if show_tomorrow:
             tomorrow      = next_school_day(today, holiday_set)
@@ -1965,14 +2022,14 @@ def main():
             tom_rows      = process_substitutions(tom_substs, timegrid, break_lookup, day="tomorrow")
             groups_tomorrow = group_by_teacher(tom_rows)
 
-            try:
-                tom_abs_classes_raw = untis.get_weekly_class_absences(tomorrow)
-            except Exception as e:
-                print(f"Klassen-Abwesenheits-API Fehler (morgen): {e}", flush=True)
-                tom_abs_classes_raw = {}
-            tomorrow_absent_classes_override = class_absences_to_list(tom_abs_classes_raw, class_id_lk, timegrid)
+            tomorrow_absent_teachers_override, tomorrow_absent_classes_override = absences_for(tomorrow)
 
-            tomorrow_full_absent = determine_full_absent(untis, groups_tomorrow, kuerzel_to_id, tomorrow)
+        # Cache nur schreiben, wenn neu gesweept (Refresh oder Self-Heal). Alte Tage
+        # (< heute) dabei wegputzen, damit data/absences.json nicht wächst.
+        if _cache_state["dirty"]:
+            today_key = today.isoformat()
+            pruned = {k: v for k, v in absence_cache.items() if k >= today_key}
+            save_absence_cache(pruned)
 
         period_nr, p_start, p_end = find_current_period(timegrid)
 
@@ -1996,9 +2053,9 @@ def main():
             max_columns = 4
         max_columns = min(4, max(1, max_columns))
 
-        school_name     = config.get("SCHOOL_NAME", "MS Roda-Roda-Gasse").strip() or "MS Roda-Roda-Gasse"
-        school_type     = config.get("SCHOOL_TYPE", "Mittelschule").strip()
-        school_location = config.get("SCHOOL_LOCATION", "1210 Wien").strip()
+        school_name     = config.get("SCHOOL_NAME", "").strip()
+        school_type     = config.get("SCHOOL_TYPE", "").strip()
+        school_location = config.get("SCHOOL_LOCATION", "").strip()
         show_clock      = config.get("SHOW_CLOCK", "true").strip().lower() != "false"
         theme           = config.get("THEME", "dark").strip().lower()
         if theme not in ("dark", "light"):
@@ -2013,6 +2070,8 @@ def main():
             train_enabled=bool(train_enabled),
             today_classes_override=today_absent_classes_override,
             tomorrow_classes_override=tomorrow_absent_classes_override,
+            today_teachers_override=today_absent_teachers_override,
+            tomorrow_teachers_override=tomorrow_absent_teachers_override,
             compact_col_width=compact_col_width,
             max_columns=max_columns,
             school_name=school_name,
@@ -2021,8 +2080,6 @@ def main():
             show_clock=show_clock,
             tz_name=tz_name,
             theme=theme,
-            today_full_absent=today_full_absent,
-            tomorrow_full_absent=tomorrow_full_absent,
             overflow_cfg=overflow_cfg,
         )
         out = resolve_webroot() / "index.html"

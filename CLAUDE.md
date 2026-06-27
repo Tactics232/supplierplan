@@ -86,6 +86,14 @@ Konfiguration in `config.env` über `TRAIN_*`-Variablen. Wenn `TRAIN_STATION` le
   Inline-Script früh im `<head>` (reaktiv via `matchMedia`, minimiert Flackern).
 - `TIMEZONE` (Default `Europe/Vienna`): IANA-Zeitzone für „heute/morgen"-Logik **und**
   die clientseitige Uhr (JS nutzt `Intl.DateTimeFormat` mit `timeZone`).
+- `PWA_ORIENTATION` (Default `any`): `orientation`-Feld im generierten `manifest.json`
+  (`write_manifest`, validiert gegen `VALID_ORIENTATIONS`, Müll → `any`). **Warum `any`:**
+  das Manifest gilt für *alle* Geräte gleichzeitig. Ein fest montierter Monitor/TV
+  re-orientiert nie (ihm ist der Wert egal), aber ein fester Wert wie `landscape` **sperrte
+  das per-Startbildschirm installierte Handy-PWA ins Querformat** (drehte nicht zurück).
+  `any` lässt drehbare Geräte frei und lässt den fixen Monitor unberührt. Andere Schulen
+  mit drehbarem Tablet-Kiosk können `portrait`/`landscape` setzen. Gültige Werte: `any`,
+  `natural`, `portrait`, `landscape` (+ `-primary`/`-secondary`).
 
 **Viewport-Stufen (Media Queries, unabhängig vom spaltenbreiten-basierten
 `compact-mode` der Tabelle):**
@@ -319,40 +327,41 @@ in der Cancel-Sektion mit dem Kürzel in der Lehrer-Spalte (durchgestrichen).
 
 ### Abwesenheits-Leisten (oben in jeder Section)
 
-Quellen für „Abwesende Lehrer":
-- `te[].orgname` mit `orgid` → der vertretene Lehrer ist abwesend
-- `kuerzel_absent=True` → FDKM-artige Sonderfälle
-- `art="cancel"` → bei Entfall ist der Lehrer abwesend
-- Die `---`-Heuristik propagiert `orgname` auch auf Co-Lehrer-Zeilen
+**Autoritative Quelle = `weekly/data` pro Element**, NICHT der Supplierplan. Ein
+Voll-Sweep (`sweep_absences`) fragt `weekly/data` für **alle** Lehrer- und Klassen-IDs
+ab und bestimmt Abwesenheit aus dem `cellState` der Perioden. Logik + verifizierte
+Daten: `docs/superpowers/specs/2026-06-27-absence-from-weekly-data-design.md`,
+testbare Kern-Funktionen `teacher_absence_entry` / `class_absence_entry` (Tests in
+`tests/test_absences.py`).
 
-**Stundenangabe komplett vs. teil-abwesend** (`period_range` + `determine_full_absent`):
-- **Komplett abwesend → nur Kürzel** (keine Stundenangabe). Schul-Konvention.
-- **Teil-abwesend → Range `min–max`** der Fehl-Stunden (z.B. `WöR (5–9)`),
-  einzelne Stunde → die Zahl (z.B. `SaI (6)`).
+**Lehrer** (`teacher_absence_entry`, `elementType=2`):
+- anwesend = `cellState ∈ {STANDARD, BREAKSUPERVISION}`; weg = `{SUBSTITUTION, CANCEL}`
+- **keine anwesende Stunde → komplett abwesend → nur Kürzel** (keine Range)
+- sonst teil-abwesend → Range `min–max` der Weg-Stunden (`SaI (6)`, `WöR (5–9)`)
+- Pseudo-Lehrer (`SKIP_NAMES`, z.B. `Z Entfall`) werden ausgelassen
+- ⚠️ Behebt den alten Bug: ein ganztägig abwesender Lehrer, der nur Std 4–7 Unterricht
+  hätte, wurde fälschlich als `(4–7)` statt nur als Kürzel gezeigt (alte Quelle war der
+  Supplierplan).
 
-Ob „komplett" oder „teil" kommt **datengetrieben aus `weekly/data`**, nicht aus einer
-Heuristik: `determine_full_absent()` ruft pro abwesendem Lehrer
-`get_teacher_present_periods(teacher_id, date)` auf (REST
-`weekly/data?elementType=2&elementId=<id>`). Hat der Lehrer an dem Tag **keine**
-Stunde mit `cellState ∈ {STANDARD, BREAKSUPERVISION}` (= echter Unterricht /
-Pausenaufsicht), gilt er als komplett abwesend → nur Kürzel. Hat er welche
-(z.B. eine nicht entfallene Stunde, oder eine Aufsicht) → teil-abwesend → Range.
+**Klassen** (`class_absence_entry`, `elementType=1`):
+- weg = `cellState == CANCEL`; anwesend = `{STANDARD, SUBSTITUTION, ADDITIONAL}`
+  (vertretene Stunde = Klasse ist da)
+- Klasse erscheint **nur bei einem zusammenhängenden Block von ≥2 CANCEL-Stunden**
+  (eine einzelne Ausfallstunde ist kein „Klasse weg"-Signal) → Range des Blocks
 
-⚠️ **Warum nicht aus dem Supplierplan ableitbar:** dort sind nur Stunden **mit
-Änderung** sichtbar, nicht der ganze Tag — ob `1–5` der volle Tag oder nur der
-Vormittag ist, steht da nicht drin. Daher der separate `weekly/data`-Call.
+⚠️ **`cellState`, nicht `state`:** Das `state`/`REGULAR`-Feld am Element ist unbrauchbar
+(steht auch bei Entfall auf `REGULAR`). Maßgeblich ist `cellState` der Periode.
 
-⚠️ **`cellState`, nicht `state`:** Das `state`-Feld am Lehrer-Element ist unbrauchbar
-(steht auch bei entfallenen Stunden auf `REGULAR`). Maßgeblich ist `cellState` der
-Periode: `STANDARD` / `CANCEL` / `SUBSTITUTION` / `BREAKSUPERVISION`.
+⚠️ **`elementId=0` ist ein Phantom** (leer/falscher Tag) — immer **echte** Element-IDs.
+`get_element_periods(elementType, id, date)` kapselt den Call.
 
-⚠️ **`elementId=0` ist ein Phantom** (liefert beliebige/falsche Tage) — immer die
-**echte Lehrer-ID** verwenden. `get_weekly_class_absences` nutzt noch `elementId=0`
-und liefert daher vermutlich Müll — beim nächsten Anfassen auf echte Klassen-IDs
-umstellen (TODO).
-
-**Kosten:** ein REST-Call pro abwesendem Lehrer je angezeigtem Tag. Bei API-Fehler
-oder unbekannter ID fällt der Lehrer auf die Range-Anzeige zurück (sicher).
+**Zeitentkopplung (Cache):** Der Voll-Sweep ist teuer (~14 Klassen + ~80 Lehrer ≈ 94
+Calls), läuft daher **nicht** alle 5 min, sondern nur bei `fetch_untis.py
+--refresh-absences` (per Cron 3×/Tag, siehe Cron-Setup). Ergebnis liegt in
+`data/absences.json` (nach Datum). Der reguläre 5-min-Run **liest** den Cache (Lehrer-/
+Klassen-Override an `generate_html`); fehlt ein benötigter Tag, holt er ihn **einmalig
+selbst** (Self-Heal). Schul-Hintergrund: Abwesenheiten sind morgens bis ~7:30 eingetragen
+und ändern sich tagsüber nicht. Alte Cache-Tage (< heute) werden beim Schreiben gepruned.
 
 ---
 
@@ -405,9 +414,19 @@ via `set_timezone()` → `ZoneInfo`.
 
 ```cron
 SUPPLIERPLAN_CONFIG=/etc/supplierplan/config.env
+# Regulärer Run: Supplierplan → index.html, liest den Abwesenheits-Cache
 */5  * * * *  cd /var/www/supplierplan && python3 scripts/fetch_untis.py  >> /var/log/supplierplan-untis.log 2>&1
+# Abwesenheits-Voll-Sweep (Lehrer + Klassen via weekly/data) → data/absences.json, 3×/Tag.
+# Abwesenheiten sind morgens bis ~7:30 eingetragen; Nachmittag fängt den nächsten Tag ab.
+35   7  * * *  cd /var/www/supplierplan && python3 scripts/fetch_untis.py --refresh-absences >> /var/log/supplierplan-untis.log 2>&1
+0    11 * * *  cd /var/www/supplierplan && python3 scripts/fetch_untis.py --refresh-absences >> /var/log/supplierplan-untis.log 2>&1
+0    16 * * *  cd /var/www/supplierplan && python3 scripts/fetch_untis.py --refresh-absences >> /var/log/supplierplan-untis.log 2>&1
 *    * * * *  cd /var/www/supplierplan && python3 scripts/fetch_trains.py >> /var/log/supplierplan-trains.log 2>&1
 ```
+
+Die `--refresh-absences`-Läufe erzeugen zusätzlich `index.html` (voller Run + Sweep);
+die regulären 5-min-Läufe lesen nur `data/absences.json`. Fehlt der Cache (z.B. nach
+Reboot vor dem ersten Sweep), holt ihn der nächste reguläre Lauf einmalig selbst.
 
 Voraussetzungen: nur Python 3.9+ (stdlib reicht, keine externen Packages mehr).
 
@@ -467,10 +486,6 @@ Im Claude Code Prompt mit `!`-Präfix ausführen, dann landet Output direkt im C
 ---
 
 ## Verfügbar aber noch nicht genutzt — Ideen für später
-- **`weekly/data` REST für Klassen** (`elementType=1`): könnte die „Abwesende
-  Klassen"-Liste sauber liefern (aktuell `get_weekly_class_absences` mit kaputtem
-  `elementId=0`). Pro Klasse ein Call. (Für Lehrer ist `weekly/data` bereits
-  produktiv im Einsatz, siehe „Stundenangabe komplett vs. teil-abwesend".)
 - `getStatusData`: Original-Untis-Farben (`lstypes`, `codes`)
 - `getKlassen.longName`: `DFK` → `Deutsch Förderklasse`
 - `getSubjects.foreColor/backColor`: Fach-spezifische Farben
@@ -485,10 +500,10 @@ Im Claude Code Prompt mit `!`-Präfix ausführen, dann landet Output direkt im C
    oder „Entfall" bedeutet.
 2. **Bedeutung unklar:** `txt='a'` (4× im Dump), `txt='t'` (2× im Dump). Werden aktuell
    einfach als Text durchgereicht. Bei Bedarf Badges definieren.
-3. ~~**`weekly/data`-Migration** für „Abwesende Lehrer"~~ ✅ erledigt: komplett vs.
-   teil-abwesend kommt jetzt aus `weekly/data` (`determine_full_absent`,
-   `get_teacher_present_periods`). Offen bleibt nur die Klassen-Liste
-   (`get_weekly_class_absences` nutzt noch `elementId=0` → kaputt).
+3. ~~**`weekly/data`-Migration** für „Abwesende Lehrer" **und Klassen**~~ ✅ erledigt:
+   beide Leisten kommen jetzt autoritativ aus `weekly/data` pro echter Element-ID
+   (`sweep_absences`, gecached in `data/absences.json`, 3×/Tag via `--refresh-absences`).
+   Siehe „Abwesenheits-Leisten" + Spec `2026-06-27-absence-from-weekly-data-design.md`.
 4. **Sonder-Modi für `lstype`:** `ex` (Prüfung), `oh` (Sprechstunde), `sb` (Standby)
    sind im Code nicht behandelt — Verhalten unklar bis sie auftauchen.
 5. ~~Automatisches Cloudflare Cache-Purge~~ ✅ implementiert (siehe oben).

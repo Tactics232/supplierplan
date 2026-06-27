@@ -75,6 +75,7 @@ supplierplan/
 │   └── test_fetch_trains.py       # unittest suite for the pure-logic functions
 ├── data/                          # Runtime output (gitignored)
 │   ├── trains.json                # Current train plan (written atomically)
+│   ├── absences.json              # Absent teachers/classes cache (3×/day sweep)
 │   ├── last_raw.json              # Raw API data for diagnostics
 │   └── last_overview.html         # Human-readable API overview
 └── docs/
@@ -161,12 +162,20 @@ crontab -e
 Crontab:
 ```cron
 SUPPLIERPLAN_CONFIG=/etc/supplierplan/config.env
+# Regular run: substitution plan → index.html (reads the absence cache)
 */5 * * * *  cd /var/www/supplierplan && /usr/bin/python3 scripts/fetch_untis.py  >> /var/log/supplierplan-untis.log 2>&1
+# Absence full-sweep (teachers + classes via weekly/data) → data/absences.json, 3×/day
+35  7 * * *  cd /var/www/supplierplan && /usr/bin/python3 scripts/fetch_untis.py --refresh-absences >> /var/log/supplierplan-untis.log 2>&1
+0  11 * * *  cd /var/www/supplierplan && /usr/bin/python3 scripts/fetch_untis.py --refresh-absences >> /var/log/supplierplan-untis.log 2>&1
+0  16 * * *  cd /var/www/supplierplan && /usr/bin/python3 scripts/fetch_untis.py --refresh-absences >> /var/log/supplierplan-untis.log 2>&1
 *   * * * *  cd /var/www/supplierplan && /usr/bin/python3 scripts/fetch_trains.py >> /var/log/supplierplan-trains.log 2>&1
 ```
 
-The first line sets `SUPPLIERPLAN_CONFIG` for both jobs so they read the `config.env`
-from outside the web root.
+The first line sets `SUPPLIERPLAN_CONFIG` for all jobs so they read the `config.env`
+from outside the web root. The absent-teacher/class bars come authoritatively from
+WebUntis `weekly/data` and are cached in `data/absences.json`; the heavy sweep runs only
+3×/day (`--refresh-absences`), the 5-min run just reads the cache (with one-time
+self-heal if it's missing).
 
 ---
 
@@ -189,6 +198,7 @@ from outside the web root.
 | `LOGO_FILE` | – | `logo.png` | Logo filename (PNG/SVG/JPG/WebP) |
 | `THEME` | – | `dark` | `dark` or `light` (mobile can override via a toggle) |
 | `SHOW_CLOCK` | – | `true` | Show date + clock in the header |
+| `PWA_ORIENTATION` | – | `any` | Installed-PWA screen lock: `any`/`portrait`/`landscape`/`natural`. `any` lets phones rotate freely; a fixed monitor ignores it anyway |
 | `TIMEZONE` | – | `Europe/Vienna` | IANA timezone (today/tomorrow + clock) |
 | `COMPACT_COL_WIDTH_PX` | – | `320` | Compact-mode threshold (round badges, “Aufs.”) |
 | `MAX_COLUMNS` | – | `4` | Upper bound on columns in the multi-column layout (1–4) |

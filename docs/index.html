@@ -367,7 +367,7 @@ python tray/build.py
   <tr><td><code>getTimegridUnits</code></td><td>Period grid (clock times of periods 0–10).</td></tr>
   <tr><td><code>getLatestImportTime</code></td><td>Untis' own timestamp of the last change.</td></tr>
   <tr><td><code>getSubstitutions(start, end, departmentId)</code></td><td><strong>The main data: the substitution plan.</strong></td></tr>
-  <tr><td><code>weekly/data</code> (REST)</td><td>Per-teacher day detail for full-vs-partial absence — see below.</td></tr>
+  <tr><td><code>weekly/data</code> (REST)</td><td>Per-element (teacher/class) day detail — the authoritative absence source, see below.</td></tr>
 </table>
 <h4>Processed fields from <code>getSubstitutions</code></h4>
 <ul>
@@ -445,40 +445,46 @@ python tray/build.py
 
 <h3 id="absence">Absence bars (full vs. partial)</h3>
 <p>
-  Each section shows an “absent teachers” bar at the top. Sources: <code>te[].orgname</code>
-  with <code>orgid</code> (the covered teacher is absent), <code>kuerzel_absent=True</code>
-  (FDKM-style), and <code>art="cancel"</code> (cancellation ⇒ teacher absent).
+  Each section shows an “absent teachers” and “absent classes” bar at the top. The data is
+  <strong>authoritative from <code>weekly/data</code> per real element ID</strong> — not
+  derived from the substitution plan. A full sweep (<code>sweep_absences</code>) queries
+  every teacher and class and classifies absence from each period's <code>cellState</code>.
 </p>
-<p>Whether a teacher is shown as <strong>fully</strong> or <strong>partially</strong> absent
-   is data-driven, not heuristic:</p>
+<p><strong>Teachers</strong> (<code>teacher_absence_entry</code>, <code>elementType=2</code>):
+   present = <code>cellState ∈ {STANDARD, BREAKSUPERVISION}</code>; away =
+   <code>{SUBSTITUTION, CANCEL}</code>.</p>
 <ul>
-  <li><strong>Fully absent → short code only</strong> (no period range). School convention.</li>
-  <li><strong>Partially absent → range <code>min–max</code></strong> of the missing periods
-      (e.g. <code>WöR&nbsp;(5–9)</code>); a single period → just the number (<code>SaI&nbsp;(6)</code>).</li>
+  <li><strong>No present period → fully absent → short code only</strong> (no range). School convention.</li>
+  <li><strong>Otherwise → range <code>min–max</code></strong> of the away periods
+      (e.g. <code>WöR&nbsp;(5–9)</code>, <code>SaI&nbsp;(6)</code>).</li>
+  <li>Pseudo teachers (<code>SKIP_NAMES</code>, e.g. <code>Z&nbsp;Entfall</code>) are excluded.</li>
 </ul>
-<p>
-  <code>determine_full_absent()</code> calls
-  <code>get_teacher_present_periods(teacher_id, date)</code> per absent teacher, hitting
-  the REST endpoint <code>weekly/data?elementType=2&amp;elementId=&lt;id&gt;</code>. If the
-  teacher has <em>no</em> period that day with <code>cellState ∈ {STANDARD,
-  BREAKSUPERVISION}</code>, they are fully absent → short code only. Otherwise →
-  partially absent → range.
-</p>
+<p><strong>Classes</strong> (<code>class_absence_entry</code>, <code>elementType=1</code>):
+   away = <code>cellState == CANCEL</code>; present = <code>{STANDARD, SUBSTITUTION,
+   ADDITIONAL}</code> (a substituted lesson means the class <em>is</em> there). A class
+   appears only when it has a <strong>consecutive block of ≥2 CANCEL periods</strong> — a
+   single cancelled lesson is not a “class is away” signal — shown as the block's range.</p>
 <div class="why">
-  <strong>Why a separate call is needed.</strong> The substitution plan only contains
-  periods <em>with a change</em>, not the whole day — so it cannot tell whether
-  <code>1–5</code> is the full day or just the morning. Hence the extra
-  <code>weekly/data</code> call.
+  <strong>Why not from the substitution plan.</strong> The plan only contains periods
+  <em>with a change</em>, not the whole day — so it can't tell whether <code>4–7</code> is
+  the full day or just the afternoon. This caused the old bug: a teacher absent all day
+  who only had lessons in periods 4–7 was shown as <code>(4–7)</code> instead of code-only.
+  <code>weekly/data</code> sees the whole day, so “no present period” reliably means fully
+  absent.
 </div>
 <div class="note">
   <strong>Two field gotchas.</strong> Use <code>cellState</code>, <em>not</em>
   <code>state</code> — the element-level <code>state</code> reads <code>REGULAR</code> even
-  for cancelled periods and is unusable. And <code>elementId=0</code> is a phantom
-  (returns arbitrary days) — always pass the real teacher ID. (<code>get_weekly_class_absences</code>
-  still uses <code>elementId=0</code> for classes and is therefore unreliable — a known TODO.)
+  for cancelled periods. And <code>elementId=0</code> is a phantom (empty / arbitrary day) —
+  always pass the real element ID (<code>get_element_periods</code> wraps the call).
 </div>
-<p>Cost: one REST call per absent teacher per displayed day. On API error or unknown ID,
-   the teacher safely falls back to the range display.</p>
+<div class="note">
+  <strong>Time-decoupled cache.</strong> The sweep (~14 classes + ~80 teachers ≈ 94 calls)
+  is expensive, so it runs only on <code>fetch_untis.py --refresh-absences</code> (cron
+  3×/day) and writes <code>data/absences.json</code> keyed by date. The regular 5-minute
+  run just reads that cache (self-healing once if a needed date is missing). Rationale:
+  absences are entered by ~07:30 and don't change during the day.
+</div>
 
 <h3 id="render">Render pipeline</h3>
 <h4>Data-driven columns</h4>

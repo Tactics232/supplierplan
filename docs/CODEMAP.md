@@ -1,6 +1,6 @@
 # Code Map
 
-_155 functions across 18 modules._
+_158 functions across 18 modules._
 
 > **Auto-generated** by `scripts/gen_codemap.py` — do not edit by hand.
 > Regenerated on every commit (git pre-commit hook). The narrative *why*
@@ -118,71 +118,74 @@ _fetch_untis.py – WebUntis Supplierplan Fetcher_
 
 | Line | Definition | Summary |
 |---:|---|---|
-| 27 | `now_local()` | Aktuelle Ortszeit (oder System-Zeit falls ZoneInfo nicht verfügbar). |
-| 31 | `today_local()` | — |
-| 34 | `set_timezone(name)` | Überschreibt die globale Zeitzone aus config.env (TIMEZONE). |
-| 47 | `esc(s)` | HTML-escape a value from external data sources. |
-| 53 | `resolve_config_path()` | Pfad zur config.env. Bevorzugt $SUPPLIERPLAN_CONFIG — damit die Datei mit |
-| 62 | `resolve_webroot()` | Verzeichnis für index.html + manifest.json. Über $SUPPLIERPLAN_WEBROOT in ein |
-| 69 | `resolve_data_out()` | Verzeichnis für die Roh-/Übersichts-Dumps. Über $SUPPLIERPLAN_DATA lenkbar. |
-| 83 | `load_config()` | — |
-| 98 | **`class WebUntis`** | — |
-| 99 | &nbsp;&nbsp;`WebUntis.__init__(self, url, school_id, user, password)` | — |
-| 110 | &nbsp;&nbsp;`WebUntis._rpc(self, method, params=None)` | — |
-| 126 | &nbsp;&nbsp;`WebUntis.login(self)` | — |
-| 131 | &nbsp;&nbsp;`WebUntis.logout(self)` | — |
-| 137 | &nbsp;&nbsp;`WebUntis.get_substitutions(self, date_int, department_id=0)` | — |
-| 142 | &nbsp;&nbsp;`WebUntis.get_timegrid(self)` | — |
-| 145 | &nbsp;&nbsp;`WebUntis.get_teachers(self)` | — |
-| 148 | &nbsp;&nbsp;`WebUntis.get_holidays(self)` | — |
-| 151 | &nbsp;&nbsp;`WebUntis.get_klassen(self)` | — |
-| 154 | &nbsp;&nbsp;`WebUntis.get_weekly_class_absences(self, date_obj)` | REST weekly/data → {classId: set(startTime)} mit state=ABSENT für Klassen. |
-| 176 | &nbsp;&nbsp;`WebUntis.get_teacher_present_periods(self, teacher_id, date_obj)` | REST weekly/data für EINEN Lehrer → Set der startTimes, in denen er an |
-| 202 | &nbsp;&nbsp;`WebUntis.get_latest_import_time(self)` | — |
-| 211 | `build_timegrid(days)` | — |
-| 223 | `build_break_lookup(days)` | — |
-| 237 | `fmt_time(t)` | — |
-| 241 | `find_current_period(timegrid)` | — |
-| 249 | `now_hhmm()` | — |
-| 254 | `parse_holidays(holidays)` | Wandelt die Untis-Ferienliste in ein Set von date-Objekten. |
-| 271 | `next_school_day(start, holiday_set)` | Erster Werktag nach `start`, der kein Ferien-/Feiertag ist. |
-| 284 | `configure_skip_teachers(value)` | Ergänzt SKIP_NAMES um die in config.env (SKIP_TEACHERS) gelisteten |
-| 292 | `build_class_id_lookup(klassen)` | Klassen-ID → Klassen-Name. |
-| 297 | `class_absences_to_list(absent_by_id, id_to_name, timegrid)` | Wandelt {classId: set(startTime)} in [(name, range_str), ...]. |
-| 323 | `build_teacher_lookup(teachers)` | — |
-| 338 | `_dedupe_names(items)` | Liste von dicts mit 'name' zu Liste eindeutiger Namen ohne '---' / leer. |
-| 349 | `_is_meaningful_subst(s)` | True wenn die Substitution überhaupt eine echte Änderung darstellt. |
-| 360 | `_has_real_subst_teacher(s)` | True wenn ein echter Vertretungs-Lehrer im te[] steht (orgid + Name != '---'). |
-| 367 | `process_substitutions(substs, timegrid, break_lookup, day='today')` | — |
-| 495 | `group_by_teacher(rows)` | — |
-| 503 | `extract_absent_periods(groups)` | {lehrer_kuerzel: set(std)} aller abwesenden Lehrer eines Tages — gemeinsame |
-| 521 | `compute_absent(groups, full_absent_kuerzel=None)` | `full_absent_kuerzel`: Set der Lehrer-Kürzel, die laut weekly/data den |
-| 566 | `determine_full_absent(untis, groups, kuerzel_to_id, date_obj)` | Set der Lehrer-Kürzel, die an `date_obj` komplett abwesend sind: Lehrer aus |
-| 588 | `render_summary_bar(teachers, classes)` | — |
-| 624 | `configure_text_badges(value)` | Setzt die als Badge erkannten Bemerkungs-Codes aus config.env (TEXT_BADGES, |
-| 636 | `render_text(txt)` | — |
-| 649 | `render_teacher_header(kuerzel, teacher_lookup, day='today')` | — |
-| 663 | `render_day_separator(d)` | — |
-| 667 | `_fach_html(fach: str)` | Liefert Fach mit Lang- und Kurz-Variante. |
-| 676 | `_klasse_html(klasse: str)` | Begrenzt die Klassen-Anzeige auf max. 2 Einträge, damit eine Zeile |
-| 693 | `_kuerzel_cell(r)` | — |
-| 697 | `_std_cell(r)` | — |
-| 700 | `_fach_cell(r)` | — |
-| 703 | `_klasse_cell(r)` | — |
-| 706 | `_lehrer_cell(r)` | — |
-| 722 | `_art_cell(r)` | — |
-| 733 | `_raum_cell(r)` | — |
-| 743 | `_text_cell(r)` | — |
-| 746 | `_row_class(r)` | — |
-| 762 | `render_row(r)` | — |
-| 774 | `build_day_content(groups, teacher_lookup, day)` | Rendert eine flache Tabelle pro Tag. Die Aufteilung in 1–4 Spalten |
-| 822 | `render_train_widget(enabled: bool)` | Liefert den HTML-Stub für das Zug-Widget im Header. |
-| 839 | `parse_overflow_config(config)` | Liest die OVERFLOW_*-Keys aus config.env und liefert ein dict für die |
-| 875 | `generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date, teacher_lookup, period_nr, period_start, period_end, show_logo=False, import_time=None, train_enabled=False, today_classes_override=None, tomorrow_classes_override=None, compact_col_width=320, max_columns=4, school_name='', school_type='', school_location='', show_clock=True, tz_name='Europe/Vienna', theme='dark', today_full_absent=None, tomorrow_full_absent=None, overflow_cfg=None)` | — |
-| 1731 | `purge_cloudflare_cache(zone_id, token, host=None)` | Löscht den Cloudflare-Cache nach dem Generieren der index.html. |
-| 1752 | `write_manifest(school_name, school_location, theme)` | Erzeugt manifest.json passend zu Schulname, Logo, Plan-Titel und Theme. |
-| 1782 | `write_data_dump(today_substs, tomorrow_substs, today_rows, tomorrow_rows, holidays, import_time, today_date, tomorrow_date)` | Schreibt zwei Dateien ins data/-Verzeichnis: |
-| 1876 | `main()` | — |
+| 28 | `now_local()` | Aktuelle Ortszeit (oder System-Zeit falls ZoneInfo nicht verfügbar). |
+| 32 | `today_local()` | — |
+| 35 | `set_timezone(name)` | Überschreibt die globale Zeitzone aus config.env (TIMEZONE). |
+| 48 | `esc(s)` | HTML-escape a value from external data sources. |
+| 54 | `resolve_config_path()` | Pfad zur config.env. Bevorzugt $SUPPLIERPLAN_CONFIG — damit die Datei mit |
+| 63 | `resolve_webroot()` | Verzeichnis für index.html + manifest.json. Über $SUPPLIERPLAN_WEBROOT in ein |
+| 70 | `resolve_data_out()` | Verzeichnis für die Roh-/Übersichts-Dumps. Über $SUPPLIERPLAN_DATA lenkbar. |
+| 94 | `load_config()` | — |
+| 114 | **`class WebUntis`** | — |
+| 115 | &nbsp;&nbsp;`WebUntis.__init__(self, url, school_id, user, password)` | — |
+| 126 | &nbsp;&nbsp;`WebUntis._rpc(self, method, params=None)` | — |
+| 142 | &nbsp;&nbsp;`WebUntis.login(self)` | — |
+| 147 | &nbsp;&nbsp;`WebUntis.logout(self)` | — |
+| 153 | &nbsp;&nbsp;`WebUntis.get_substitutions(self, date_int, department_id=0)` | — |
+| 158 | &nbsp;&nbsp;`WebUntis.get_timegrid(self)` | — |
+| 161 | &nbsp;&nbsp;`WebUntis.get_teachers(self)` | — |
+| 164 | &nbsp;&nbsp;`WebUntis.get_holidays(self)` | — |
+| 167 | &nbsp;&nbsp;`WebUntis.get_klassen(self)` | — |
+| 170 | &nbsp;&nbsp;`WebUntis.get_element_periods(self, element_type, element_id, date_obj)` | REST weekly/data für EIN Element an `date_obj` → [(startTime, cellState), …] |
+| 191 | &nbsp;&nbsp;`WebUntis.get_latest_import_time(self)` | — |
+| 200 | `build_timegrid(days)` | — |
+| 212 | `build_break_lookup(days)` | — |
+| 226 | `fmt_time(t)` | — |
+| 230 | `find_current_period(timegrid)` | — |
+| 238 | `now_hhmm()` | — |
+| 243 | `parse_holidays(holidays)` | Wandelt die Untis-Ferienliste in ein Set von date-Objekten. |
+| 260 | `next_school_day(start, holiday_set)` | Erster Werktag nach `start`, der kein Ferien-/Feiertag ist. |
+| 273 | `configure_skip_teachers(value)` | Ergänzt SKIP_NAMES um die in config.env (SKIP_TEACHERS) gelisteten |
+| 282 | `teacher_absence_entry(periods, timegrid)` | `periods` = [(startTime, cellState), …] eines Lehrers an einem Tag. |
+| 301 | `_consecutive_runs(nums)` | Sortierte Ganzzahlen → Liste zusammenhängender Läufe (konsekutive Werte). |
+| 316 | `class_absence_entry(periods, timegrid, min_block=2)` | `periods` = [(startTime, cellState), …] einer Klasse an einem Tag. |
+| 333 | `sweep_absences(untis, teachers, klassen, date_obj, timegrid)` | Voll-Sweep via weekly/data über ALLE Lehrer + Klassen für `date_obj`. |
+| 368 | `_absence_cache_path()` | — |
+| 372 | `load_absence_cache()` | {date_iso: {"teachers": [...], "classes": [...]}}; {} bei Fehler/fehlend. |
+| 380 | `save_absence_cache(cache)` | Atomar schreiben (alte Datei bleibt bei Fehler intakt). |
+| 389 | `build_teacher_lookup(teachers)` | — |
+| 404 | `_dedupe_names(items)` | Liste von dicts mit 'name' zu Liste eindeutiger Namen ohne '---' / leer. |
+| 415 | `_is_meaningful_subst(s)` | True wenn die Substitution überhaupt eine echte Änderung darstellt. |
+| 426 | `_has_real_subst_teacher(s)` | True wenn ein echter Vertretungs-Lehrer im te[] steht (orgid + Name != '---'). |
+| 433 | `process_substitutions(substs, timegrid, break_lookup, day='today')` | — |
+| 561 | `group_by_teacher(rows)` | — |
+| 569 | `extract_absent_periods(groups)` | {lehrer_kuerzel: set(std)} aller abwesenden Lehrer eines Tages, abgeleitet aus |
+| 588 | `compute_absent(groups, full_absent_kuerzel=None)` | `full_absent_kuerzel`: Set der Lehrer-Kürzel, die laut weekly/data den |
+| 633 | `render_summary_bar(teachers, classes)` | — |
+| 669 | `configure_text_badges(value)` | Setzt die als Badge erkannten Bemerkungs-Codes aus config.env (TEXT_BADGES, |
+| 681 | `render_text(txt)` | — |
+| 694 | `render_teacher_header(kuerzel, teacher_lookup, day='today')` | — |
+| 708 | `render_day_separator(d)` | — |
+| 712 | `_fach_html(fach: str)` | Liefert Fach mit Lang- und Kurz-Variante. |
+| 721 | `_klasse_html(klasse: str)` | Begrenzt die Klassen-Anzeige auf max. 2 Einträge, damit eine Zeile |
+| 738 | `_kuerzel_cell(r)` | — |
+| 742 | `_std_cell(r)` | — |
+| 745 | `_fach_cell(r)` | — |
+| 748 | `_klasse_cell(r)` | — |
+| 751 | `_lehrer_cell(r)` | — |
+| 767 | `_art_cell(r)` | — |
+| 778 | `_raum_cell(r)` | — |
+| 788 | `_text_cell(r)` | — |
+| 791 | `_row_class(r)` | — |
+| 807 | `render_row(r)` | — |
+| 819 | `build_day_content(groups, teacher_lookup, day)` | Rendert eine flache Tabelle pro Tag. Die Aufteilung in 1–4 Spalten |
+| 867 | `render_train_widget(enabled: bool)` | Liefert den HTML-Stub für das Zug-Widget im Header. |
+| 884 | `parse_overflow_config(config)` | Liest die OVERFLOW_*-Keys aus config.env und liefert ein dict für die |
+| 920 | `generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date, teacher_lookup, period_nr, period_start, period_end, show_logo=False, import_time=None, train_enabled=False, today_classes_override=None, tomorrow_classes_override=None, today_teachers_override=None, tomorrow_teachers_override=None, compact_col_width=320, max_columns=4, school_name='', school_type='', school_location='', show_clock=True, tz_name='Europe/Vienna', theme='dark', today_full_absent=None, tomorrow_full_absent=None, overflow_cfg=None)` | — |
+| 1779 | `purge_cloudflare_cache(zone_id, token, host=None)` | Löscht den Cloudflare-Cache nach dem Generieren der index.html. |
+| 1800 | `write_manifest(school_name, school_location, theme)` | Erzeugt manifest.json passend zu Schulname, Logo, Plan-Titel und Theme. |
+| 1830 | `write_data_dump(today_substs, tomorrow_substs, today_rows, tomorrow_rows, holidays, import_time, today_date, tomorrow_date)` | Schreibt zwei Dateien ins data/-Verzeichnis: |
+| 1924 | `main()` | — |
 
 <h2 id="scriptsgencodemappy">scripts/gen_codemap.py</h2>
 

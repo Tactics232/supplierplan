@@ -27,7 +27,7 @@ def load_config():
 def main():
     config   = load_config()
     base_url = config["UNTIS_URL"].rstrip("/")
-    school   = config.get("UNTIS_SCHOOL_ID", "s921092")
+    school   = config.get("UNTIS_SCHOOL_ID", "")
     user     = config["UNTIS_USER"]
     password = config["UNTIS_PASSWORD"]
 
