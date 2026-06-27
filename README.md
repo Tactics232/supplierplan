@@ -1,7 +1,7 @@
 # Supplierplan Display
 
 Self-hosted live web display for a Viennese school's substitution plan
-(*Supplierplan*). It replaces the cluttered WebUntis monitor view with a dedicated,
+(*Supplierplan*). It replaces the WebUntis monitor view with a dedicated,
 dark, portrait-oriented layout optimised for large screens. It runs on a Proxmox LXC
 (or directly on a school PC via a Windows tray app) and is shown fullscreen on a
 hallway monitor.
