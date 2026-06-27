@@ -1,6 +1,10 @@
 """Baut Supplierplan.exe (PyInstaller, one-folder) und optional den Inno-Setup-
 Installer. Auf dem Dev-PC ausführen.
 
+Build-Abhängigkeiten (pip): pyinstaller, pystray, pillow, tzdata.
+(tzdata wird in die .exe gebündelt, damit ZoneInfo auf Windows funktioniert.)
+Für den Installer-Schritt zusätzlich Inno Setup 6 (ISCC).
+
 WICHTIG: Es wird in den Windows-TEMP-Ordner gebaut, NICHT ins Projekt — sonst
 sperrt OneDrive die dist/-Dateien und der Build bricht mit 'Zugriff verweigert' ab.
 """
@@ -44,6 +48,10 @@ def build_exe():
         "--workpath", str(WORK),
         "--specpath", str(BUILD_ROOT),
         "--add-data", f"{ROOT / 'scripts'}{';' if sys.platform=='win32' else ':'}scripts",
+        # Zeitzonen-DB mitliefern: ZoneInfo("Europe/Vienna") braucht tzdata auf
+        # Windows. Fehlt das Paket im Build-Python, bricht der Build hier hart ab
+        # (gewollt: lieber laut scheitern als still die System-TZ ausliefern).
+        "--collect-data", "tzdata",
         str(ROOT / "tray" / "app.py"),
     ]
     subprocess.check_call(cmd, cwd=ROOT)

@@ -246,10 +246,10 @@ _Baut Supplierplan.exe (PyInstaller, one-folder) und optional den Inno-Setup-_
 
 | Line | Definition | Summary |
 |---:|---|---|
-| 26 | `stage_assets(app_out: Path)` | Legt assets/ neben die exe (css, fonts, logo, sw.js, config.env.example). |
-| 39 | `build_exe()` | — |
-| 54 | `_find_iscc()` | ISCC.exe finden: PATH, dann Program Files, dann per-User (winget-Default |
-| 74 | `build_installer()` | — |
+| 30 | `stage_assets(app_out: Path)` | Legt assets/ neben die exe (css, fonts, logo, sw.js, config.env.example). |
+| 43 | `build_exe()` | — |
+| 62 | `_find_iscc()` | ISCC.exe finden: PATH, dann Program Files, dann per-User (winget-Default |
+| 82 | `build_installer()` | — |
 
 <h2 id="trayconfigiopy">tray/config_io.py</h2>
 
