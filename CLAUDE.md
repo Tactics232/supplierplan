@@ -78,6 +78,15 @@ Konfiguration in `config.env` über `TRAIN_*`-Variablen. Wenn `TRAIN_STATION` le
 - `TEXT_BADGES` (Default `b,ub,MA`): Bemerkungs-Codes, die als Badge gerendert werden.
   Bekannte (b/ub/MA) behalten ihre Farbe, neue bekommen neutrales `.text-badge`.
 - `UNTIS_DEPARTMENT_ID` (Default 0): Abteilungs-Filter für `getSubstitutions`.
+- `CANCEL_PLACEMENT` (`section` Default / `inline`): Platzierung der Entfall-Zeilen
+  (Vokabular in `CONTEXT.md`, „Cancel placement"). `section` = alle Entfälle in eigener
+  „Entfallende Stunden"-Sektion am Tagesende (cancel-only-Lehrer ohne eigenen Block).
+  `inline` = jede Entfall-Zeile bleibt chronologisch im Block des betroffenen Lehrers;
+  cancel-only-Lehrer bekommt einen normalen Block samt Kopf. Müll → `section`. Rein
+  server-seitig in `build_day_content`; im `inline`-Modus werden keine
+  `data-block="cancel"` ausgegeben, die JS-Cancel-Header-Logik bleibt inaktiv (eine
+  Stufe von `OVERFLOW_REDUCE` — die Cancel-Sektion-Kompaktierung — entfällt dann mangels
+  Sektion). Tests: `tests/test_cancel_placement.py`.
 - `THEME` (`dark` Default / `light`): Farbschema für den gesamten Supplierplan.
   Setzt `data-theme` auf `<html>`; CSS-Variablen für Light unter
   `:root[data-theme="light"]`. In der **Mobil-Ansicht** überschreibt ein kleiner

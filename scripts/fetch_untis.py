@@ -83,6 +83,12 @@ LOGO_FILE  = "logo.png"
 # Ein fest montierter Monitor/TV dreht ohnehin nie, dem ist der Wert egal; nur
 # drehbare Geräte (Handy, Tablet-Kiosk) folgen ihm. Über config.env überschreibbar.
 PWA_ORIENTATION = "any"
+# Platzierung der Entfall-Zeilen (CANCEL_PLACEMENT, siehe CONTEXT.md „Cancel placement"):
+#   "section" (Default) = alle Entfälle in eigener „Entfallende Stunden"-Sektion am Tagesende
+#   "inline"            = jede Entfall-Zeile bleibt im Block des betroffenen Lehrers
+# Müll → "section". Greift nur in build_day_content (rein server-seitig).
+CANCEL_PLACEMENT = "section"
+VALID_CANCEL_PLACEMENTS = {"section", "inline"}
 # Gültige Manifest-Werte (W3C). Alles andere fällt auf "any" zurück.
 VALID_ORIENTATIONS = {
     "any", "natural", "landscape", "portrait",
@@ -820,26 +826,39 @@ def build_day_content(groups, teacher_lookup, day):
     """Rendert eine flache Tabelle pro Tag. Die Aufteilung in 1–4 Spalten
     übernimmt der Browser zur Laufzeit (Layout-Engine in JavaScript).
     Jede Lehrer-Gruppe ist als `data-block="teacher"` markiert, die
-    Cancel-Sektion als `data-block="cancel"`."""
+    Cancel-Sektion (nur im section-Modus) als `data-block="cancel"`.
+
+    CANCEL_PLACEMENT steuert die Entfall-Platzierung (siehe CONTEXT.md):
+    - "section" (Default): Entfall-Zeilen werden aus den Lehrer-Gruppen
+      herausgelöst und am Tagesende gesammelt; ein Lehrer mit nur Entfällen
+      bekommt keinen eigenen Block.
+    - "inline": Entfall-Zeilen bleiben in ihrer Lehrer-Gruppe (chronologisch
+      via group_by_teacher sortiert); ein Lehrer mit nur Entfällen bekommt
+      einen normalen Block samt Kopf. Es werden keine `data-block="cancel"`
+      ausgegeben, die JS-Cancel-Header-Logik bleibt damit inaktiv."""
 
     if not groups:
         msg = (f"Kein {esc(PLAN_TITLE)} für heute" if day == "today"
                else f"Kein {esc(PLAN_TITLE)} für morgen")
         return f'<div class="empty-state"><p>{msg}</p></div>'
 
-    # Trenne Entfall-Zeilen (art=cancel) aus den Lehrer-Gruppen heraus
-    cancel_rows    = []
-    regular_groups = {}
-    for kuerzel, rows in groups.items():
-        regs = [r for r in rows if r.get("art") != "cancel"]
-        cans = [r for r in rows if r.get("art") == "cancel"]
-        if regs:
-            regular_groups[kuerzel] = regs
-        cancel_rows.extend(cans)
+    cancel_rows = []
+    if CANCEL_PLACEMENT == "inline":
+        # Entfälle bleiben in ihrer Gruppe; cancel-only-Lehrer behalten ihren Block.
+        display_groups = groups
+    else:
+        # section-Modus: Entfall-Zeilen (art=cancel) aus den Lehrer-Gruppen heraustrennen
+        display_groups = {}
+        for kuerzel, rows in groups.items():
+            regs = [r for r in rows if r.get("art") != "cancel"]
+            cans = [r for r in rows if r.get("art") == "cancel"]
+            if regs:
+                display_groups[kuerzel] = regs
+            cancel_rows.extend(cans)
 
     # Flache HTML-Liste pro Lehrer-Gruppe; ein <tbody> pro Gruppe → data-block-Attribut
     blocks_html = []
-    for kuerzel, rows in regular_groups.items():
+    for kuerzel, rows in display_groups.items():
         body = render_teacher_header(kuerzel, teacher_lookup, day)
         body += "".join(render_row(r) for r in rows)
         blocks_html.append(
@@ -1922,7 +1941,7 @@ s     {{ color: #888; }}
 
 # ── Main ──────────────────────────────────────────────
 def main():
-    global PLAN_TITLE, LOGO_FILE, PWA_ORIENTATION
+    global PLAN_TITLE, LOGO_FILE, PWA_ORIENTATION, CANCEL_PLACEMENT
     config = load_config()
     tz_name = config.get("TIMEZONE", "").strip() or "Europe/Vienna"
     set_timezone(tz_name)
@@ -1932,6 +1951,8 @@ def main():
     configure_text_badges(config.get("TEXT_BADGES", "b,ub,MA"))
     PLAN_TITLE = config.get("PLAN_TITLE", "Supplierplan").strip() or "Supplierplan"
     LOGO_FILE  = config.get("LOGO_FILE", "logo.png").strip() or "logo.png"
+    _cp = config.get("CANCEL_PLACEMENT", "section").strip().lower()
+    CANCEL_PLACEMENT = _cp if _cp in VALID_CANCEL_PLACEMENTS else "section"
     _orient = config.get("PWA_ORIENTATION", "any").strip().lower() or "any"
     PWA_ORIENTATION = _orient if _orient in VALID_ORIENTATIONS else "any"
     try:
