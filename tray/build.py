@@ -51,10 +51,30 @@ def build_exe():
     print("EXE + assets ->", APP_OUT)
 
 
+def _find_iscc():
+    """ISCC.exe finden: PATH, dann Program Files, dann per-User (winget-Default
+    installiert nach %LOCALAPPDATA%\\Programs\\Inno Setup 6)."""
+    found = shutil.which("ISCC")
+    if found:
+        return found
+    import os
+    candidates = [
+        r"C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
+        r"C:\Program Files\Inno Setup 6\ISCC.exe",
+    ]
+    local = os.environ.get("LOCALAPPDATA")
+    if local:
+        candidates.append(str(Path(local) / "Programs" / "Inno Setup 6" / "ISCC.exe"))
+    for c in candidates:
+        if Path(c).exists():
+            return c
+    return None
+
+
 def build_installer():
     iss = ROOT / "tray" / "installer.iss"
-    iscc = shutil.which("ISCC") or r"C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
-    if not Path(iscc).exists():
+    iscc = _find_iscc()
+    if not iscc:
         print("Inno Setup (ISCC) nicht gefunden – Installer übersprungen.")
         return
     # Quell-Ordner (Temp) + Ausgabe-Ordner per /D an das iss-Skript geben.

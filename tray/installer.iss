@@ -15,7 +15,10 @@ DefaultGroupName=Supplierplan
 OutputBaseFilename=Supplierplan-Setup
 OutputDir={#OutDir}
 DisableProgramGroupPage=yes
-PrivilegesRequired=admin
+; Pro-Benutzer-Installation: kein Admin/UAC. {autopf} loest dann automatisch nach
+; %LOCALAPPDATA%\Programs auf, {group} ins User-Startmenue, und der HKCU-Autostart
+; trifft garantiert das Konto, das die App betreibt (kein Admin-Hive-Mismatch).
+PrivilegesRequired=lowest
 
 [Files]
 Source: "{#DistDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs

@@ -1,6 +1,6 @@
 # Code Map
 
-_167 functions across 19 modules._
+_168 functions across 19 modules._
 
 > **Auto-generated** by `scripts/gen_codemap.py` — do not edit by hand.
 > Regenerated on every commit (git pre-commit hook). The narrative *why*
@@ -247,7 +247,8 @@ _Baut Supplierplan.exe (PyInstaller, one-folder) und optional den Inno-Setup-_
 |---:|---|---|
 | 26 | `stage_assets(app_out: Path)` | Legt assets/ neben die exe (css, fonts, logo, sw.js, config.env.example). |
 | 39 | `build_exe()` | — |
-| 54 | `build_installer()` | — |
+| 54 | `_find_iscc()` | ISCC.exe finden: PATH, dann Program Files, dann per-User (winget-Default |
+| 74 | `build_installer()` | — |
 
 <h2 id="trayconfigiopy">tray/config_io.py</h2>
 
