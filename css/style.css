@@ -212,10 +212,13 @@ html, body {
 .tw-towards .tw-arrow svg { transform: scaleX(1); }
 .tw-away    .tw-arrow svg { transform: scaleX(-1); }
 
-.tw-row .tw-line        { font-weight: 700; min-width: 38px; }
-.tw-row .tw-time        { font-weight: 700; }
-.tw-row .tw-dest        { color: var(--c-text); opacity: 0.85; overflow: hidden; text-overflow: ellipsis; }
-.tw-row .tw-delay       { color: var(--c-amber); font-weight: 700; margin-left: auto; }
+.tw-row .tw-line        { font-weight: 700; min-width: 38px; flex-shrink: 0; }
+.tw-row .tw-time        { font-weight: 700; flex-shrink: 0; }
+/* Ziel-Bahnhof ist das einzige schrumpfende Element → kürzt mit … statt das
+   Widget zu verbreitern (min-width:0 hebt das flex-Default min-width:auto auf). */
+.tw-row .tw-dest        { color: var(--c-text); opacity: 0.85; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.tw-row .tw-arrow       { flex-shrink: 0; }
+.tw-row .tw-delay       { color: var(--c-amber); font-weight: 700; margin-left: auto; flex-shrink: 0; }
 .tw-row.tw-cancelled    { opacity: 0.5; text-decoration: line-through; }
 
 .tw-foot {
@@ -993,19 +996,24 @@ footer {
     }
     .header-left {
         gap: 0;
+        flex: 1 1 auto;
+        min-width: 0;        /* darf schrumpfen → Zug-Widget kürzt, statt zu drücken */
     }
     /* Theme-Schalter oben links einblenden */
     .theme-toggle {
         display: inline-flex;
         margin-right: 10px;
+        flex-shrink: 0;
     }
     .train-widget {
         flex: 1 1 auto;
+        min-width: 0;        /* erlaubt das …-Kürzen langer Bahnhofsnamen */
         margin: 0 12px 0 0;
         max-width: none;
     }
     .header-right {
         gap: 8px;
+        flex-shrink: 0;      /* Laufende-Stunde-Zahl wird nie weggedrückt */
     }
     /* Lesson indicator mobil: nur Punkt + Zahl (z.B. „● 3."), passt rechts hin */
     .current-period { white-space: nowrap; }
@@ -1144,4 +1152,11 @@ footer {
 }
 .layout-wrapper .ov-page > .col table {
     width: 100%;
+}
+
+/* Sehr schmal (≤480px): Zug-Widget hat Vorrang. Die Laufende-Stunde-Zahl darf
+   hier ganz weichen, damit lange Bahnhofsnamen ungekürzt Platz haben. */
+@media (max-width: 480px) {
+    .current-period { display: none; }
+    .train-widget { margin-right: 0; }
 }
