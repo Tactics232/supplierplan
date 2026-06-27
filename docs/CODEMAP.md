@@ -1,6 +1,6 @@
 # Code Map
 
-_168 functions across 19 modules._
+_171 functions across 19 modules._
 
 > **Auto-generated** by `scripts/gen_codemap.py` — do not edit by hand.
 > Regenerated on every commit (git pre-commit hook). The narrative *why*
@@ -107,11 +107,12 @@ _fetch_trains.py – holt die nächsten Abfahrten einer Bahnhaltestelle direkt_
 | 133 | `load_config(path: Path)` | Liest .env-style key=value-Paare. Kommentare (#) und Leerzeilen werden ignoriert. |
 | 151 | `_mgate_request(svc_method: str, params: dict)` | Sendet eine mgate.exe-Anfrage und liefert das svcResL[0].res-dict zurück. |
 | 181 | `_resolve_station_lid(name: str)` | Findet eine Station per LocMatch. Liefert (resolved_name, lid). |
-| 197 | `_parse_hafas_time(value: str)` | HAFAS-Zeitformat HHMMSS (oder DHHMMSS für nächster Tag) → timedelta seit Tagesbeginn. |
-| 211 | **`class _OebbLeg`** | Duck-typed Leg-Objekt, identische Attribute wie _FakeLeg in den Tests. |
-| 214 | &nbsp;&nbsp;`_OebbLeg.__init__(self, name, direction, dateTime, delay=None, cancelled=False, platform=None)` | — |
-| 223 | `_fetch_departures(lid: str, max_jny: int=12)` | Holt das StationBoard für die Location-ID und liefert _OebbLeg-Liste. |
-| 290 | `main()` | — |
+| 197 | `search_stations(name: str, max_results: int=8)` | Sucht Stationen per HAFAS LocMatch und liefert mehrere Treffer als Liste von |
+| 214 | `_parse_hafas_time(value: str)` | HAFAS-Zeitformat HHMMSS (oder DHHMMSS für nächster Tag) → timedelta seit Tagesbeginn. |
+| 228 | **`class _OebbLeg`** | Duck-typed Leg-Objekt, identische Attribute wie _FakeLeg in den Tests. |
+| 231 | &nbsp;&nbsp;`_OebbLeg.__init__(self, name, direction, dateTime, delay=None, cancelled=False, platform=None)` | — |
+| 240 | `_fetch_departures(lid: str, max_jny: int=12)` | Holt das StationBoard für die Location-ID und liefert _OebbLeg-Liste. |
+| 307 | `main()` | — |
 
 <h2 id="scriptsfetchuntispy">scripts/fetch_untis.py</h2>
 
@@ -217,12 +218,12 @@ _Einstieg der Tray-App: pystray-Icon, Menü, Single-Instance, Wiring._
 
 | Line | Definition | Summary |
 |---:|---|---|
-| 18 | `_acquire_single_instance(data_dir)` | Single-Instance über eine exklusiv gesperrte Lock-Datei im Datenverzeichnis. |
-| 42 | `_static_dir()` | Wurzel der statischen Assets: assets/ neben der .exe (gebaut) oder der |
-| 52 | `_ensure_data_dir()` | Legt das beschreibbare Datenverzeichnis an (web/, data/, config.env aus |
-| 67 | `_test_connection(values)` | — |
-| 80 | `main()` | — |
-| 175 | `_report_crash(text)` | Schreibt den Traceback in crash.log (neben der .exe und in %TEMP%) und zeigt |
+| 20 | `_acquire_single_instance(data_dir)` | Single-Instance über eine exklusiv gesperrte Lock-Datei im Datenverzeichnis. |
+| 44 | `_static_dir()` | Wurzel der statischen Assets: assets/ neben der .exe (gebaut) oder der |
+| 54 | `_ensure_data_dir()` | Legt das beschreibbare Datenverzeichnis an (web/, data/, config.env aus |
+| 69 | `_test_connection(values)` | — |
+| 82 | `main()` | — |
+| 207 | `_report_crash(text)` | Schreibt den Traceback in crash.log (neben der .exe und in %TEMP%) und zeigt |
 
 <h2 id="trayautostartpy">tray/autostart.py</h2>
 
@@ -268,7 +269,8 @@ _tkinter-Konfigurationsfenster. Liest/schreibt config.env über config_io._
 | Line | Definition | Summary |
 |---:|---|---|
 | 76 | `_make_widget(frame, kind, extra, current_value)` | Erzeugt das passende Eingabe-Widget + StringVar. Auswahlfelder (bool/choice) |
-| 97 | `open_config_window(config_path, template_path=None, on_saved=None, test_connection=None, on_refresh=None, on_refresh_absences=None)` | Öffnet das Fenster (modal). config_path: Pfad zur config.env. |
+| 97 | `_station_dialog(parent, search_fn, target_var)` | Modaler Such-Dialog: Teilname tippen → HAFAS-Treffer anklicken → exakter |
+| 166 | `open_config_window(config_path, template_path=None, on_saved=None, test_connection=None, on_refresh=None, on_refresh_absences=None, busy_getter=None, status_getter=None, station_search=None, help_url=None, on_close=None, focus_requested=None)` | Öffnet das Einstellungen-Fenster. |
 
 <h2 id="trayiconspy">tray/icons.py</h2>
 
@@ -320,14 +322,15 @@ _Hintergrund-Dienst: ruft die bestehenden Fetch-main() auf Timern auf und_
 |---:|---|---|
 | 16 | **`class Service`** | — |
 | 17 | &nbsp;&nbsp;`Service.__init__(self, data_dir: Path, static_dir=None, log=print)` | — |
-| 32 | &nbsp;&nbsp;`Service._apply_env(self)` | — |
-| 37 | &nbsp;&nbsp;`Service._cfg_int(self, key, default)` | — |
-| 43 | &nbsp;&nbsp;`Service.run_untis_once(self, refresh_absences=False)` | Ein Untis-Lauf. refresh_absences=True erzwingt den weekly/data-Sweep |
-| 59 | &nbsp;&nbsp;`Service.refresh_now(self)` | Manueller regulärer Lauf (Button), nicht-blockierend für den Aufrufer. |
-| 63 | &nbsp;&nbsp;`Service.refresh_absences_now(self)` | Manueller Abwesenheits-Lauf (Button), nicht-blockierend für den Aufrufer. |
-| 68 | &nbsp;&nbsp;`Service.run_trains_once(self)` | — |
-| 76 | &nbsp;&nbsp;`Service._record_error(self, what, exc)` | — |
-| 88 | &nbsp;&nbsp;`Service._schedule(self, fn, interval)` | — |
-| 97 | &nbsp;&nbsp;`Service._schedule_absences(self)` | Plant den nächsten Abwesenheits-Lauf zur nächsten festen Lokalzeit |
-| 117 | &nbsp;&nbsp;`Service.start(self)` | — |
-| 137 | &nbsp;&nbsp;`Service.stop(self)` | — |
+| 35 | &nbsp;&nbsp;`Service.busy(self)` | True, solange irgendein Untis-Lauf läuft (für Button-Ausgrauen). |
+| 40 | &nbsp;&nbsp;`Service._apply_env(self)` | — |
+| 45 | &nbsp;&nbsp;`Service._cfg_int(self, key, default)` | — |
+| 51 | &nbsp;&nbsp;`Service.run_untis_once(self, refresh_absences=False)` | Ein Untis-Lauf. refresh_absences=True erzwingt den weekly/data-Sweep |
+| 72 | &nbsp;&nbsp;`Service.refresh_now(self)` | Manueller regulärer Lauf (Button), nicht-blockierend. No-op, wenn schon |
+| 79 | &nbsp;&nbsp;`Service.refresh_absences_now(self)` | Manueller Abwesenheits-Lauf (Button), nicht-blockierend. No-op bei |
+| 87 | &nbsp;&nbsp;`Service.run_trains_once(self)` | — |
+| 95 | &nbsp;&nbsp;`Service._record_error(self, what, exc)` | — |
+| 107 | &nbsp;&nbsp;`Service._schedule(self, fn, interval)` | — |
+| 116 | &nbsp;&nbsp;`Service._schedule_absences(self)` | Plant den nächsten Abwesenheits-Lauf zur nächsten festen Lokalzeit |
+| 136 | &nbsp;&nbsp;`Service.start(self)` | — |
+| 156 | &nbsp;&nbsp;`Service.stop(self)` | — |

@@ -194,6 +194,23 @@ def _resolve_station_lid(name: str) -> tuple:
     return m["name"], m["lid"]
 
 
+def search_stations(name: str, max_results: int = 8) -> list:
+    """Sucht Stationen per HAFAS LocMatch und liefert mehrere Treffer als Liste von
+    {"name", "lid"}. Für die Tray-GUI: der Nutzer tippt einen Teilnamen und wählt
+    den exakten Stationsnamen (= das, was in TRAIN_STATION gehört) per Klick aus."""
+    name = (name or "").strip()
+    if not name:
+        return []
+    res = _mgate_request("LocMatch", {
+        "input": {"loc": {"name": name, "type": "S"}, "maxLoc": max_results, "field": "S"}
+    })
+    out = []
+    for m in res.get("match", {}).get("locL", []):
+        if m.get("name"):
+            out.append({"name": m["name"], "lid": m.get("lid", "")})
+    return out
+
+
 def _parse_hafas_time(value: str) -> timedelta:
     """HAFAS-Zeitformat HHMMSS (oder DHHMMSS für nächster Tag) → timedelta seit Tagesbeginn."""
     s = str(value)

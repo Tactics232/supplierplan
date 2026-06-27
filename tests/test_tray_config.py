@@ -189,6 +189,25 @@ class TestServiceRun(unittest.TestCase):
             self.assertEqual(counter["max"], 1)            # nie 2 Läufe parallel
             self.assertCountEqual(calls, [False, True])    # beide Modi durchgereicht
 
+    def test_busy_true_waehrend_lauf_false_danach(self):
+        from scripts import fetch_untis
+        with tempfile.TemporaryDirectory() as d:
+            svc = Service(d)
+            seen = {}
+            orig = fetch_untis.main
+
+            def fake(refresh_absences=False):
+                seen["during"] = svc.busy
+
+            fetch_untis.main = fake
+            try:
+                self.assertFalse(svc.busy)        # vorher
+                svc.run_untis_once()
+                self.assertTrue(seen["during"])   # währenddessen
+                self.assertFalse(svc.busy)         # danach
+            finally:
+                fetch_untis.main = orig
+
 
 class TestGuiConfigSync(unittest.TestCase):
     """Jeder Schlüssel in config.env.example muss im Einstellungen-Fenster

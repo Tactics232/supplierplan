@@ -15,6 +15,8 @@ from tray.config_io import read_config_env, write_config_env
 from tray.autostart import (WinRegistry, APP_NAME, enable_autostart,
                             disable_autostart, is_autostart)
 
+HELP_URL = "https://github.com/Tactics232/supplierplan/blob/master/docs/SETTINGS.md"
+
 def _acquire_single_instance(data_dir):
     """Single-Instance über eine exklusiv gesperrte Lock-Datei im Datenverzeichnis.
     Das OS gibt die Sperre beim Prozessende automatisch frei → kein stale lock nach
@@ -104,16 +106,44 @@ def main():
     def on_stop(icon, item):
         service.stop(); refresh_icon(icon)
 
+    win_state = {"open": False, "focus": False}
+
+    def _station_search(term):
+        from scripts.fetch_trains import search_stations
+        return search_stations(term)
+
+    def _focus_requested():
+        if win_state["focus"]:
+            win_state["focus"] = False
+            return True
+        return False
+
     def on_settings(icon, item):
-        threading.Thread(
-            target=lambda: open_config_window(
-                data_dir / "config.env",
-                template_path=paths.app_dir() / "assets" / "config.env.example",
-                on_saved=service.refresh_now,
-                test_connection=_test_connection,
-                on_refresh=service.refresh_now,
-                on_refresh_absences=service.refresh_absences_now),
-            daemon=True).start()
+        # Single-Window: läuft schon eins, nur nach vorne holen (kein zweites Fenster).
+        if win_state["open"]:
+            win_state["focus"] = True
+            return
+        win_state["open"] = True
+
+        def run():
+            try:
+                open_config_window(
+                    data_dir / "config.env",
+                    template_path=_static_dir() / "config.env.example",
+                    on_saved=service.refresh_now,
+                    test_connection=_test_connection,
+                    on_refresh=service.refresh_now,
+                    on_refresh_absences=service.refresh_absences_now,
+                    busy_getter=lambda: service.busy,
+                    status_getter=lambda: service.last_status,
+                    station_search=_station_search,
+                    help_url=HELP_URL,
+                    focus_requested=_focus_requested,
+                    on_close=lambda: win_state.update(open=False))
+            finally:
+                win_state["open"] = False
+
+        threading.Thread(target=run, daemon=True).start()
 
     def on_refresh_now(icon, item):
         service.refresh_now()
@@ -143,8 +173,10 @@ def main():
         pystray.MenuItem("Start", on_start, enabled=lambda i: not service.running),
         pystray.MenuItem("Stopp", on_stop, enabled=lambda i: service.running),
         pystray.MenuItem("Einstellungen…", on_settings, default=True),
-        pystray.MenuItem("Jetzt aktualisieren", on_refresh_now, enabled=lambda i: service.running),
-        pystray.MenuItem("Abwesenheiten aktualisieren", on_refresh_absences, enabled=lambda i: service.running),
+        pystray.MenuItem("Jetzt aktualisieren", on_refresh_now,
+                         enabled=lambda i: service.running and not service.busy),
+        pystray.MenuItem("Abwesenheiten aktualisieren", on_refresh_absences,
+                         enabled=lambda i: service.running and not service.busy),
         pystray.MenuItem("Im Browser öffnen", on_open_browser),
         pystray.MenuItem("Mit Windows starten", toggle_autostart, checked=autostart_checked),
         pystray.MenuItem("Beenden", on_quit),

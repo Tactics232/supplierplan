@@ -94,39 +94,152 @@ def _make_widget(frame, kind, extra, current_value):
     return w, var
 
 
+def _station_dialog(parent, search_fn, target_var):
+    """Modaler Such-Dialog: Teilname tippen → HAFAS-Treffer anklicken → exakter
+    Stationsname landet in target_var (= TRAIN_STATION). Suche läuft im Thread,
+    Ergebnis via after() zurück (kein Einfrieren)."""
+    win = tk.Toplevel(parent)
+    win.title("Station suchen")
+    win.geometry("400x340")
+    win.transient(parent)
+
+    q = tk.StringVar(value=(target_var.get() if target_var else ""))
+    top = ttk.Frame(win)
+    top.pack(fill="x", padx=8, pady=8)
+    entry = ttk.Entry(top, textvariable=q)
+    entry.pack(side="left", fill="x", expand=True)
+
+    info = ttk.Label(win, text="Stationsname (Teil) eingeben und suchen.")
+    lb = tk.Listbox(win)
+    names = []
+
+    def do_search():
+        info.config(text="Suche …")
+        lb.delete(0, tk.END)
+        names.clear()
+        term = q.get().strip()
+
+        def work():
+            try:
+                hits = search_fn(term)
+                err = None
+            except Exception as e:
+                hits, err = None, str(e)
+
+            def show():
+                if err is not None:
+                    info.config(text="Fehler: " + err)
+                    return
+                if not hits:
+                    info.config(text="Keine Treffer.")
+                    return
+                info.config(text=f"{len(hits)} Treffer – auswählen und Übernehmen.")
+                for h in hits:
+                    names.append(h["name"])
+                    lb.insert(tk.END, h["name"])
+            win.after(0, show)
+
+        threading.Thread(target=work, daemon=True).start()
+
+    ttk.Button(top, text="Suchen", command=do_search).pack(side="left", padx=(6, 0))
+    info.pack(fill="x", padx=8)
+    lb.pack(fill="both", expand=True, padx=8, pady=4)
+
+    def take():
+        sel = lb.curselection()
+        if sel and target_var is not None:
+            target_var.set(names[sel[0]])
+            win.destroy()
+
+    lb.bind("<Double-Button-1>", lambda e: take())
+    btnf = ttk.Frame(win)
+    btnf.pack(fill="x", padx=8, pady=8)
+    ttk.Button(btnf, text="Übernehmen", command=take).pack(side="right")
+    ttk.Button(btnf, text="Abbrechen", command=win.destroy).pack(side="right", padx=6)
+
+    entry.focus_set()
+    entry.bind("<Return>", lambda e: do_search())
+    if q.get().strip():
+        do_search()
+
+
 def open_config_window(config_path, template_path=None, on_saved=None,
                        test_connection=None, on_refresh=None,
-                       on_refresh_absences=None):
-    """Öffnet das Fenster (modal). config_path: Pfad zur config.env.
+                       on_refresh_absences=None, busy_getter=None,
+                       status_getter=None, station_search=None,
+                       help_url=None, on_close=None, focus_requested=None):
+    """Öffnet das Einstellungen-Fenster.
 
-    Alle Callbacks (on_saved/on_refresh/on_refresh_absences) müssen
-    nicht-blockierend sein bzw. werden vom Fenster in einen Thread gelegt —
-    so friert das GUI bei Netzwerk-Läufen nie ein. `test_connection` liefert
-    ein Ergebnis zurück und wird daher hier threaded + via root.after angezeigt."""
+    Alle Lauf-Callbacks (on_saved/on_refresh/on_refresh_absences) sind
+    nicht-blockierend bzw. werden in einen Thread gelegt → kein Einfrieren.
+    busy_getter/status_getter koppeln den Service-Zustand ein: solange ein Lauf
+    aktiv ist, werden die Aktions-Buttons ausgegraut. focus_requested() lässt eine
+    bereits offene Instanz nach vorne holen (Single-Window). station_search(term)
+    liefert HAFAS-Treffer; help_url öffnet die Doku im Browser."""
     config_path = Path(config_path)
     current = read_config_env(config_path)
 
     root = tk.Tk()
     root.title("Supplierplan – Einstellungen")
-    root.geometry("540x470")
+    root.geometry("560x520")
 
     nb = ttk.Notebook(root)
     nb.pack(fill="both", expand=True, padx=8, pady=8)
 
     vars_by_key = {}
+    status = ttk.Label(root, text="")
+
+    def pick_logo():
+        from tkinter import filedialog
+        import shutil
+        path = filedialog.askopenfilename(
+            parent=root, title="Logo wählen",
+            filetypes=[("Bilder", "*.png *.svg *.jpg *.jpeg *.webp"),
+                       ("Alle Dateien", "*.*")])
+        if not path:
+            return
+        web = config_path.parent / "web"
+        try:
+            web.mkdir(parents=True, exist_ok=True)
+            name = Path(path).name
+            shutil.copy2(path, web / name)
+        except Exception as e:
+            status.config(text=f"Logo-Kopie fehlgeschlagen: {e}")
+            return
+        vars_by_key["LOGO_FILE"].set(name)
+        status.config(text=f"Logo gewählt: {name} – Speichern nicht vergessen.")
+
+    def open_station_search():
+        if station_search:
+            _station_dialog(root, station_search, vars_by_key.get("TRAIN_STATION"))
+
     for tab_title, fields in TABS:
         frame = ttk.Frame(nb)
         nb.add(frame, text=tab_title)
         for row, (key, label, kind, extra) in enumerate(fields):
             ttk.Label(frame, text=label).grid(row=row, column=0, sticky="w",
                                               padx=6, pady=4)
-            w, var = _make_widget(frame, kind, extra, current.get(key, ""))
-            w.grid(row=row, column=1, sticky="we", padx=6, pady=4)
+            cell = ttk.Frame(frame)
+            cell.grid(row=row, column=1, sticky="we", padx=6, pady=4)
+            w, var = _make_widget(cell, kind, extra, current.get(key, ""))
+            w.pack(side="left", fill="x", expand=True)
             vars_by_key[key] = var
+            if key == "LOGO_FILE":
+                ttk.Button(cell, text="…", width=3, command=pick_logo
+                           ).pack(side="left", padx=(4, 0))
+            elif key == "TRAIN_STATION" and station_search:
+                ttk.Button(cell, text="Suchen…", command=open_station_search
+                           ).pack(side="left", padx=(4, 0))
         frame.columnconfigure(1, weight=1)
 
-    status = ttk.Label(root, text="")
     status.pack(fill="x", padx=8)
+
+    state = {"testing": False, "prev_sb": False}
+    action_btns = []
+
+    def set_actions(stt):
+        for b in action_btns:
+            b.config(state=stt)
 
     def collect():
         return {k: v.get().strip() for k, v in vars_by_key.items()}
@@ -135,13 +248,13 @@ def open_config_window(config_path, template_path=None, on_saved=None,
         write_config_env(collect(), config_path, template=template_path)
         status.config(text="Gespeichert.")
         if on_saved:
-            # In Thread, damit ein (evtl. blockierender) Fetch das Fenster nie einfriert.
             threading.Thread(target=on_saved, daemon=True).start()
 
     def do_test():
         if not test_connection:
             return
-        test_btn.config(state="disabled")
+        state["testing"] = True
+        set_actions("disabled")
         status.config(text="Teste Verbindung …")
         values = collect()
 
@@ -150,31 +263,60 @@ def open_config_window(config_path, template_path=None, on_saved=None,
 
             def show():
                 status.config(text=("OK: " + msg) if ok else ("Fehler: " + msg))
-                test_btn.config(state="normal")
-            root.after(0, show)   # zurück in den tkinter-Thread
+                state["testing"] = False
+            root.after(0, show)
 
         threading.Thread(target=work, daemon=True).start()
 
-    def trigger(fn, msg):
-        status.config(text=msg)
-        threading.Thread(target=fn, daemon=True).start()
+    def do_trigger(fn):
+        set_actions("disabled")
+        status.config(text="Aktualisierung läuft …")
+        fn()   # service.refresh_now / refresh_absences_now (nicht-blockierend)
+
+    def open_help():
+        if help_url:
+            import webbrowser
+            webbrowser.open(help_url)
 
     btns = ttk.Frame(root)
     btns.pack(fill="x", padx=8, pady=8)
-    test_btn = None
     if test_connection:
-        test_btn = ttk.Button(btns, text="Verbindung testen", command=do_test)
-        test_btn.pack(side="left")
+        b = ttk.Button(btns, text="Verbindung testen", command=do_test)
+        b.pack(side="left"); action_btns.append(b)
     if on_refresh:
-        ttk.Button(btns, text="Jetzt aktualisieren",
-                   command=lambda: trigger(on_refresh, "Aktualisierung gestartet …")
-                   ).pack(side="left", padx=6)
+        b = ttk.Button(btns, text="Jetzt aktualisieren",
+                       command=lambda: do_trigger(on_refresh))
+        b.pack(side="left", padx=6); action_btns.append(b)
     if on_refresh_absences:
-        ttk.Button(btns, text="Abwesenheiten aktualisieren",
-                   command=lambda: trigger(on_refresh_absences,
-                                           "Abwesenheiten-Aktualisierung gestartet …")
-                   ).pack(side="left", padx=6)
+        b = ttk.Button(btns, text="Abwesenheiten aktualisieren",
+                       command=lambda: do_trigger(on_refresh_absences))
+        b.pack(side="left", padx=6); action_btns.append(b)
+    if help_url:
+        ttk.Button(btns, text="Hilfe", command=open_help).pack(side="left", padx=6)
     ttk.Button(btns, text="Speichern", command=do_save).pack(side="right")
     ttk.Button(btns, text="Schließen", command=root.destroy).pack(side="right", padx=6)
 
-    root.mainloop()
+    def poll():
+        sb = bool(busy_getter() if busy_getter else False)
+        busy = sb or state["testing"]
+        set_actions("disabled" if busy else "normal")
+        if not state["testing"]:
+            if sb:
+                status.config(text="Aktualisierung läuft …")
+            elif state["prev_sb"] and status_getter:
+                status.config(text=status_getter())
+        state["prev_sb"] = sb
+        if focus_requested and focus_requested():
+            try:
+                root.deiconify(); root.lift(); root.focus_force()
+            except Exception:
+                pass
+        root.after(400, poll)
+
+    poll()
+    root.protocol("WM_DELETE_WINDOW", root.destroy)
+    try:
+        root.mainloop()
+    finally:
+        if on_close:
+            on_close()

@@ -28,6 +28,14 @@ class Service:
         self.last_update = None
         self._lock = threading.Lock()       # schützt nur Status-Felder
         self._run_lock = threading.Lock()   # serialisiert Untis-Läufe (nie 2 parallel)
+        self._busy = 0                      # >0 = ein Untis-Lauf ist aktiv/wartet
+        self._busy_lock = threading.Lock()
+
+    @property
+    def busy(self):
+        """True, solange irgendein Untis-Lauf läuft (für Button-Ausgrauen)."""
+        with self._busy_lock:
+            return self._busy > 0
 
     def _apply_env(self):
         os.environ["SUPPLIERPLAN_CONFIG"] = str(self.config_path)
@@ -44,6 +52,8 @@ class Service:
         """Ein Untis-Lauf. refresh_absences=True erzwingt den weekly/data-Sweep
         (Abwesenheits-Lauf), sonst Cache-lesend (regulärer Lauf). Das Run-Lock
         serialisiert: nie schreiben zwei Läufe gleichzeitig index.html/absences.json."""
+        with self._busy_lock:
+            self._busy += 1
         try:
             from scripts import fetch_untis
             with self._run_lock:
@@ -55,13 +65,22 @@ class Service:
                 self.last_status = f"Läuft · {label}Stand {self.last_update}"
         except Exception as e:
             self._record_error("Untis", e)
+        finally:
+            with self._busy_lock:
+                self._busy -= 1
 
     def refresh_now(self):
-        """Manueller regulärer Lauf (Button), nicht-blockierend für den Aufrufer."""
+        """Manueller regulärer Lauf (Button), nicht-blockierend. No-op, wenn schon
+        ein Lauf aktiv ist (verhindert Stapeln bei Mehrfach-Klick)."""
+        if self.busy:
+            return
         threading.Thread(target=self.run_untis_once, daemon=True).start()
 
     def refresh_absences_now(self):
-        """Manueller Abwesenheits-Lauf (Button), nicht-blockierend für den Aufrufer."""
+        """Manueller Abwesenheits-Lauf (Button), nicht-blockierend. No-op bei
+        bereits aktivem Lauf."""
+        if self.busy:
+            return
         threading.Thread(target=self.run_untis_once,
                          kwargs={"refresh_absences": True}, daemon=True).start()
 
