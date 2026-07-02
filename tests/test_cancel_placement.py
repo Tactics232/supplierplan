@@ -41,16 +41,14 @@ def _groups():
     return fu.group_by_teacher(rows)
 
 
+def _settings(mode):
+    # Anzeige-Config als Paket; from_config füllt alle übrigen Felder mit Defaults.
+    return fu.DisplaySettings.from_config({"CANCEL_PLACEMENT": mode})
+
+
 class CancelPlacement(unittest.TestCase):
-    def setUp(self):
-        self._orig = fu.CANCEL_PLACEMENT
-
-    def tearDown(self):
-        fu.CANCEL_PLACEMENT = self._orig
-
     def test_section_mode_extracts_cancel_section(self):
-        fu.CANCEL_PLACEMENT = "section"
-        html = fu.build_day_content(_groups(), TEACHERS, "today")
+        html = fu.build_day_content(_groups(), TEACHERS, "today", _settings("section"))
         # eigene „Entfallende Stunden"-Sektion existiert
         self.assertIn('data-block="cancel"', html)
         # cancel-only-Lehrer NeS bekommt KEINEN eigenen Block
@@ -59,8 +57,7 @@ class CancelPlacement(unittest.TestCase):
         self.assertIn('data-key="MueL"', html)
 
     def test_inline_mode_keeps_cancels_in_blocks(self):
-        fu.CANCEL_PLACEMENT = "inline"
-        html = fu.build_day_content(_groups(), TEACHERS, "today")
+        html = fu.build_day_content(_groups(), TEACHERS, "today", _settings("inline"))
         # keine separate Cancel-Sektion → JS-Cancel-Header bleibt inaktiv
         self.assertNotIn('data-block="cancel"', html)
         # cancel-only-Lehrer NeS bekommt einen vollen Block samt Kopf

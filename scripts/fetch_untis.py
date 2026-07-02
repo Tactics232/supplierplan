@@ -15,6 +15,7 @@ import http.cookiejar
 from datetime import datetime, date, timedelta
 from pathlib import Path
 from collections import defaultdict
+from dataclasses import dataclass
 try:
     from zoneinfo import ZoneInfo
     try:
@@ -75,20 +76,17 @@ def resolve_data_out():
 
 CONFIG_FILE = resolve_config_path()
 
-# Schul-spezifische Defaults — in main() aus config.env überschrieben
-# (PLAN_TITLE/LOGO_FILE). Als Modul-Globals, weil an mehreren Render-Stellen genutzt.
-PLAN_TITLE = "Supplierplan"
-LOGO_FILE  = "logo.png"
-# PWA-Orientierung im Manifest. Default "any" = Gerät darf frei drehen (Handy!).
-# Ein fest montierter Monitor/TV dreht ohnehin nie, dem ist der Wert egal; nur
-# drehbare Geräte (Handy, Tablet-Kiosk) folgen ihm. Über config.env überschreibbar.
-PWA_ORIENTATION = "any"
+# Schul-spezifische Anzeige-Config wird aus config.env in DisplaySettings gebündelt
+# (siehe DisplaySettings.from_config). Hier nur die Validierungs-Mengen, die
+# from_config zum Klemmen ungültiger Werte braucht.
 # Platzierung der Entfall-Zeilen (CANCEL_PLACEMENT, siehe CONTEXT.md „Cancel placement"):
 #   "section" (Default) = alle Entfälle in eigener „Entfallende Stunden"-Sektion am Tagesende
 #   "inline"            = jede Entfall-Zeile bleibt im Block des betroffenen Lehrers
 # Müll → "section". Greift nur in build_day_content (rein server-seitig).
-CANCEL_PLACEMENT = "section"
 VALID_CANCEL_PLACEMENTS = {"section", "inline"}
+# PWA-Orientierung im Manifest. Default "any" = Gerät darf frei drehen (Handy!).
+# Ein fest montierter Monitor/TV dreht ohnehin nie, dem ist der Wert egal; nur
+# drehbare Geräte (Handy, Tablet-Kiosk) folgen ihm. Über config.env überschreibbar.
 # Gültige Manifest-Werte (W3C). Alles andere fällt auf "any" zurück.
 VALID_ORIENTATIONS = {
     "any", "natural", "landscape", "portrait",
@@ -768,22 +766,13 @@ MONTHS   = ["Januar","Februar","März","April","Mai","Juni",
 # Bekannte Bemerkungs-Codes mit eigener Farb-Klasse (CSS .tb-*). Andere via
 # config.env (TEXT_BADGES) gelistete Codes bekommen das neutrale .text-badge.
 _KNOWN_BADGE_CLASSES = {"b": "tb-b", "ub": "tb-ub", "MA": "tb-ma"}
-TEXT_BADGES   = dict(_KNOWN_BADGE_CLASSES)
-_TEXT_PATTERN = re.compile(r'\b(ub|MA|b)\b')
+# Die Badge-Codes + der kompilierte Regex werden aus config.env (TEXT_BADGES) in
+# DisplaySettings.from_config gebaut und als settings.text_badges/text_pattern
+# an render_text übergeben (kein Modul-Global mehr).
 
-def configure_text_badges(value):
-    """Setzt die als Badge erkannten Bemerkungs-Codes aus config.env (TEXT_BADGES,
-    Komma-getrennt). Bekannte Codes behalten ihre Farbe, neue bekommen .text-badge.
-    Längere Codes zuerst im Regex, damit z.B. 'ub' nicht als 'b' matcht."""
-    global TEXT_BADGES, _TEXT_PATTERN
-    codes = [c.strip() for c in (value or "").split(",") if c.strip()]
-    if not codes:
-        return
-    TEXT_BADGES = {c: _KNOWN_BADGE_CLASSES.get(c, "") for c in codes}
-    ordered = sorted(codes, key=len, reverse=True)
-    _TEXT_PATTERN = re.compile(r'\b(' + "|".join(re.escape(c) for c in ordered) + r')\b')
-
-def render_text(txt):
+def render_text(txt, settings):
+    TEXT_BADGES   = settings.text_badges
+    _TEXT_PATTERN = settings.text_pattern
     if not txt:
         return txt
     txt_escaped = esc(txt)
@@ -840,20 +829,20 @@ def _klasse_html(klasse: str) -> str:
 # Reihenfolge hier ändern → COLGROUP, THEAD und jede Datenzeile folgen automatisch.
 # Spaltenbreiten bleiben im CSS (col.c-* + .compact-mode-Overrides, klassenbasiert,
 # greifen also unabhängig von der Reihenfolge). Jede Zell-Funktion escaped selbst (XSS).
-def _kuerzel_cell(r):
+def _kuerzel_cell(r, settings):
     # Leere erste Spalte – trägt nur den farbigen Status-Streifen (CSS :first-child)
     return ""
 
-def _std_cell(r):
+def _std_cell(r, settings):
     return esc(r["std"])
 
-def _fach_cell(r):
+def _fach_cell(r, settings):
     return _fach_html(r["fach"])
 
-def _klasse_cell(r):
+def _klasse_cell(r, settings):
     return _klasse_html(r["klasse"])
 
-def _lehrer_cell(r):
+def _lehrer_cell(r, settings):
     org = r.get("org_kuerzel", "")
     if org:
         # Bei "Vtr. ohne Lehrer": Bindestrich statt Pfeil (kein echter Vertreter)
@@ -869,7 +858,7 @@ def _lehrer_cell(r):
         return f'<s class="lehr-absent">{esc(r["kuerzel"])}</s>'
     return esc(r["kuerzel"])
 
-def _art_cell(r):
+def _art_cell(r, settings):
     _, badge_cls, label_full, label_short = ART_MAP.get(
         r["art"], ("s-sup", "b-sup", r["art"], r["art"][:1].upper())
     )
@@ -880,7 +869,7 @@ def _art_cell(r):
         f'</span>'
     )
 
-def _raum_cell(r):
+def _raum_cell(r, settings):
     raum_org = r.get("raum_org", "")
     if raum_org:
         return (
@@ -890,8 +879,8 @@ def _raum_cell(r):
         )
     return esc(r["raum"])
 
-def _text_cell(r):
-    return render_text(r["text"]) or ""
+def _text_cell(r, settings):
+    return render_text(r["text"], settings) or ""
 
 def _row_class(r):
     return ART_MAP.get(r["art"], ("s-sup",))[0]
@@ -909,9 +898,9 @@ COLUMNS = [
 ]
 NCOLS = len(COLUMNS)
 
-def render_row(r):
+def render_row(r, settings):
     day_cls = " tomorrow" if r.get("day") == "tomorrow" else ""
-    cells   = "".join(f'<td class="{css}">{fn(r)}</td>' for _, _, css, fn in COLUMNS)
+    cells   = "".join(f'<td class="{css}">{fn(r, settings)}</td>' for _, _, css, fn in COLUMNS)
     return f'<tr class="{_row_class(r)}{day_cls}">{cells}</tr>'
 
 COLGROUP = "<colgroup>" + "".join(f'<col class="{css}">' for _, _, css, _ in COLUMNS) + "</colgroup>"
@@ -921,7 +910,7 @@ THEAD = (
     + "</tr></thead>"
 )
 
-def build_day_content(groups, teacher_lookup, day):
+def build_day_content(groups, teacher_lookup, day, settings):
     """Rendert eine flache Tabelle pro Tag. Die Aufteilung in 1–4 Spalten
     übernimmt der Browser zur Laufzeit (Layout-Engine in JavaScript).
     Jede Lehrer-Gruppe ist als `data-block="teacher"` markiert, die
@@ -935,6 +924,9 @@ def build_day_content(groups, teacher_lookup, day):
       via group_by_teacher sortiert); ein Lehrer mit nur Entfällen bekommt
       einen normalen Block samt Kopf. Es werden keine `data-block="cancel"`
       ausgegeben, die JS-Cancel-Header-Logik bleibt damit inaktiv."""
+
+    PLAN_TITLE       = settings.plan_title
+    CANCEL_PLACEMENT = settings.cancel_placement
 
     if not groups:
         msg = (f"Kein {esc(PLAN_TITLE)} für heute" if day == "today"
@@ -959,7 +951,7 @@ def build_day_content(groups, teacher_lookup, day):
     blocks_html = []
     for kuerzel, rows in display_groups.items():
         body = render_teacher_header(kuerzel, teacher_lookup, day)
-        body += "".join(render_row(r) for r in rows)
+        body += "".join(render_row(r, settings) for r in rows)
         blocks_html.append(
             f'<tbody data-block="teacher" data-key="{esc(kuerzel)}">{body}</tbody>'
         )
@@ -973,7 +965,7 @@ def build_day_content(groups, teacher_lookup, day):
         cancel_rows.sort(key=lambda r: (r["sort_key"], r["kuerzel"]))
         for r in cancel_rows:
             blocks_html.append(
-                f'<tbody data-block="cancel">{render_row(r)}</tbody>'
+                f'<tbody data-block="cancel">{render_row(r, settings)}</tbody>'
             )
 
     return (
@@ -1035,19 +1027,118 @@ def parse_overflow_config(config):
     }
 
 
+@dataclass(frozen=True)
+class DisplaySettings:
+    """Unveränderliches Bündel der ANZEIGE-Config (siehe CONTEXT.md „DisplaySettings").
+    Einmal via `from_config` aus config.env gebaut, dann in `generate_html`,
+    `build_day_content`, `render_row`/`render_text` und `write_manifest` gefädelt —
+    keine dieser Funktionen liest mehr Modul-Globals.
+
+    NICHT enthalten (bewusst andere Grenze): `SKIP_NAMES` (Daten-Pipeline,
+    `configure_skip_teachers`) und die prozessweite Zeitzone `TZ` (`set_timezone`).
+    `tz_name` ist nur der String für die clientseitige JS-Uhr, nicht das ZoneInfo."""
+    theme: str
+    show_clock: bool
+    show_logo: bool
+    train_enabled: bool
+    compact_col_width: int
+    max_columns: int
+    school_name: str
+    school_type: str
+    school_location: str
+    tz_name: str
+    overflow: dict
+    plan_title: str
+    logo_file: str
+    cancel_placement: str
+    pwa_orientation: str
+    text_badges: dict
+    text_pattern: "re.Pattern"
+
+    @classmethod
+    def from_config(cls, config):
+        """Baut das Paket aus dem rohen config.env-dict. Alle Klemmen/Validierungen/
+        Fallbacks an EINEM Ort (früher über main() + configure_text_badges verstreut)."""
+        theme = config.get("THEME", "dark").strip().lower()
+        if theme not in ("dark", "light"):
+            theme = "dark"
+
+        try:
+            compact = max(0, int(config.get("COMPACT_COL_WIDTH_PX", "320")))
+        except ValueError:
+            compact = 320
+
+        try:
+            max_cols = int(config.get("MAX_COLUMNS", "4"))
+        except ValueError:
+            max_cols = 4
+        max_cols = min(4, max(1, max_cols))
+
+        _cp = config.get("CANCEL_PLACEMENT", "section").strip().lower()
+        cancel_placement = _cp if _cp in VALID_CANCEL_PLACEMENTS else "section"
+
+        _orient = config.get("PWA_ORIENTATION", "any").strip().lower() or "any"
+        pwa_orientation = _orient if _orient in VALID_ORIENTATIONS else "any"
+
+        train_enabled = bool(
+            config.get("TRAIN_STATION", "").strip()
+            and config.get("TRAIN_DISABLED", "").strip().lower() != "true"
+        )
+
+        # Text-Badges (früher configure_text_badges): bekannte Codes behalten ihre
+        # Farbe, neue bekommen .text-badge; längere Codes zuerst im Regex ('ub' vor 'b').
+        codes = [c.strip() for c in config.get("TEXT_BADGES", "b,ub,MA").split(",") if c.strip()]
+        if not codes:
+            codes = list(_KNOWN_BADGE_CLASSES)
+        text_badges = {c: _KNOWN_BADGE_CLASSES.get(c, "") for c in codes}
+        ordered = sorted(codes, key=len, reverse=True)
+        text_pattern = re.compile(r'\b(' + "|".join(re.escape(c) for c in ordered) + r')\b')
+
+        return cls(
+            theme=theme,
+            show_clock=config.get("SHOW_CLOCK", "true").strip().lower() != "false",
+            show_logo=config.get("SHOW_LOGO", "false").lower() == "true",
+            train_enabled=train_enabled,
+            compact_col_width=compact,
+            max_columns=max_cols,
+            school_name=config.get("SCHOOL_NAME", "").strip(),
+            school_type=config.get("SCHOOL_TYPE", "").strip(),
+            school_location=config.get("SCHOOL_LOCATION", "").strip(),
+            tz_name=config.get("TIMEZONE", "").strip() or "Europe/Vienna",
+            overflow=parse_overflow_config(config),
+            plan_title=config.get("PLAN_TITLE", "Supplierplan").strip() or "Supplierplan",
+            logo_file=config.get("LOGO_FILE", "logo.png").strip() or "logo.png",
+            cancel_placement=cancel_placement,
+            pwa_orientation=pwa_orientation,
+            text_badges=text_badges,
+            text_pattern=text_pattern,
+        )
+
+
 def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
-                  teacher_lookup, indicator,
-                  show_logo=False, import_time=None, train_enabled=False,
+                  teacher_lookup, indicator, settings,
+                  import_time=None,
                   today_classes_override=None, tomorrow_classes_override=None,
                   today_teachers_override=None, tomorrow_teachers_override=None,
-                  compact_col_width=320, max_columns=4,
-                  school_name="", school_type="",
-                  school_location="", show_clock=True,
-                  tz_name="Europe/Vienna", theme="dark",
                   today_full_absent=None, tomorrow_full_absent=None,
-                  overflow_cfg=None, tomorrow_skipped=None):
+                  tomorrow_skipped=None):
 
-    overflow_cfg = overflow_cfg or parse_overflow_config({})
+    # Anzeige-Config aus dem Paket in die vom Rumpf genutzten lokalen Namen entpacken
+    # (lokale PLAN_TITLE/LOGO_FILE überschatten bewusst die früheren Modul-Globals).
+    show_logo         = settings.show_logo
+    train_enabled     = settings.train_enabled
+    compact_col_width = settings.compact_col_width
+    max_columns       = settings.max_columns
+    school_name       = settings.school_name
+    school_type       = settings.school_type
+    school_location   = settings.school_location
+    show_clock        = settings.show_clock
+    tz_name           = settings.tz_name
+    theme             = settings.theme
+    overflow_cfg      = settings.overflow
+    PLAN_TITLE        = settings.plan_title
+    LOGO_FILE         = settings.logo_file
+
     logo_html = f'<div class="logo"><img src="{esc(LOGO_FILE)}" alt="Logo"></div>\n            ' if show_logo else ''
     train_widget_html = render_train_widget(train_enabled)
 
@@ -1127,7 +1218,7 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
             f'<div class="{section_cls}">'
             f'{today_title}'
             f'{render_summary_bar(today_absent, today_classes)}'
-            f'{build_day_content(groups_today, teacher_lookup, "today")}'
+            f'{build_day_content(groups_today, teacher_lookup, "today", settings)}'
             f'</div>'
         )
 
@@ -1179,7 +1270,7 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
             f'{title_bar_html}'
             f'{skipped_html}'
             f'{render_summary_bar(tom_absent, tom_classes)}'
-            f'{build_day_content(groups_tomorrow, teacher_lookup, "tomorrow")}'
+            f'{build_day_content(groups_tomorrow, teacher_lookup, "tomorrow", settings)}'
             f'</div>'
         )
 
@@ -1945,9 +2036,15 @@ def purge_cloudflare_cache(zone_id, token, host=None):
         return json.loads(resp.read())
 
 # ── PWA-Manifest (aus config.env generiert) ───────────
-def write_manifest(school_name, school_location, theme):
+def write_manifest(settings):
     """Erzeugt manifest.json passend zu Schulname, Logo, Plan-Titel und Theme.
     Wird (wie index.html) bei jedem Run neu geschrieben → ist gitignored."""
+    school_name     = settings.school_name
+    school_location = settings.school_location
+    theme           = settings.theme
+    PLAN_TITLE      = settings.plan_title
+    LOGO_FILE       = settings.logo_file
+    PWA_ORIENTATION = settings.pwa_orientation
     ext  = LOGO_FILE.rsplit(".", 1)[-1].lower() if "." in LOGO_FILE else "png"
     mime = {"png": "image/png", "svg": "image/svg+xml", "jpg": "image/jpeg",
             "jpeg": "image/jpeg", "webp": "image/webp"}.get(ext, "image/png")
@@ -2074,20 +2171,13 @@ def main(refresh_absences=None):
     None (Default) = aus sys.argv ableiten — so funktioniert der Cron-Aufruf
     `--refresh-absences` unverändert, während die Tray-App den Parameter setzt
     (kein thread-racy sys.argv)."""
-    global PLAN_TITLE, LOGO_FILE, PWA_ORIENTATION, CANCEL_PLACEMENT
     config = load_config()
-    tz_name = config.get("TIMEZONE", "").strip() or "Europe/Vienna"
-    set_timezone(tz_name)
+    # Gesamte Anzeige-Config in EIN unveränderliches Paket (Klemmen/Fallbacks dort).
+    settings = DisplaySettings.from_config(config)
+    set_timezone(settings.tz_name)  # prozessweite TZ bleibt getrennt (nicht in settings)
 
-    # Schul-spezifische Stellschrauben aus config.env (siehe config.env.example)
+    # Daten-Pipeline-Config (kein Anzeige-Belang → nicht in DisplaySettings):
     configure_skip_teachers(config.get("SKIP_TEACHERS", "Z Entfall"))
-    configure_text_badges(config.get("TEXT_BADGES", "b,ub,MA"))
-    PLAN_TITLE = config.get("PLAN_TITLE", "Supplierplan").strip() or "Supplierplan"
-    LOGO_FILE  = config.get("LOGO_FILE", "logo.png").strip() or "logo.png"
-    _cp = config.get("CANCEL_PLACEMENT", "section").strip().lower()
-    CANCEL_PLACEMENT = _cp if _cp in VALID_CANCEL_PLACEMENTS else "section"
-    _orient = config.get("PWA_ORIENTATION", "any").strip().lower() or "any"
-    PWA_ORIENTATION = _orient if _orient in VALID_ORIENTATIONS else "any"
     try:
         department_id = int(config.get("UNTIS_DEPARTMENT_ID", "0"))
     except ValueError:
@@ -2199,50 +2289,14 @@ def main(refresh_absences=None):
         tomorrow_count = sum(len(v) for v in groups_tomorrow.values())
         print(f"Heute: {today_count} Zeilen | Morgen: {tomorrow_count} Zeilen", flush=True)
 
-        show_logo = config.get("SHOW_LOGO", "false").lower() == "true"
-        train_enabled = (
-            config.get("TRAIN_STATION", "").strip()
-            and config.get("TRAIN_DISABLED", "").strip().lower() != "true"
-        )
-        try:
-            compact_col_width = max(0, int(config.get("COMPACT_COL_WIDTH_PX", "320")))
-        except ValueError:
-            compact_col_width = 320
-
-        try:
-            max_columns = int(config.get("MAX_COLUMNS", "4"))
-        except ValueError:
-            max_columns = 4
-        max_columns = min(4, max(1, max_columns))
-
-        school_name     = config.get("SCHOOL_NAME", "").strip()
-        school_type     = config.get("SCHOOL_TYPE", "").strip()
-        school_location = config.get("SCHOOL_LOCATION", "").strip()
-        show_clock      = config.get("SHOW_CLOCK", "true").strip().lower() != "false"
-        theme           = config.get("THEME", "dark").strip().lower()
-        if theme not in ("dark", "light"):
-            theme = "dark"
-
-        overflow_cfg = parse_overflow_config(config)
         html = generate_html(
             groups_today, groups_tomorrow, today, tomorrow_date,
-            teacher_lookup, indicator,
-            show_logo=show_logo,
+            teacher_lookup, indicator, settings,
             import_time=import_time,
-            train_enabled=bool(train_enabled),
             today_classes_override=today_absent_classes_override,
             tomorrow_classes_override=tomorrow_absent_classes_override,
             today_teachers_override=today_absent_teachers_override,
             tomorrow_teachers_override=tomorrow_absent_teachers_override,
-            compact_col_width=compact_col_width,
-            max_columns=max_columns,
-            school_name=school_name,
-            school_type=school_type,
-            school_location=school_location,
-            show_clock=show_clock,
-            tz_name=tz_name,
-            theme=theme,
-            overflow_cfg=overflow_cfg,
             tomorrow_skipped=tomorrow_skipped,
         )
         out = resolve_webroot() / "index.html"
@@ -2250,7 +2304,7 @@ def main(refresh_absences=None):
         print(f"Fertig -> {out}", flush=True)
 
         # PWA-Manifest passend zu Schulname/Logo/Theme schreiben
-        write_manifest(school_name, school_location, theme)
+        write_manifest(settings)
 
         # Lesbare Datenübersicht in data/ ablegen
         write_data_dump(

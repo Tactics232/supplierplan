@@ -59,6 +59,21 @@ are **not** labelled and never appear in the line.
 _Avoid_: naming weekends here; relying on the Untis `longName` (it is a stale,
 wrong-year date string).
 
+**DisplaySettings**:
+The immutable bundle of **display** configuration, derived once from `config.env`
+by `DisplaySettings.from_config` and threaded explicitly into `generate_html`,
+`build_day_content`, `render_row`/`render_text` and `write_manifest`. It is the
+single home for every presentation knob (theme, school labels, column/overflow
+behaviour, Plan title, logo, Cancel placement, text badges, PWA orientation, the
+clock's timezone string). No render function reads a mutable module global any
+more.
+_Scope_: display only. It deliberately excludes the **data-pipeline** skip list
+(`SKIP_NAMES`, set by `configure_skip_teachers`) and the **process-wide**
+timezone object (`TZ`, set by `set_timezone`); `tz_name` here is only the string
+handed to the client-side clock, not the `ZoneInfo`.
+_Avoid_: calling it "the config" (that is the raw `config.env` dict) or a
+"context"/"state" object; folding data-pipeline or timezone concerns into it.
+
 ## Tray service
 
 Vocabulary for the local Windows tray application's background service.
