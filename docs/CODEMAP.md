@@ -189,10 +189,10 @@ _fetch_untis.py – WebUntis Supplierplan Fetcher_
 | 1031 | **`class DisplaySettings`** | Unveränderliches Bündel der ANZEIGE-Config (siehe CONTEXT.md „DisplaySettings"). |
 | 1059 | &nbsp;&nbsp;`DisplaySettings.from_config(cls, config)` | Baut das Paket aus dem rohen config.env-dict. Alle Klemmen/Validierungen/ |
 | 1118 | `generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date, teacher_lookup, indicator, settings, import_time=None, today_classes_override=None, tomorrow_classes_override=None, today_teachers_override=None, tomorrow_teachers_override=None, today_full_absent=None, tomorrow_full_absent=None, tomorrow_skipped=None)` | — |
-| 1397 | `purge_cloudflare_cache(zone_id, token, host=None)` | Löscht den Cloudflare-Cache nach dem Generieren der index.html. |
-| 1418 | `write_manifest(settings)` | Erzeugt manifest.json passend zu Schulname, Logo, Plan-Titel und Theme. |
-| 1454 | `write_data_dump(today_substs, tomorrow_substs, today_rows, tomorrow_rows, holidays, import_time, today_date, tomorrow_date)` | Schreibt zwei Dateien ins data/-Verzeichnis: |
-| 1548 | `main(refresh_absences=None)` | refresh_absences: True erzwingt einen frischen weekly/data-Sweep (sonst Cache). |
+| 1398 | `purge_cloudflare_cache(zone_id, token, host=None)` | Löscht den Cloudflare-Cache nach dem Generieren der index.html. |
+| 1419 | `write_manifest(settings)` | Erzeugt manifest.json passend zu Schulname, Logo, Plan-Titel und Theme. |
+| 1455 | `write_data_dump(today_substs, tomorrow_substs, today_rows, tomorrow_rows, holidays, import_time, today_date, tomorrow_date)` | Schreibt zwei Dateien ins data/-Verzeichnis: |
+| 1549 | `main(refresh_absences=None)` | refresh_absences: True erzwingt einen frischen weekly/data-Sweep (sonst Cache). |
 
 <h2 id="scriptsgencodemappy">scripts/gen_codemap.py</h2>
 

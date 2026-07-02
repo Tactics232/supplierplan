@@ -48,16 +48,17 @@ if ('serviceWorker' in navigator) {
         scale: true, scale_min: 0.65, reduce: true, paginate: true, page_seconds: 12
     };
 
-    function fitScale(contentH, availH, scaleMin, step) {
-        step = step || 0.05;
-        if (contentH <= 0 || contentH <= availH) return 1.0;
-        if (availH <= 0) return scaleMin;
-        var steps = Math.round((1.0 - scaleMin) / step);
-        for (var i = 0; i <= steps; i++) {
-            var s = Math.round((1.0 - i * step) * 10000) / 10000;
-            if (contentH * s <= availH) return s;
-        }
-        return scaleMin;
+    // fitScale, distributeUncapped, paginateColumns, distributeGreedy: siehe
+    // layout-core.js (reine Mathematik, als Globals geladen).
+
+    // Misst die Blöcke einmal in reine {height, isCancel}-Werte für den Core.
+    function measureItems(blocks) {
+        return blocks.map(function (b) {
+            return {
+                height: b.getBoundingClientRect().height,
+                isCancel: b.getAttribute('data-block') === 'cancel'
+            };
+        });
     }
 
     function availFor(wrapper) {
@@ -129,42 +130,6 @@ if ('serviceWorker' in navigator) {
         box.textContent = out;
     }
 
-    function distributeUncapped(blocks, availH) {
-        var cols = [[]];
-        var h = 0;
-        var colHasCancel = false;
-        for (var i = 0; i < blocks.length; i++) {
-            var isCancel = blocks[i].getAttribute('data-block') === 'cancel';
-            var bh = blocks[i].getBoundingClientRect().height;
-            // Wie in distributeGreedy: pro Spalte mit Entfällen die später
-            // eingefügte „Entfallende Stunden"-Überschrift (CANCEL_HEADER_H)
-            // mitbudgetieren — sonst läuft die Spalte beim Blättern um die
-            // Überschriftshöhe über und die letzte Entfall-Zeile wird abgeschnitten.
-            var extra = (isCancel && !colHasCancel) ? CANCEL_HEADER_H : 0;
-            if (cols[cols.length - 1].length && h + bh + extra > availH) {
-                cols.push([]); h = 0; colHasCancel = false;
-                extra = isCancel ? CANCEL_HEADER_H : 0;
-            }
-            cols[cols.length - 1].push(blocks[i]);
-            h += bh + extra;
-            if (isCancel) colHasCancel = true;
-        }
-        return cols;
-    }
-
-    function paginateColumns(cols, maxCols) {
-        if (maxCols < 1) maxCols = 1;
-        var n = cols.length;
-        if (n === 0) return [];
-        // Erst die nötige Seitenzahl bestimmen, dann die Spalten gleichmäßig
-        // darauf verteilen (4 Spalten bei max 3 -> 2+2 statt 3+1).
-        var nPages = Math.ceil(n / maxCols);
-        var perPage = Math.ceil(n / nPages);  // <= maxCols
-        var pages = [];
-        for (var i = 0; i < n; i += perPage) pages.push(cols.slice(i, i + perPage));
-        return pages;
-    }
-
     function getBlocks(wrapper) {
         return Array.prototype.slice.call(
             wrapper.querySelectorAll('tbody[data-block]')
@@ -182,51 +147,7 @@ if ('serviceWorker' in navigator) {
         return Math.min(MAX_COLS, byHeight, byWidth);
     }
 
-    var CANCEL_HEADER_H = 46;  // geschätzte Höhe der eingefügten Überschrift
-
-    function distributeGreedy(blocks, cols, availablePerCol) {
-        var buckets = [];
-        for (var i = 0; i < cols; i++) buckets.push([]);
-
-        // Lehrer-Blöcke zuerst, danach die einzelnen Entfall-Zeilen. So bleiben die
-        // Entfälle am Ende des Leseflusses, füllen aber jede Spalte bis zum Limit
-        // und brechen erst an der echten Spaltengrenze um (statt in starre Chunks).
-        // Pro Spalte, in der Entfälle beginnen, wird Platz für die später
-        // eingefügte Überschrift reserviert.
-        var regular = [];
-        var cancels = [];
-        for (var j = 0; j < blocks.length; j++) {
-            if (blocks[j].getAttribute('data-block') === 'cancel') {
-                cancels.push(blocks[j]);
-            } else {
-                regular.push(blocks[j]);
-            }
-        }
-        var ordered = regular.concat(cancels);
-
-        var currentCol = 0;
-        var currentHeight = 0;
-        var colHasCancel = false;
-        for (var k = 0; k < ordered.length; k++) {
-            var b = ordered[k];
-            var isCancel = b.getAttribute('data-block') === 'cancel';
-            var h = b.getBoundingClientRect().height;
-            var extra = (isCancel && !colHasCancel) ? CANCEL_HEADER_H : 0;
-            if (currentHeight + h + extra > availablePerCol
-                    && currentCol < cols - 1
-                    && buckets[currentCol].length > 0) {
-                currentCol++;
-                currentHeight = 0;
-                colHasCancel = false;
-                extra = isCancel ? CANCEL_HEADER_H : 0;
-            }
-            buckets[currentCol].push(b);
-            currentHeight += h + extra;
-            if (isCancel) colHasCancel = true;
-        }
-
-        return buckets;
-    }
+    var CANCEL_HEADER_H = 46;  // geschätzte Höhe der eingefügten Überschrift (an den Core übergeben)
 
     function makeCancelHeader(ncols, isCont, spaced, isTomorrow) {
         var tb = document.createElement('tbody');
@@ -329,7 +250,11 @@ if ('serviceWorker' in navigator) {
         var ncols = origColgroup ? origColgroup.querySelectorAll('col').length : 8;
         var isTomorrow = !!wrapper.closest('.tomorrow-section');
 
-        var buckets = distributeGreedy(blocks, cols, availablePerCol);
+        var items = measureItems(blocks);
+        var idxBuckets = distributeGreedy(items, cols, availablePerCol, CANCEL_HEADER_H);
+        var buckets = idxBuckets.map(function (col) {
+            return col.map(function (i) { return blocks[i]; });
+        });
 
         wrapper.innerHTML = '';
         var cancelHeaderSeen = false;
@@ -407,7 +332,11 @@ if ('serviceWorker' in navigator) {
         var ncols = origColgroup ? origColgroup.querySelectorAll('col').length : 8;
         var isTomorrow = !!wrapper.closest('.tomorrow-section');
 
-        var allCols = distributeUncapped(blocks, availablePerCol);
+        var pItems = measureItems(blocks);
+        var idxCols = distributeUncapped(pItems, availablePerCol, CANCEL_HEADER_H);
+        var allCols = idxCols.map(function (col) {
+            return col.map(function (i) { return blocks[i]; });
+        });
         var pages = paginateColumns(allCols, MAX_COLS);
         wrapper._ovPages = pages.length;
 

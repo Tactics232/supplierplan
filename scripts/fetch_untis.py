@@ -1389,6 +1389,7 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
         <span class="foot-r">{esc(school_foot_str)}</span>
     </footer>
 </div>
+    <script src="js/layout-core.js?v={css_v}"></script>
     <script src="js/layout.js?v={css_v}"></script>
 </body>
 </html>"""
