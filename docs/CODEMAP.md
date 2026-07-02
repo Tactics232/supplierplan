@@ -189,10 +189,10 @@ _fetch_untis.py – WebUntis Supplierplan Fetcher_
 | 1031 | **`class DisplaySettings`** | Unveränderliches Bündel der ANZEIGE-Config (siehe CONTEXT.md „DisplaySettings"). |
 | 1059 | &nbsp;&nbsp;`DisplaySettings.from_config(cls, config)` | Baut das Paket aus dem rohen config.env-dict. Alle Klemmen/Validierungen/ |
 | 1118 | `generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date, teacher_lookup, indicator, settings, import_time=None, today_classes_override=None, tomorrow_classes_override=None, today_teachers_override=None, tomorrow_teachers_override=None, today_full_absent=None, tomorrow_full_absent=None, tomorrow_skipped=None)` | — |
-| 2018 | `purge_cloudflare_cache(zone_id, token, host=None)` | Löscht den Cloudflare-Cache nach dem Generieren der index.html. |
-| 2039 | `write_manifest(settings)` | Erzeugt manifest.json passend zu Schulname, Logo, Plan-Titel und Theme. |
-| 2075 | `write_data_dump(today_substs, tomorrow_substs, today_rows, tomorrow_rows, holidays, import_time, today_date, tomorrow_date)` | Schreibt zwei Dateien ins data/-Verzeichnis: |
-| 2169 | `main(refresh_absences=None)` | refresh_absences: True erzwingt einen frischen weekly/data-Sweep (sonst Cache). |
+| 1397 | `purge_cloudflare_cache(zone_id, token, host=None)` | Löscht den Cloudflare-Cache nach dem Generieren der index.html. |
+| 1418 | `write_manifest(settings)` | Erzeugt manifest.json passend zu Schulname, Logo, Plan-Titel und Theme. |
+| 1454 | `write_data_dump(today_substs, tomorrow_substs, today_rows, tomorrow_rows, holidays, import_time, today_date, tomorrow_date)` | Schreibt zwei Dateien ins data/-Verzeichnis: |
+| 1548 | `main(refresh_absences=None)` | refresh_absences: True erzwingt einen frischen weekly/data-Sweep (sonst Cache). |
 
 <h2 id="scriptsgencodemappy">scripts/gen_codemap.py</h2>
 
@@ -247,7 +247,7 @@ _Baut Supplierplan.exe (PyInstaller, one-folder) und optional den Inno-Setup-_
 
 | Line | Definition | Summary |
 |---:|---|---|
-| 30 | `stage_assets(app_out: Path)` | Legt assets/ neben die exe (css, fonts, logo, sw.js, config.env.example). |
+| 30 | `stage_assets(app_out: Path)` | Legt assets/ neben die exe (css, fonts, js, logo, sw.js, config.env.example). |
 | 43 | `build_exe()` | — |
 | 62 | `_find_iscc()` | ISCC.exe finden: PATH, dann Program Files, dann per-User (winget-Default |
 | 82 | `build_installer()` | — |

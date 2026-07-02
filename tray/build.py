@@ -23,12 +23,12 @@ BUILD_ROOT = Path(tempfile.gettempdir()) / f"Supplierplan-build-{int(time.time()
 DIST = BUILD_ROOT / "dist"
 WORK = BUILD_ROOT / "build"
 APP_OUT = DIST / "Supplierplan"
-ASSETS_SRC = [("css", True), ("fonts", True), ("logo.png", False),
+ASSETS_SRC = [("css", True), ("fonts", True), ("js", True), ("logo.png", False),
               ("sw.js", False), ("config.env.example", False)]
 
 
 def stage_assets(app_out: Path):
-    """Legt assets/ neben die exe (css, fonts, logo, sw.js, config.env.example)."""
+    """Legt assets/ neben die exe (css, fonts, js, logo, sw.js, config.env.example)."""
     assets = app_out / "assets"
     assets.mkdir(parents=True, exist_ok=True)
     for name, is_dir in ASSETS_SRC:

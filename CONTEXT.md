@@ -74,6 +74,32 @@ handed to the client-side clock, not the `ZoneInfo`.
 _Avoid_: calling it "the config" (that is the raw `config.env` dict) or a
 "context"/"state" object; folding data-pipeline or timezone concerns into it.
 
+**Layout core (`js/layout-core.js`)**:
+The **pure** browser layout math — `fitScale`, `distributeUncapped`,
+`paginateColumns`, `distributeGreedy` — operating only on pre-measured
+`{height, isCancel}` arrays, with **no** `window`/`document` reference. It is the
+single implementation of the column/overflow logic and the only thing the layout
+tests import. Loaded in the browser as globals; `require`-able in Node via a
+`module.exports` guard.
+_Avoid_: "the mirror" — there is no longer a Python re-implementation; the retired
+`_layout_logic.py` was the mirror.
+
+**Layout driver (`js/layout.js`)**:
+The DOM-facing half of the engine: it **measures** heights
+(`getBoundingClientRect`), calls the Layout core with the measured arrays, and
+`appendChild`s the resulting columns. Machine-untested by design (measurement
+needs a real layout engine); verified in the browser against the layout fixtures.
+_Avoid_: putting layout math here — arithmetic belongs in the Layout core.
+
+**Runtime invariant ("no external dependency")**:
+The rule that the shipped paths — LXC cron and the tray `.exe` — run pure Python
+stdlib. Reading and serving a static `.js` file honours it. It is **not** a
+test-time rule: Node (built-in `node --test`) runs the Layout core tests on the
+developer machine only, and the wrapper test skips **loudly** where Node is
+absent.
+_Avoid_: reading it as "no tooling ever" — it constrains runtime, not the dev
+toolchain.
+
 ## Tray service
 
 Vocabulary for the local Windows tray application's background service.
