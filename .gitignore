@@ -16,3 +16,6 @@ dist/
 web/
 teaching/
 .instance.lock
+
+# Generierte Layout-Browser-Fixtures (nur gen.py + README sind getrackt)
+tests/fixtures/layout/*.html
