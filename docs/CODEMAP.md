@@ -1,6 +1,6 @@
 # Code Map
 
-_171 functions across 19 modules._
+_167 functions across 18 modules._
 
 > **Auto-generated** by `scripts/gen_codemap.py` — do not edit by hand.
 > Regenerated on every commit (git pre-commit hook). The narrative *why*
@@ -11,7 +11,6 @@ _171 functions across 19 modules._
 ## Modules
 
 - [`scripts/__init__.py`](#scriptsinitpy)
-- [`scripts/_layout_logic.py`](#scriptslayoutlogicpy)
 - [`scripts/diagnose_api.py`](#scriptsdiagnoseapipy)
 - [`scripts/discover_api.py`](#scriptsdiscoverapipy)
 - [`scripts/explore_rest.py`](#scriptsexplorerestpy)
@@ -33,17 +32,6 @@ _171 functions across 19 modules._
 <h2 id="scriptsinitpy">scripts/__init__.py</h2>
 
 _(no top-level functions or classes)_
-
-<h2 id="scriptslayoutlogicpy">scripts/_layout_logic.py</h2>
-
-__layout_logic.py – Verteilung von Render-Blöcken in N Spalten (Greedy-Fit)._
-
-| Line | Definition | Summary |
-|---:|---|---|
-| 9 | `distribute_blocks(blocks: Iterable[dict], n_cols: int, available_height_per_col: int=None)` | Verteilt Blöcke in n_cols Spalten per Greedy-Fit von links nach rechts. |
-| 52 | `fit_scale(content_height, available_height, scale_min, step=0.05)` | Größter Skalierungsfaktor in {1.0, 1-step, ...} >= scale_min, bei dem |
-| 68 | `distribute_uncapped(block_heights, available_height_per_col, cancel_flags=None, cancel_header_h=0)` | Greedy-Verteilung in BELIEBIG viele Spalten (kein MAX_COLS-Limit). |
-| 97 | `paginate_columns(columns, max_cols)` | Teilt eine Liste von Spalten in Seiten auf — höchstens max_cols pro Seite, |
 
 <h2 id="scriptsdiagnoseapipy">scripts/diagnose_api.py</h2>
 

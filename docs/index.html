@@ -537,9 +537,12 @@ python tray/build.py
   below <code>COMPACT_COL_WIDTH_PX</code>.
 </p>
 <div class="note">
-  The layout math has a testable Python mirror in <code>scripts/_layout_logic.py</code>
-  (<code>fit_scale</code>, <code>distribute_uncapped</code>, <code>paginate_columns</code>),
-  kept in sync with the JS engine.
+  The pure layout math lives in <code>js/layout-core.js</code>
+  (<code>fitScale</code>, <code>distributeUncapped</code>, <code>paginateColumns</code>,
+  <code>distributeGreedy</code> — no DOM) and is tested directly with Node
+  (<code>node --test tests/js/*.test.js</code>). The DOM driver in
+  <code>js/layout.js</code> measures heights and calls the core. No Python mirror any
+  more — see <code>docs/adr/0002-layout-engine-extracted-and-tested.md</code>.
 </div>
 
 <h3 id="overflow">Overflow strategy</h3>
@@ -553,9 +556,10 @@ python tray/build.py
   <li><strong>Paginate</strong> (<code>OVERFLOW_PAGINATE</code>, <code>OVERFLOW_PAGE_SECONDS</code> ≈ 12): page through the content.</li>
 </ol>
 <p>
-  Logic lives in the JS <code>applyLayout</code>/<code>layoutAll</code>, with the testable
-  mirror in <code>_layout_logic.py</code>, parsing in <code>parse_overflow_config</code>,
-  and config injected as <code>window.OVERFLOW</code>.
+  Logic lives in the JS <code>applyLayout</code>/<code>layoutAll</code> (driver,
+  <code>js/layout.js</code>) over the pure math in <code>js/layout-core.js</code>
+  (Node-tested), parsing in <code>parse_overflow_config</code>, and config injected as
+  <code>window.OVERFLOW</code>.
 </p>
 
 <h3 id="trains">Train widget (separate data flow)</h3>
@@ -600,8 +604,8 @@ python tray/build.py
   Pure-logic unit tests cover <code>fetch_trains.py</code> (<code>classify_direction</code>,
   <code>extract_departure</code>, <code>split_by_direction</code>,
   <code>atomic_write_json</code>, <code>load_config</code>,
-  <code>filter_by_product_prefix</code>) and the layout mirror in
-  <code>scripts/_layout_logic.py</code>.
+  <code>filter_by_product_prefix</code>) and the layout core in
+  <code>js/layout-core.js</code> (via Node, <code>tests/js/</code>).
 </p>
 
 </main>
