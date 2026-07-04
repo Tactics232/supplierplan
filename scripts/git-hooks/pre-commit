@@ -25,3 +25,22 @@ fi
 
 PYTHONIOENCODING=utf-8 "$PY" "$ROOT/scripts/gen_codemap.py" >&2
 git add "$ROOT/docs/CODEMAP.md"
+
+# Layout-Core JS-Tests — roter Lauf blockt den Commit. Ohne node LAUT skippen
+# (dev-only Werkzeug; die Laufzeit bleibt reines Python-stdlib). Siehe ADR 0002.
+NODE=""
+if [ -n "$SUPPLIERPLAN_NODE" ]; then
+  NODE="$SUPPLIERPLAN_NODE"
+elif command -v node >/dev/null 2>&1; then
+  NODE="node"
+elif [ -x "$HOME/.local/bin/node" ]; then
+  NODE="$HOME/.local/bin/node"
+fi
+if [ -n "$NODE" ]; then
+  "$NODE" --test "$ROOT"/tests/js/*.test.js >&2 || {
+    echo "pre-commit: layout-core JS-Tests rot — Commit abgebrochen" >&2
+    exit 1
+  }
+else
+  echo "pre-commit: node fehlt — JS-Layout-Tests uebersprungen" >&2
+fi
