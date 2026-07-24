@@ -190,9 +190,9 @@ self-heal if it's missing).
 | `SHOW_TOMORROW_AFTER` | – | `12:30` | Time of day from which the next school day is shown |
 | `UNTIS_DEPARTMENT_ID` | – | `0` | Department filter (0 = all) |
 | **Branding & appearance** | | | |
-| `SCHOOL_NAME` | – | `MS Roda-Roda-Gasse` | Heading, footer, browser title |
+| `SCHOOL_NAME` | – | `MS Mittelschule` | Heading, footer, browser title |
 | `SCHOOL_TYPE` | – | `Mittelschule` | Sub-line (part 1) |
-| `SCHOOL_LOCATION` | – | `1210 Wien` | Sub-line (part 2) + footer |
+| `SCHOOL_LOCATION` | – | `1000 Wien` | Sub-line (part 2) + footer |
 | `PLAN_TITLE` | – | `Supplierplan` | Plan title (e.g. “Vertretungsplan”) |
 | `SHOW_LOGO` | – | `false` | Render the logo in the header |
 | `LOGO_FILE` | – | `logo.png` | Logo filename (PNG/SVG/JPG/WebP) |
