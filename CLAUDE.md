@@ -81,6 +81,8 @@ Konfiguration in `config.env` über `TRAIN_*`-Variablen. Wenn `TRAIN_STATION` le
 - `ABSENCE_SOURCE` (`monitor` Default / `weekly`) + `MONITOR_URL` (Link der
   WebUntis-Monitor-Ansicht, `format=…` zählt): Quelle der Abwesenheits-Leisten, siehe
   „Abwesenheits-Leisten" und ADR 0003.
+- `ABSENCE_DERIVE_CLASSES` (Default true, nur bei `monitor`): Klassen, deren Stunden
+  **alle** entfallen, zusätzlich als ganztägig abwesend zeigen (ADR 0004).
 - `CANCEL_PLACEMENT` (`section` Default / `inline`): Platzierung der Entfall-Zeilen
   (Vokabular in `CONTEXT.md`, „Cancel placement"). `section` = alle Entfälle in eigener
   „Entfallende Stunden"-Sektion am Tagesende (cancel-only-Lehrer ohne eigenen Block).
@@ -383,6 +385,13 @@ Fenstern `ALL_DAY`/`FROM`/`FROM_TO`/… + Uhrzeiten → `monitor_absence_entries
 - Fehler/kein Link → Leiste `nicht verfügbar` (`ABSENCES_UNAVAILABLE`, `.sum-unavailable`),
   bewusst anders als `—`. Details nur im Log + Tray-Status (`main()` gibt
   `{"warnings": [...]}` zurück). Vergangene Fenster bleiben den ganzen Tag stehen.
+- **Komplett entfallende Klassen** (ADR 0004, `ABSENCE_DERIVE_CLASSES`): Ausflüge trägt
+  die Schule oft nur als Lehrer-Abwesenheit ein → Monitor kennt keine Klasse (03.11.:
+  2A/2B/2C). Daher `weekly/data` je Klasse (14 Calls ≈ 1 s/Tag, kein Cache); entfallen
+  **alle** Stunden (`class_fully_cancelled`), kommt die Klasse ganztägig dazu
+  (`merge_class_absences`, Monitor-Eintrag gewinnt). Keine Stunden → nicht weg. Fehler
+  → nur Monitor-Klassen + Log-Warnung (kein `nicht verfügbar`). Entfall-Zeilen bleiben
+  alle stehen. Tests: `tests/test_class_derivation.py`.
 
 **`weekly` — Schätzung aus den Stundenplänen** (`sweep_absences` über `weekly/data` für
 **alle** Lehrer- und Klassen-IDs, ~94 Calls). Erkennt Abwesenheit nur, wo Unterricht

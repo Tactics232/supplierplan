@@ -26,6 +26,7 @@ TABS = [
         ("ABSENCE_SOURCE", "Abwesenheits-Quelle", "choice",
          (["monitor", "weekly"], "monitor")),
         ("MONITOR_URL", "Monitor-Link", "text", None),
+        ("ABSENCE_DERIVE_CLASSES", "Klassen aus Entfällen", "bool", "true"),
     ]),
     ("Schule", [
         ("SCHOOL_NAME", "Schulname", "text", None),
@@ -198,6 +199,7 @@ def open_config_window(config_path, template_path=None, on_saved=None,
     nb.pack(fill="both", expand=True, padx=8, pady=8)
 
     vars_by_key = {}
+    widgets_by_key = {}
     status = ttk.Label(root, text="")
 
     def pick_logo():
@@ -235,6 +237,7 @@ def open_config_window(config_path, template_path=None, on_saved=None,
             w, var = _make_widget(cell, kind, extra, current.get(key, ""))
             w.pack(side="left", fill="x", expand=True)
             vars_by_key[key] = var
+            widgets_by_key[key] = w
             if key == "LOGO_FILE":
                 ttk.Button(cell, text="…", width=3, command=pick_logo
                            ).pack(side="left", padx=(4, 0))
@@ -251,6 +254,14 @@ def open_config_window(config_path, template_path=None, on_saved=None,
                 var.trace_add("write", update_hint)
                 update_hint()
         frame.columnconfigure(1, weight=1)
+
+    # Klassen-Ableitung (ADR 0004) wirkt nur bei ABSENCE_SOURCE=monitor.
+    src_var, derive_w = vars_by_key.get("ABSENCE_SOURCE"), widgets_by_key.get("ABSENCE_DERIVE_CLASSES")
+    if src_var is not None and derive_w is not None:
+        def update_derive(*_):
+            derive_w.config(state="readonly" if src_var.get() == "monitor" else "disabled")
+        src_var.trace_add("write", update_derive)
+        update_derive()
 
     status.pack(fill="x", padx=8)
 

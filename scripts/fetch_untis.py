@@ -116,6 +116,11 @@ def parse_absence_source(value):
     return v if v in ABSENCE_SOURCES else "monitor"
 
 
+def parse_derive_classes(value):
+    """config.env ABSENCE_DERIVE_CLASSES → bool (Default an; nur "false" schaltet ab)."""
+    return (value or "").strip().lower() != "false"
+
+
 class _Unavailable:
     """Marker: Abwesenheiten konnten nicht geholt werden → Leiste "nicht verfügbar"
     (bewusst verschieden von [] = niemand abwesend)."""
@@ -510,6 +515,35 @@ def monitor_absence_entries(absent_elements, timegrid):
             classes.append([name, rng])
     teachers.sort(); classes.sort()
     return {"teachers": teachers, "classes": classes}
+
+
+# ── Abgeleitete Klassen-Abwesenheit (ADR 0004, nur ABSENCE_SOURCE=monitor) ───
+# Ausflüge werden oft nur über Lehrer-Abwesenheiten erfasst → der Monitor kennt
+# keine Klasse. Entfallen ALLE Stunden einer Klasse, gilt sie als ganztägig weg.
+def class_fully_cancelled(periods):
+    """`periods` = weekly/data-Perioden einer Klasse an einem Tag. True nur, wenn
+    die Klasse Stunden hat und jede davon entfällt (keine Stunden → nicht weg)."""
+    return bool(periods) and all(p.get("cellState") in CLASS_ABSENT_STATES for p in periods)
+
+
+def derived_class_absences(periods_by_class):
+    """{Klassenname: Perioden} → sortierte Namen der ganztägig entfallenen Klassen."""
+    return sorted(n for n, ps in periods_by_class.items() if class_fully_cancelled(ps))
+
+
+def merge_class_absences(monitor_classes, derived_names):
+    """Monitor-Klassen + abgeleitete Namen → [[name, range], …] sortiert. Ein echter
+    Monitor-Eintrag gewinnt (behält sein Fenster), abgeleitete sind ganztägig ("")."""
+    known = {n for n, _ in monitor_classes}
+    merged = [list(x) for x in monitor_classes]
+    merged += [[n, ""] for n in derived_names if n not in known]
+    return sorted(merged)
+
+
+def fetch_class_periods(untis, klassen, date_obj):
+    """weekly/data für jede Klasse (elementType 1) → {Klassenname: Perioden}.
+    Fehler werden nicht abgefangen — der Aufrufer zeigt dann nur die Monitor-Klassen."""
+    return {k["name"]: untis.get_element_periods(1, k["id"], date_obj) for k in klassen}
 
 
 def parse_monitor_url(url):
@@ -1784,6 +1818,7 @@ def main(refresh_absences=None):
         #      gesweept via --refresh-absences, dazwischen nur gelesen. Self-Heal:
         #      fehlt ein Tag im Cache, wird er einmalig geholt.
         absence_source = parse_absence_source(config.get("ABSENCE_SOURCE"))
+        derive_classes = parse_derive_classes(config.get("ABSENCE_DERIVE_CLASSES"))
         if refresh_absences is None:
             refresh_absences = "--refresh-absences" in sys.argv
         absence_cache    = load_absence_cache() if absence_source == "weekly" else {}
@@ -1809,6 +1844,15 @@ def main(refresh_absences=None):
                     if msg not in result["warnings"]:
                         result["warnings"].append(msg)
                     return ABSENCES_UNAVAILABLE, ABSENCES_UNAVAILABLE
+                # ADR 0004: Klassen, deren Stunden alle entfallen, ergänzen. Fehler →
+                # nur die Monitor-Klassen (Warnung bloß im Log).
+                if derive_classes:
+                    try:
+                        entry["classes"] = merge_class_absences(
+                            entry["classes"],
+                            derived_class_absences(fetch_class_periods(untis, klassen_raw, date_obj)))
+                    except Exception as e:
+                        print(f"  ⚠️  Klassen-Ableitung fehlgeschlagen ({date_obj}): {e}", flush=True)
             else:
                 key = date_obj.isoformat()
                 if refresh_absences or key not in absence_cache:

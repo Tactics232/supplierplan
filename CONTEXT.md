@@ -75,6 +75,13 @@ timetable; it only sees absences that touch a lesson. Neither silently falls bac
 to the other.
 _Avoid_: calling the weekly estimate "authoritative".
 
+**Fully cancelled class (komplett entfallende Klasse)**:
+A class that has lessons on a day and every one of them is cancelled. In monitor
+mode it is added to the Absence bar as absent all day, shown like a real entry
+(ADR 0004, switch `ABSENCE_DERIVE_CLASSES`). Typical cause: an excursion entered
+only as teacher absences. A class without lessons that day is not one.
+_Avoid_: deriving partial class absences from cancellations in monitor mode.
+
 **Absence window (Abwesenheitsfenster)**:
 One time span of an absence record (`ALL_DAY`, `FROM`, `FROM_TO`, …), given by
 clock times and converted to board periods. A teacher can have several per day.

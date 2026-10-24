@@ -1,6 +1,6 @@
 # Code Map
 
-_176 functions across 18 modules._
+_181 functions across 18 modules._
 
 > **Auto-generated** by `scripts/gen_codemap.py` — do not edit by hand.
 > Regenerated on every commit (git pre-commit hook). The narrative *why*
@@ -117,79 +117,84 @@ _fetch_untis.py – WebUntis Supplierplan Fetcher_
 | 71 | `resolve_data_out()` | Verzeichnis für die Roh-/Übersichts-Dumps. Über $SUPPLIERPLAN_DATA lenkbar. |
 | 98 | `load_config()` | — |
 | 113 | `parse_absence_source(value)` | config.env ABSENCE_SOURCE → "monitor"/"weekly" (Müll/leer → "monitor"). |
-| 119 | **`class _Unavailable`** | Marker: Abwesenheiten konnten nicht geholt werden → Leiste "nicht verfügbar" |
-| 122 | &nbsp;&nbsp;`_Unavailable.__repr__(self)` | — |
-| 132 | **`class WebUntis`** | — |
-| 133 | &nbsp;&nbsp;`WebUntis.__init__(self, url, school_id, user, password)` | — |
-| 144 | &nbsp;&nbsp;`WebUntis._rpc(self, method, params=None)` | — |
-| 160 | &nbsp;&nbsp;`WebUntis.login(self)` | — |
-| 165 | &nbsp;&nbsp;`WebUntis.logout(self)` | — |
-| 171 | &nbsp;&nbsp;`WebUntis.get_substitutions(self, date_int, department_id=0)` | — |
-| 176 | &nbsp;&nbsp;`WebUntis.get_timegrid(self)` | — |
-| 179 | &nbsp;&nbsp;`WebUntis.get_teachers(self)` | — |
-| 182 | &nbsp;&nbsp;`WebUntis.get_holidays(self)` | — |
-| 185 | &nbsp;&nbsp;`WebUntis.get_klassen(self)` | — |
-| 188 | &nbsp;&nbsp;`WebUntis.get_element_periods(self, element_type, element_id, date_obj)` | REST weekly/data für EIN Element an `date_obj` → Liste der an dem Tag |
-| 217 | &nbsp;&nbsp;`WebUntis.get_monitor_absences(self, school, format_name, date_obj)` | `absentElements` der WebUntis-Monitor-Ansicht (Vertretungsplan-Format |
-| 255 | &nbsp;&nbsp;`WebUntis.get_latest_import_time(self)` | — |
-| 264 | `build_timegrid(days)` | — |
-| 276 | `build_break_lookup(days)` | — |
-| 290 | `fmt_time(t)` | — |
-| 294 | `find_current_period(timegrid)` | — |
-| 302 | `lesson_indicator(timegrid, now_t, today, holiday_set)` | Zustand für den Header-„Laufende/Nächste Stunde"-Block (ADR 0001). |
-| 341 | `now_hhmm()` | — |
-| 346 | `parse_holidays(holidays)` | Wandelt die Untis-Ferienliste in ein Set von date-Objekten. |
-| 363 | `next_school_day(start, holiday_set)` | Erster Werktag nach `start`, der kein Ferien-/Feiertag ist. |
-| 370 | `_usable_holiday_name(name)` | Untis-`name` nur wenn menschenlesbar: enthält Buchstaben UND ist nicht das |
-| 381 | `build_holiday_info(holidays)` | Untis-Ferienliste → dict[date] -> (name\|None, is_multiday). |
-| 401 | `skipped_free_days(today, next_day, holiday_info)` | Liste der zwischen `today` und `next_day` (exklusiv) übersprungenen FREIEN |
-| 436 | `configure_skip_teachers(value)` | Ergänzt SKIP_NAMES um die in config.env (SKIP_TEACHERS) gelisteten |
-| 445 | `window_periods(start, end, timegrid)` | Uhrzeit-Fenster → (erste, letzte) Board-Stunde. Erste = erste Stunde, die nach |
-| 456 | `format_period_list(nums)` | Stundennummern → "3" / "5–6" / "1, 3" / "1–2, 5" (Läufe getrennt, nichts |
-| 468 | `format_absence_windows(absences, timegrid)` | Abwesenheitsfenster eines Elements (Monitor `absences`) → Range-Angabe: |
-| 498 | `monitor_absence_entries(absent_elements, timegrid)` | Monitor-`absentElements` → {"teachers": [[name, range], …], "classes": […]} |
-| 515 | `parse_monitor_url(url)` | Monitor-Link aus dem Browser → (school, format_name). ValueError mit |
-| 530 | `teacher_absence_entry(periods, teacher_id, timegrid)` | `periods` = weekly/data-Perioden eines Lehrers an einem Tag (siehe |
-| 562 | `_consecutive_runs(nums)` | Sortierte Ganzzahlen → Liste zusammenhängender Läufe (konsekutive Werte). |
-| 577 | `class_absence_entry(periods, timegrid, min_block=2)` | `periods` = weekly/data-Perioden einer Klasse an einem Tag. |
-| 595 | `sweep_absences(untis, teachers, klassen, date_obj, timegrid)` | Voll-Sweep via weekly/data über ALLE Lehrer + Klassen für `date_obj` |
-| 631 | `_absence_cache_path()` | — |
-| 635 | `load_absence_cache()` | {date_iso: {"teachers": [...], "classes": [...]}}; {} bei Fehler/fehlend. |
-| 643 | `save_absence_cache(cache)` | Atomar schreiben (alte Datei bleibt bei Fehler intakt). |
-| 652 | `build_teacher_lookup(teachers)` | — |
-| 667 | `_dedupe_names(items)` | Liste von dicts mit 'name' zu Liste eindeutiger Namen ohne '---' / leer. |
-| 678 | `_is_meaningful_subst(s)` | True wenn die Substitution überhaupt eine echte Änderung darstellt. |
-| 689 | `_has_real_subst_teacher(s)` | True wenn ein echter Vertretungs-Lehrer im te[] steht (orgid + Name != '---'). |
-| 696 | `process_substitutions(substs, timegrid, break_lookup, day='today')` | — |
-| 824 | `group_by_teacher(rows)` | — |
-| 832 | `extract_absent_periods(groups)` | {lehrer_kuerzel: set(std)} aller abwesenden Lehrer eines Tages, abgeleitet aus |
-| 851 | `compute_absent(groups, full_absent_kuerzel=None)` | `full_absent_kuerzel`: Set der Lehrer-Kürzel, die laut weekly/data den |
-| 896 | `render_summary_bar(teachers, classes)` | `teachers`/`classes` = [(name, range), …] oder ABSENCES_UNAVAILABLE (Quelle |
-| 940 | `render_text(txt, settings)` | — |
-| 955 | `render_teacher_header(kuerzel, teacher_lookup, day='today')` | — |
-| 969 | `render_day_separator(d)` | — |
-| 973 | `_fach_html(fach: str)` | Liefert Fach mit Lang- und Kurz-Variante. |
-| 982 | `_klasse_html(klasse: str)` | Begrenzt die Klassen-Anzeige auf max. 2 Einträge, damit eine Zeile |
-| 999 | `_kuerzel_cell(r, settings)` | — |
-| 1003 | `_std_cell(r, settings)` | — |
-| 1006 | `_fach_cell(r, settings)` | — |
-| 1009 | `_klasse_cell(r, settings)` | — |
-| 1012 | `_lehrer_cell(r, settings)` | — |
-| 1028 | `_art_cell(r, settings)` | — |
-| 1039 | `_raum_cell(r, settings)` | — |
-| 1049 | `_text_cell(r, settings)` | — |
-| 1052 | `_row_class(r)` | — |
-| 1068 | `render_row(r, settings)` | — |
-| 1080 | `build_day_content(groups, teacher_lookup, day, settings)` | Rendert eine flache Tabelle pro Tag. Die Aufteilung in 1–4 Spalten |
-| 1144 | `render_train_widget(enabled: bool)` | Liefert den HTML-Stub für das Zug-Widget im Header. |
-| 1161 | `parse_overflow_config(config)` | Liest die OVERFLOW_*-Keys aus config.env und liefert ein dict für die |
-| 1198 | **`class DisplaySettings`** | Unveränderliches Bündel der ANZEIGE-Config (siehe CONTEXT.md „DisplaySettings"). |
-| 1226 | &nbsp;&nbsp;`DisplaySettings.from_config(cls, config)` | Baut das Paket aus dem rohen config.env-dict. Alle Klemmen/Validierungen/ |
-| 1285 | `generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date, teacher_lookup, indicator, settings, import_time=None, today_classes_override=None, tomorrow_classes_override=None, today_teachers_override=None, tomorrow_teachers_override=None, today_full_absent=None, tomorrow_full_absent=None, tomorrow_skipped=None)` | — |
-| 1565 | `purge_cloudflare_cache(zone_id, token, host=None)` | Löscht den Cloudflare-Cache nach dem Generieren der index.html. |
-| 1586 | `write_manifest(settings)` | Erzeugt manifest.json passend zu Schulname, Logo, Plan-Titel und Theme. |
-| 1622 | `write_data_dump(today_substs, tomorrow_substs, today_rows, tomorrow_rows, holidays, import_time, today_date, tomorrow_date)` | Schreibt zwei Dateien ins data/-Verzeichnis: |
-| 1716 | `main(refresh_absences=None)` | refresh_absences: True erzwingt einen frischen weekly/data-Sweep (sonst Cache; |
+| 119 | `parse_derive_classes(value)` | config.env ABSENCE_DERIVE_CLASSES → bool (Default an; nur "false" schaltet ab). |
+| 124 | **`class _Unavailable`** | Marker: Abwesenheiten konnten nicht geholt werden → Leiste "nicht verfügbar" |
+| 127 | &nbsp;&nbsp;`_Unavailable.__repr__(self)` | — |
+| 137 | **`class WebUntis`** | — |
+| 138 | &nbsp;&nbsp;`WebUntis.__init__(self, url, school_id, user, password)` | — |
+| 149 | &nbsp;&nbsp;`WebUntis._rpc(self, method, params=None)` | — |
+| 165 | &nbsp;&nbsp;`WebUntis.login(self)` | — |
+| 170 | &nbsp;&nbsp;`WebUntis.logout(self)` | — |
+| 176 | &nbsp;&nbsp;`WebUntis.get_substitutions(self, date_int, department_id=0)` | — |
+| 181 | &nbsp;&nbsp;`WebUntis.get_timegrid(self)` | — |
+| 184 | &nbsp;&nbsp;`WebUntis.get_teachers(self)` | — |
+| 187 | &nbsp;&nbsp;`WebUntis.get_holidays(self)` | — |
+| 190 | &nbsp;&nbsp;`WebUntis.get_klassen(self)` | — |
+| 193 | &nbsp;&nbsp;`WebUntis.get_element_periods(self, element_type, element_id, date_obj)` | REST weekly/data für EIN Element an `date_obj` → Liste der an dem Tag |
+| 222 | &nbsp;&nbsp;`WebUntis.get_monitor_absences(self, school, format_name, date_obj)` | `absentElements` der WebUntis-Monitor-Ansicht (Vertretungsplan-Format |
+| 260 | &nbsp;&nbsp;`WebUntis.get_latest_import_time(self)` | — |
+| 269 | `build_timegrid(days)` | — |
+| 281 | `build_break_lookup(days)` | — |
+| 295 | `fmt_time(t)` | — |
+| 299 | `find_current_period(timegrid)` | — |
+| 307 | `lesson_indicator(timegrid, now_t, today, holiday_set)` | Zustand für den Header-„Laufende/Nächste Stunde"-Block (ADR 0001). |
+| 346 | `now_hhmm()` | — |
+| 351 | `parse_holidays(holidays)` | Wandelt die Untis-Ferienliste in ein Set von date-Objekten. |
+| 368 | `next_school_day(start, holiday_set)` | Erster Werktag nach `start`, der kein Ferien-/Feiertag ist. |
+| 375 | `_usable_holiday_name(name)` | Untis-`name` nur wenn menschenlesbar: enthält Buchstaben UND ist nicht das |
+| 386 | `build_holiday_info(holidays)` | Untis-Ferienliste → dict[date] -> (name\|None, is_multiday). |
+| 406 | `skipped_free_days(today, next_day, holiday_info)` | Liste der zwischen `today` und `next_day` (exklusiv) übersprungenen FREIEN |
+| 441 | `configure_skip_teachers(value)` | Ergänzt SKIP_NAMES um die in config.env (SKIP_TEACHERS) gelisteten |
+| 450 | `window_periods(start, end, timegrid)` | Uhrzeit-Fenster → (erste, letzte) Board-Stunde. Erste = erste Stunde, die nach |
+| 461 | `format_period_list(nums)` | Stundennummern → "3" / "5–6" / "1, 3" / "1–2, 5" (Läufe getrennt, nichts |
+| 473 | `format_absence_windows(absences, timegrid)` | Abwesenheitsfenster eines Elements (Monitor `absences`) → Range-Angabe: |
+| 503 | `monitor_absence_entries(absent_elements, timegrid)` | Monitor-`absentElements` → {"teachers": [[name, range], …], "classes": […]} |
+| 523 | `class_fully_cancelled(periods)` | `periods` = weekly/data-Perioden einer Klasse an einem Tag. True nur, wenn |
+| 529 | `derived_class_absences(periods_by_class)` | {Klassenname: Perioden} → sortierte Namen der ganztägig entfallenen Klassen. |
+| 534 | `merge_class_absences(monitor_classes, derived_names)` | Monitor-Klassen + abgeleitete Namen → [[name, range], …] sortiert. Ein echter |
+| 543 | `fetch_class_periods(untis, klassen, date_obj)` | weekly/data für jede Klasse (elementType 1) → {Klassenname: Perioden}. |
+| 549 | `parse_monitor_url(url)` | Monitor-Link aus dem Browser → (school, format_name). ValueError mit |
+| 564 | `teacher_absence_entry(periods, teacher_id, timegrid)` | `periods` = weekly/data-Perioden eines Lehrers an einem Tag (siehe |
+| 596 | `_consecutive_runs(nums)` | Sortierte Ganzzahlen → Liste zusammenhängender Läufe (konsekutive Werte). |
+| 611 | `class_absence_entry(periods, timegrid, min_block=2)` | `periods` = weekly/data-Perioden einer Klasse an einem Tag. |
+| 629 | `sweep_absences(untis, teachers, klassen, date_obj, timegrid)` | Voll-Sweep via weekly/data über ALLE Lehrer + Klassen für `date_obj` |
+| 665 | `_absence_cache_path()` | — |
+| 669 | `load_absence_cache()` | {date_iso: {"teachers": [...], "classes": [...]}}; {} bei Fehler/fehlend. |
+| 677 | `save_absence_cache(cache)` | Atomar schreiben (alte Datei bleibt bei Fehler intakt). |
+| 686 | `build_teacher_lookup(teachers)` | — |
+| 701 | `_dedupe_names(items)` | Liste von dicts mit 'name' zu Liste eindeutiger Namen ohne '---' / leer. |
+| 712 | `_is_meaningful_subst(s)` | True wenn die Substitution überhaupt eine echte Änderung darstellt. |
+| 723 | `_has_real_subst_teacher(s)` | True wenn ein echter Vertretungs-Lehrer im te[] steht (orgid + Name != '---'). |
+| 730 | `process_substitutions(substs, timegrid, break_lookup, day='today')` | — |
+| 858 | `group_by_teacher(rows)` | — |
+| 866 | `extract_absent_periods(groups)` | {lehrer_kuerzel: set(std)} aller abwesenden Lehrer eines Tages, abgeleitet aus |
+| 885 | `compute_absent(groups, full_absent_kuerzel=None)` | `full_absent_kuerzel`: Set der Lehrer-Kürzel, die laut weekly/data den |
+| 930 | `render_summary_bar(teachers, classes)` | `teachers`/`classes` = [(name, range), …] oder ABSENCES_UNAVAILABLE (Quelle |
+| 974 | `render_text(txt, settings)` | — |
+| 989 | `render_teacher_header(kuerzel, teacher_lookup, day='today')` | — |
+| 1003 | `render_day_separator(d)` | — |
+| 1007 | `_fach_html(fach: str)` | Liefert Fach mit Lang- und Kurz-Variante. |
+| 1016 | `_klasse_html(klasse: str)` | Begrenzt die Klassen-Anzeige auf max. 2 Einträge, damit eine Zeile |
+| 1033 | `_kuerzel_cell(r, settings)` | — |
+| 1037 | `_std_cell(r, settings)` | — |
+| 1040 | `_fach_cell(r, settings)` | — |
+| 1043 | `_klasse_cell(r, settings)` | — |
+| 1046 | `_lehrer_cell(r, settings)` | — |
+| 1062 | `_art_cell(r, settings)` | — |
+| 1073 | `_raum_cell(r, settings)` | — |
+| 1083 | `_text_cell(r, settings)` | — |
+| 1086 | `_row_class(r)` | — |
+| 1102 | `render_row(r, settings)` | — |
+| 1114 | `build_day_content(groups, teacher_lookup, day, settings)` | Rendert eine flache Tabelle pro Tag. Die Aufteilung in 1–4 Spalten |
+| 1178 | `render_train_widget(enabled: bool)` | Liefert den HTML-Stub für das Zug-Widget im Header. |
+| 1195 | `parse_overflow_config(config)` | Liest die OVERFLOW_*-Keys aus config.env und liefert ein dict für die |
+| 1232 | **`class DisplaySettings`** | Unveränderliches Bündel der ANZEIGE-Config (siehe CONTEXT.md „DisplaySettings"). |
+| 1260 | &nbsp;&nbsp;`DisplaySettings.from_config(cls, config)` | Baut das Paket aus dem rohen config.env-dict. Alle Klemmen/Validierungen/ |
+| 1319 | `generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date, teacher_lookup, indicator, settings, import_time=None, today_classes_override=None, tomorrow_classes_override=None, today_teachers_override=None, tomorrow_teachers_override=None, today_full_absent=None, tomorrow_full_absent=None, tomorrow_skipped=None)` | — |
+| 1599 | `purge_cloudflare_cache(zone_id, token, host=None)` | Löscht den Cloudflare-Cache nach dem Generieren der index.html. |
+| 1620 | `write_manifest(settings)` | Erzeugt manifest.json passend zu Schulname, Logo, Plan-Titel und Theme. |
+| 1656 | `write_data_dump(today_substs, tomorrow_substs, today_rows, tomorrow_rows, holidays, import_time, today_date, tomorrow_date)` | Schreibt zwei Dateien ins data/-Verzeichnis: |
+| 1750 | `main(refresh_absences=None)` | refresh_absences: True erzwingt einen frischen weekly/data-Sweep (sonst Cache; |
 
 <h2 id="scriptsgencodemappy">scripts/gen_codemap.py</h2>
 
@@ -266,9 +271,9 @@ _tkinter-Konfigurationsfenster. Liest/schreibt config.env über config_io._
 
 | Line | Definition | Summary |
 |---:|---|---|
-| 87 | `_make_widget(frame, kind, extra, current_value)` | Erzeugt das passende Eingabe-Widget + StringVar. Auswahlfelder (bool/choice) |
-| 108 | `_station_dialog(parent, search_fn, target_var)` | Modaler Such-Dialog: Teilname tippen → HAFAS-Treffer anklicken → exakter |
-| 177 | `open_config_window(config_path, template_path=None, on_saved=None, test_connection=None, on_refresh=None, on_refresh_absences=None, busy_getter=None, status_getter=None, station_search=None, help_url=None, on_close=None, focus_requested=None)` | Öffnet das Einstellungen-Fenster. |
+| 88 | `_make_widget(frame, kind, extra, current_value)` | Erzeugt das passende Eingabe-Widget + StringVar. Auswahlfelder (bool/choice) |
+| 109 | `_station_dialog(parent, search_fn, target_var)` | Modaler Such-Dialog: Teilname tippen → HAFAS-Treffer anklicken → exakter |
+| 178 | `open_config_window(config_path, template_path=None, on_saved=None, test_connection=None, on_refresh=None, on_refresh_absences=None, busy_getter=None, status_getter=None, station_search=None, help_url=None, on_close=None, focus_requested=None)` | Öffnet das Einstellungen-Fenster. |
 
 <h2 id="trayiconspy">tray/icons.py</h2>
 

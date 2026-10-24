@@ -476,6 +476,16 @@ python tray/build.py
   (a minimal body returns no <code>payload</code>). <code>-8520 access not allowed</code>
   means a wrong or unpublished format name, not missing user rights.
 </div>
+<p>
+  <strong>Fully cancelled classes</strong> (ADR 0004, <code>ABSENCE_DERIVE_CLASSES</code>,
+  default on): excursions are often entered only as teacher absences, so the monitor
+  lists no class. <code>fetch_class_periods</code> reads <code>weekly/data</code> for every
+  class (one call each, ~1&nbsp;s per day); a class whose lessons are <em>all</em>
+  <code>CANCEL</code> (<code>class_fully_cancelled</code>) is merged in as absent all day
+  (<code>merge_class_absences</code>; a real monitor entry wins). No lessons → not absent.
+  A failure here only logs a warning and shows the monitor classes. The cancellation rows
+  stay in the plan.
+</p>
 <h4><code>weekly</code> — an estimate from the timetables</h4>
 <p>
   <code>sweep_absences</code> queries <code>weekly/data</code> for every teacher and class

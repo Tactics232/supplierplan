@@ -1,0 +1,684 @@
+{
+ "date": "20261103",
+ "classes": {
+  "1A": [
+   {
+    "startTime": 700,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 800,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 800,
+    "cellState": "SUBSTITUTION"
+   },
+   {
+    "startTime": 855,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1000,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1000,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1100,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1200,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1255,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1350,
+    "cellState": "SUBSTITUTION"
+   },
+   {
+    "startTime": 1445,
+    "cellState": "STANDARD"
+   }
+  ],
+  "1B": [
+   {
+    "startTime": 700,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 800,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 855,
+    "cellState": "SUBSTITUTION"
+   },
+   {
+    "startTime": 1000,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1100,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1100,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1100,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1200,
+    "cellState": "SUBSTITUTION"
+   },
+   {
+    "startTime": 1255,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1350,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1445,
+    "cellState": "STANDARD"
+   }
+  ],
+  "1C": [
+   {
+    "startTime": 700,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 800,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 800,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 855,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 855,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1000,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1100,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1100,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1100,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1200,
+    "cellState": "SUBSTITUTION"
+   },
+   {
+    "startTime": 1255,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1350,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1445,
+    "cellState": "STANDARD"
+   }
+  ],
+  "2A": [
+   {
+    "startTime": 700,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 800,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 800,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 855,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 855,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 855,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 1000,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 1000,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 1100,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 1255,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 1350,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 1350,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 1350,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 1445,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 1445,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 1445,
+    "cellState": "CANCEL"
+   }
+  ],
+  "2B": [
+   {
+    "startTime": 700,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 800,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 855,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 1000,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 1100,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 1200,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 1350,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 1350,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 1350,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 1445,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 1445,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 1445,
+    "cellState": "CANCEL"
+   }
+  ],
+  "2C": [
+   {
+    "startTime": 700,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 800,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 855,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 855,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 1000,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 1000,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 1100,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 1255,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 1350,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 1350,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 1445,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 1445,
+    "cellState": "CANCEL"
+   },
+   {
+    "startTime": 1540,
+    "cellState": "CANCEL"
+   }
+  ],
+  "3A": [
+   {
+    "startTime": 700,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 800,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 800,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 855,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1000,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1100,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1100,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1100,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1200,
+    "cellState": "SUBSTITUTION"
+   },
+   {
+    "startTime": 1255,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1350,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1445,
+    "cellState": "STANDARD"
+   }
+  ],
+  "3B": [
+   {
+    "startTime": 700,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 800,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 855,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1000,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1100,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1200,
+    "cellState": "SUBSTITUTION"
+   },
+   {
+    "startTime": 1255,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1350,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1445,
+    "cellState": "STANDARD"
+   }
+  ],
+  "3C": [
+   {
+    "startTime": 700,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 800,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 800,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 855,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 855,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1000,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1000,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1100,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1100,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1200,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1255,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1350,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1445,
+    "cellState": "STANDARD"
+   }
+  ],
+  "4A": [
+   {
+    "startTime": 700,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 800,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 800,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 800,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 855,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 855,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1000,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1100,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1200,
+    "cellState": "SUBSTITUTION"
+   },
+   {
+    "startTime": 1255,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1350,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1350,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1350,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1445,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1445,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1540,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1540,
+    "cellState": "STANDARD"
+   }
+  ],
+  "4B": [
+   {
+    "startTime": 700,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 800,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 855,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1000,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1000,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1100,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1200,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1200,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1200,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1200,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1255,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1255,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1255,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1350,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1445,
+    "cellState": "SUBSTITUTION"
+   }
+  ],
+  "4C": [
+   {
+    "startTime": 700,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 800,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 855,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1000,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1100,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1200,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1200,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1200,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1200,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1255,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1255,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1255,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1350,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1445,
+    "cellState": "SUBSTITUTION"
+   }
+  ],
+  "DFK": [],
+  "FMS": [
+   {
+    "startTime": 800,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 855,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1000,
+    "cellState": "SUBSTITUTION"
+   },
+   {
+    "startTime": 1100,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1100,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1200,
+    "cellState": "STANDARD"
+   },
+   {
+    "startTime": 1255,
+    "cellState": "STANDARD"
+   }
+  ]
+ }
+}
