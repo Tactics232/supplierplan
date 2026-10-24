@@ -209,6 +209,45 @@ class TestServiceRun(unittest.TestCase):
                 fetch_untis.main = orig
 
 
+class TestServiceAbsenceSource(unittest.TestCase):
+    def test_warnung_des_laufs_landet_im_status(self):
+        from scripts import fetch_untis
+        with tempfile.TemporaryDirectory() as d:
+            svc = Service(d)
+            orig = fetch_untis.main
+            fetch_untis.main = lambda refresh_absences=False: {
+                "warnings": ["Abwesenheiten nicht verfügbar: Monitor-Link fehlt"]}
+            try:
+                svc.run_untis_once()
+            finally:
+                fetch_untis.main = orig
+            self.assertIn("⚠ Abwesenheiten nicht verfügbar", svc.last_status)
+
+    def test_abwesenheits_lauf_nur_bei_weekly(self):
+        with tempfile.TemporaryDirectory() as d:
+            svc = Service(d)
+            started = []
+            svc.run_untis_once = lambda **kw: started.append(kw)
+            orig_thread = threading.Thread
+
+            class SyncThread:
+                def __init__(self, target, kwargs=None, daemon=None):
+                    self.target, self.kwargs = target, kwargs or {}
+                def start(self):
+                    self.target(**self.kwargs)
+
+            threading.Thread = SyncThread
+            try:
+                (Path(d) / "config.env").write_text("ABSENCE_SOURCE=monitor\n", encoding="utf-8")
+                svc.refresh_absences_now()
+                self.assertEqual(started, [])
+                (Path(d) / "config.env").write_text("ABSENCE_SOURCE=weekly\n", encoding="utf-8")
+                svc.refresh_absences_now()
+                self.assertEqual(started, [{"refresh_absences": True}])
+            finally:
+                threading.Thread = orig_thread
+
+
 class TestGuiConfigSync(unittest.TestCase):
     """Jeder Schlüssel in config.env.example muss im Einstellungen-Fenster
     bearbeitbar sein (und umgekehrt) — sonst driften Vorlage und GUI auseinander."""

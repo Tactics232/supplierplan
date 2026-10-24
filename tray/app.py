@@ -67,14 +67,27 @@ def _ensure_data_dir():
 
 
 def _test_connection(values):
+    """Login prüfen; bei ABSENCE_SOURCE=monitor zusätzlich den Monitor-Link."""
     try:
-        from scripts.fetch_untis import WebUntis
+        from datetime import date
+        from scripts.fetch_untis import WebUntis, parse_absence_source, parse_monitor_url
         u = WebUntis(url=values.get("UNTIS_URL", ""),
                      school_id=values.get("UNTIS_SCHOOL_ID", ""),
                      user=values.get("UNTIS_USER", ""),
                      password=values.get("UNTIS_PASSWORD", ""))
-        u.login(); u.logout()
-        return True, "Login erfolgreich"
+        u.login()
+        try:
+            if parse_absence_source(values.get("ABSENCE_SOURCE")) != "monitor":
+                return True, "Login erfolgreich"
+            try:
+                school, fmt = parse_monitor_url(values.get("MONITOR_URL"))
+                u.get_monitor_absences(school, fmt, date.today())
+            except Exception as e:
+                hint = " – Format-Name falsch oder nicht freigegeben?" if "-8520" in str(e) else ""
+                return False, f"Login ok, aber Monitor-Link: {e}{hint}"
+            return True, f"Login und Monitor-Link ok (Format „{fmt}“)"
+        finally:
+            u.logout()
     except Exception as e:
         return False, str(e)
 
@@ -176,7 +189,8 @@ def main():
         pystray.MenuItem("Jetzt aktualisieren", on_refresh_now,
                          enabled=lambda i: service.running and not service.busy),
         pystray.MenuItem("Abwesenheiten aktualisieren", on_refresh_absences,
-                         enabled=lambda i: service.running and not service.busy),
+                         enabled=lambda i: service.running and not service.busy
+                         and service.absence_source() == "weekly"),
         pystray.MenuItem("Im Browser öffnen", on_open_browser),
         pystray.MenuItem("Mit Windows starten", toggle_autostart, checked=autostart_checked),
         pystray.MenuItem("Beenden", on_quit),

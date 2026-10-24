@@ -1,0 +1,4305 @@
+{
+ "date": "2026-11-03",
+ "teachers": [
+  {
+   "id": 1,
+   "name": "AlC",
+   "periods": [
+    {
+     "startTime": 945,
+     "endTime": 1000,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 1,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 58,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 118,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1150,
+     "endTime": 1200,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 1,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 64,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 106,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 800,
+     "endTime": 850,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 1,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1100,
+     "endTime": 1150,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 1,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 79,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 855,
+     "endTime": 945,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 1,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 800,
+     "endTime": 850,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 1,
+       "orgId": 46
+      },
+      {
+       "type": 2,
+       "id": 70,
+       "orgId": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 4,
+   "name": "AlM",
+   "periods": [
+    {
+     "startTime": 745,
+     "endTime": 800,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 0,
+       "orgId": 4
+      }
+     ]
+    },
+    {
+     "startTime": 1250,
+     "endTime": 1255,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 0,
+       "orgId": 4
+      }
+     ]
+    },
+    {
+     "startTime": 945,
+     "endTime": 1000,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 0,
+       "orgId": 4
+      },
+      {
+       "type": 2,
+       "id": 19,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 106,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1150,
+     "endTime": 1200,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 0,
+       "orgId": 4
+      },
+      {
+       "type": 2,
+       "id": 124,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1100,
+     "endTime": 1150,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 4,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 118,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 800,
+     "endTime": 850,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 4,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1200,
+     "endTime": 1250,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 19,
+       "orgId": 4
+      }
+     ]
+    },
+    {
+     "startTime": 1000,
+     "endTime": 1050,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 118,
+       "orgId": 4
+      }
+     ]
+    },
+    {
+     "startTime": 855,
+     "endTime": 945,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 4,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 118,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1255,
+     "endTime": 1345,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 124,
+       "orgId": 4
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 7,
+   "name": "Ala",
+   "periods": [
+    {
+     "startTime": 1345,
+     "endTime": 1350,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 7,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 37,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1445,
+     "endTime": 1535,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 7,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1350,
+     "endTime": 1440,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 7,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1255,
+     "endTime": 1345,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 7,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1200,
+     "endTime": 1250,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 7,
+       "orgId": 25
+      },
+      {
+       "type": 2,
+       "id": 106,
+       "orgId": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 13,
+   "name": "BaP",
+   "periods": [
+    {
+     "startTime": 1535,
+     "endTime": 1540,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 13,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1350,
+     "endTime": 1440,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 13,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1445,
+     "endTime": 1535,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 13,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1540,
+     "endTime": 1630,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 13,
+       "orgId": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 16,
+   "name": "BoB",
+   "periods": [
+    {
+     "startTime": 1150,
+     "endTime": 1200,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 16,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 945,
+     "endTime": 1000,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 16,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 49,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1100,
+     "endTime": 1150,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 16,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 855,
+     "endTime": 945,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 16,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 800,
+     "endTime": 850,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 16,
+       "orgId": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 10,
+   "name": "BrH",
+   "periods": [
+    {
+     "startTime": 745,
+     "endTime": 800,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 0,
+       "orgId": 10
+      }
+     ]
+    },
+    {
+     "startTime": 945,
+     "endTime": 1000,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 0,
+       "orgId": 10
+      }
+     ]
+    },
+    {
+     "startTime": 850,
+     "endTime": 855,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 0,
+       "orgId": 10
+      },
+      {
+       "type": 2,
+       "id": 0,
+       "orgId": 31
+      }
+     ]
+    },
+    {
+     "startTime": 700,
+     "endTime": 745,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 10,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 855,
+     "endTime": 945,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 10,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 800,
+     "endTime": 850,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 10,
+       "orgId": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 19,
+   "name": "BuL",
+   "periods": [
+    {
+     "startTime": 1250,
+     "endTime": 1255,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 19,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1345,
+     "endTime": 1350,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 19,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 945,
+     "endTime": 1000,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 0,
+       "orgId": 4
+      },
+      {
+       "type": 2,
+       "id": 19,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 106,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1000,
+     "endTime": 1050,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 19,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1100,
+     "endTime": 1150,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 19,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 855,
+     "endTime": 945,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 19,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1200,
+     "endTime": 1250,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 19,
+       "orgId": 4
+      }
+     ]
+    },
+    {
+     "startTime": 1255,
+     "endTime": 1345,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 19,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 106,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1350,
+     "endTime": 1440,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 19,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1445,
+     "endTime": 1535,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 19,
+       "orgId": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 22,
+   "name": "ChC",
+   "periods": [
+    {
+     "startTime": 1345,
+     "endTime": 1350,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 0,
+       "orgId": 22
+      },
+      {
+       "type": 2,
+       "id": 28,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 745,
+     "endTime": 800,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 22,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 850,
+     "endTime": 855,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 22,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1100,
+     "endTime": 1150,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 22,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1255,
+     "endTime": 1345,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 22,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 28,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1200,
+     "endTime": 1250,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 22,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1350,
+     "endTime": 1440,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 22,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1445,
+     "endTime": 1535,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 22,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1000,
+     "endTime": 1050,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 22,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 800,
+     "endTime": 850,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 22,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 28,
+       "orgId": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 130,
+   "name": "DaS",
+   "periods": [
+    {
+     "startTime": 1050,
+     "endTime": 1100,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 37,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 115,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 130,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1345,
+     "endTime": 1350,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 0,
+       "orgId": 31
+      },
+      {
+       "type": 2,
+       "id": 130,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 800,
+     "endTime": 850,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 124,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 130,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1000,
+     "endTime": 1050,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 130,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 855,
+     "endTime": 945,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 130,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1255,
+     "endTime": 1345,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 130,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1200,
+     "endTime": 1250,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 130,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1350,
+     "endTime": 1440,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 130,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1540,
+     "endTime": 1630,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 130,
+       "orgId": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 25,
+   "name": "DeF",
+   "periods": [
+    {
+     "startTime": 1050,
+     "endTime": 1100,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 0,
+       "orgId": 25
+      },
+      {
+       "type": 2,
+       "id": 0,
+       "orgId": 79
+      },
+      {
+       "type": 2,
+       "id": 49,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1350,
+     "endTime": 1440,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 37,
+       "orgId": 25
+      },
+      {
+       "type": 2,
+       "id": 70,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1000,
+     "endTime": 1050,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 25,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 79,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1100,
+     "endTime": 1150,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 25,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1540,
+     "endTime": 1630,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 0,
+       "orgId": 25
+      }
+     ]
+    },
+    {
+     "startTime": 1200,
+     "endTime": 1250,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 7,
+       "orgId": 25
+      },
+      {
+       "type": 2,
+       "id": 106,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1445,
+     "endTime": 1535,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 94,
+       "orgId": 25
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 28,
+   "name": "DuS",
+   "periods": [
+    {
+     "startTime": 850,
+     "endTime": 855,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 28,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1345,
+     "endTime": 1350,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 0,
+       "orgId": 22
+      },
+      {
+       "type": 2,
+       "id": 28,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1200,
+     "endTime": 1250,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 28,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1255,
+     "endTime": 1345,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 22,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 28,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1000,
+     "endTime": 1050,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 28,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 82,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 855,
+     "endTime": 945,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 28,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 73,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 800,
+     "endTime": 850,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 22,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 28,
+       "orgId": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 31,
+   "name": "FaM",
+   "periods": [
+    {
+     "startTime": 850,
+     "endTime": 855,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 0,
+       "orgId": 10
+      },
+      {
+       "type": 2,
+       "id": 0,
+       "orgId": 31
+      }
+     ]
+    },
+    {
+     "startTime": 1345,
+     "endTime": 1350,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 0,
+       "orgId": 31
+      },
+      {
+       "type": 2,
+       "id": 130,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1440,
+     "endTime": 1445,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 0,
+       "orgId": 31
+      },
+      {
+       "type": 2,
+       "id": 58,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1200,
+     "endTime": 1250,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 31,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1000,
+     "endTime": 1050,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 31,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 118,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 855,
+     "endTime": 945,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 31,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 800,
+     "endTime": 850,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 31,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 79,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1350,
+     "endTime": 1440,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 31,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1445,
+     "endTime": 1535,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 31,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1100,
+     "endTime": 1150,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 118,
+       "orgId": 31
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 37,
+   "name": "FiL",
+   "periods": [
+    {
+     "startTime": 1050,
+     "endTime": 1100,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 37,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 115,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 130,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1150,
+     "endTime": 1200,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 37,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 67,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 115,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1345,
+     "endTime": 1350,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 7,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 37,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1250,
+     "endTime": 1255,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 37,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 88,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 855,
+     "endTime": 945,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 37,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1100,
+     "endTime": 1150,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 37,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 70,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 115,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 800,
+     "endTime": 850,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 37,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1350,
+     "endTime": 1440,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 37,
+       "orgId": 25
+      },
+      {
+       "type": 2,
+       "id": 70,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 855,
+     "endTime": 945,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 37,
+       "orgId": 46
+      },
+      {
+       "type": 2,
+       "id": 91,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 700,
+     "endTime": 745,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 37,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1255,
+     "endTime": 1345,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 37,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1200,
+     "endTime": 1250,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 37,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 70,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1445,
+     "endTime": 1535,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 37,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 70,
+       "orgId": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 46,
+   "name": "GrM",
+   "periods": [
+    {
+     "startTime": 850,
+     "endTime": 855,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 0,
+       "orgId": 46
+      },
+      {
+       "type": 2,
+       "id": 106,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 945,
+     "endTime": 1000,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 0,
+       "orgId": 46
+      },
+      {
+       "type": 2,
+       "id": 109,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1000,
+     "endTime": 1050,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 46,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 800,
+     "endTime": 850,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 1,
+       "orgId": 46
+      },
+      {
+       "type": 2,
+       "id": 70,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 855,
+     "endTime": 945,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 37,
+       "orgId": 46
+      },
+      {
+       "type": 2,
+       "id": 91,
+       "orgId": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 49,
+   "name": "GuM",
+   "periods": [
+    {
+     "startTime": 1050,
+     "endTime": 1100,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 0,
+       "orgId": 25
+      },
+      {
+       "type": 2,
+       "id": 0,
+       "orgId": 79
+      },
+      {
+       "type": 2,
+       "id": 49,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 945,
+     "endTime": 1000,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 16,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 49,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1100,
+     "endTime": 1150,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 49,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 800,
+     "endTime": 850,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 49,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1000,
+     "endTime": 1050,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 49,
+       "orgId": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 52,
+   "name": "HeA",
+   "periods": [
+    {
+     "startTime": 745,
+     "endTime": 800,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 52,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 855,
+     "endTime": 945,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 52,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 700,
+     "endTime": 745,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 52,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1000,
+     "endTime": 1050,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 52,
+       "orgId": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 61,
+   "name": "KoM",
+   "periods": [
+    {
+     "startTime": 745,
+     "endTime": 800,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 61,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1345,
+     "endTime": 1350,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 61,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1100,
+     "endTime": 1150,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 61,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1255,
+     "endTime": 1345,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 61,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 800,
+     "endTime": 850,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 61,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 855,
+     "endTime": 945,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 61,
+       "orgId": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 133,
+   "name": "KtA",
+   "periods": [
+    {
+     "startTime": 1050,
+     "endTime": 1100,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 88,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 133,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 850,
+     "endTime": 855,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 133,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 945,
+     "endTime": 1000,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 82,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 133,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1150,
+     "endTime": 1200,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 94,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 133,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 800,
+     "endTime": 850,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 133,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1100,
+     "endTime": 1150,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 82,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 133,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1000,
+     "endTime": 1050,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 133,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 700,
+     "endTime": 745,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 133,
+       "orgId": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 64,
+   "name": "LaI",
+   "periods": [
+    {
+     "startTime": 1150,
+     "endTime": 1200,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 1,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 64,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 106,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 945,
+     "endTime": 1000,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 64,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 800,
+     "endTime": 850,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 64,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 855,
+     "endTime": 945,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 64,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 109,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1000,
+     "endTime": 1050,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 64,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 76,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1100,
+     "endTime": 1150,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 64,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 76,
+       "orgId": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 67,
+   "name": "MaM",
+   "periods": [
+    {
+     "startTime": 745,
+     "endTime": 800,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 67,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1440,
+     "endTime": 1445,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 67,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1150,
+     "endTime": 1200,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 37,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 67,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 115,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1100,
+     "endTime": 1150,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 67,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1000,
+     "endTime": 1050,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 67,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1350,
+     "endTime": 1440,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 67,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 800,
+     "endTime": 850,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 67,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 855,
+     "endTime": 945,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 67,
+       "orgId": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 70,
+   "name": "MaZ",
+   "periods": [
+    {
+     "startTime": 1250,
+     "endTime": 1255,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 70,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 73,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1440,
+     "endTime": 1445,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 70,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 115,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1100,
+     "endTime": 1150,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 37,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 70,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 115,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1350,
+     "endTime": 1440,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 37,
+       "orgId": 25
+      },
+      {
+       "type": 2,
+       "id": 70,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 800,
+     "endTime": 850,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 1,
+       "orgId": 46
+      },
+      {
+       "type": 2,
+       "id": 70,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 855,
+     "endTime": 945,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 70,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 106,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1200,
+     "endTime": 1250,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 37,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 70,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1445,
+     "endTime": 1535,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 37,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 70,
+       "orgId": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 73,
+   "name": "NeS",
+   "periods": [
+    {
+     "startTime": 1535,
+     "endTime": 1540,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 73,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1250,
+     "endTime": 1255,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 70,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 73,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1445,
+     "endTime": 1535,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 73,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 103,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1350,
+     "endTime": 1440,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 73,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1540,
+     "endTime": 1630,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 73,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 855,
+     "endTime": 945,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 28,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 73,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1100,
+     "endTime": 1150,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 73,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 103,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1000,
+     "endTime": 1050,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 73,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 106,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 800,
+     "endTime": 850,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 73,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 106,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1200,
+     "endTime": 1250,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 73,
+       "orgId": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 76,
+   "name": "PoK",
+   "periods": [
+    {
+     "startTime": 1050,
+     "endTime": 1100,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 76,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1350,
+     "endTime": 1440,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 58,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 76,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 800,
+     "endTime": 850,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 76,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 82,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 91,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1000,
+     "endTime": 1050,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 64,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 76,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1100,
+     "endTime": 1150,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 64,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 76,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 855,
+     "endTime": 945,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 58,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 76,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1255,
+     "endTime": 1345,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 76,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 88,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1445,
+     "endTime": 1535,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 76,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 88,
+       "orgId": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 79,
+   "name": "PrA",
+   "periods": [
+    {
+     "startTime": 1050,
+     "endTime": 1100,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 0,
+       "orgId": 25
+      },
+      {
+       "type": 2,
+       "id": 0,
+       "orgId": 79
+      },
+      {
+       "type": 2,
+       "id": 49,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1100,
+     "endTime": 1150,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 1,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 79,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 855,
+     "endTime": 945,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 79,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1000,
+     "endTime": 1050,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 25,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 79,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 800,
+     "endTime": 850,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 31,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 79,
+       "orgId": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 82,
+   "name": "RiJ",
+   "periods": [
+    {
+     "startTime": 1150,
+     "endTime": 1200,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 82,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 945,
+     "endTime": 1000,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 82,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 133,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1100,
+     "endTime": 1150,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 82,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 133,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 800,
+     "endTime": 850,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 76,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 82,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 91,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1000,
+     "endTime": 1050,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 28,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 82,
+       "orgId": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 88,
+   "name": "SaI",
+   "periods": [
+    {
+     "startTime": 945,
+     "endTime": 1000,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 88,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1050,
+     "endTime": 1100,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 88,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 133,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1250,
+     "endTime": 1255,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 37,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 88,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 855,
+     "endTime": 945,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 88,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 124,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1255,
+     "endTime": 1345,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 76,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 88,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1100,
+     "endTime": 1150,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 88,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 800,
+     "endTime": 850,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 88,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1445,
+     "endTime": 1535,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 76,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 88,
+       "orgId": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 124,
+   "name": "SeA",
+   "periods": [
+    {
+     "startTime": 1050,
+     "endTime": 1100,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 103,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 124,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1150,
+     "endTime": 1200,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 0,
+       "orgId": 4
+      },
+      {
+       "type": 2,
+       "id": 124,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 800,
+     "endTime": 850,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 124,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 130,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1000,
+     "endTime": 1050,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 124,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 855,
+     "endTime": 945,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 88,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 124,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1255,
+     "endTime": 1345,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 124,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1200,
+     "endTime": 1250,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 124,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1255,
+     "endTime": 1345,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 124,
+       "orgId": 4
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 91,
+   "name": "SeM",
+   "periods": [
+    {
+     "startTime": 1440,
+     "endTime": 1445,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 91,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 945,
+     "endTime": 1000,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 91,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 94,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 800,
+     "endTime": 850,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 76,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 82,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 91,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1100,
+     "endTime": 1150,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 91,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 855,
+     "endTime": 945,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 37,
+       "orgId": 46
+      },
+      {
+       "type": 2,
+       "id": 91,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1000,
+     "endTime": 1050,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 91,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 109,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1200,
+     "endTime": 1250,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 118,
+       "orgId": 91
+      }
+     ]
+    },
+    {
+     "startTime": 1445,
+     "endTime": 1535,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 91,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1350,
+     "endTime": 1440,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 91,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 109,
+       "orgId": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 58,
+   "name": "StR",
+   "periods": [
+    {
+     "startTime": 945,
+     "endTime": 1000,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 1,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 58,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 118,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1440,
+     "endTime": 1445,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 0,
+       "orgId": 31
+      },
+      {
+       "type": 2,
+       "id": 58,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1000,
+     "endTime": 1050,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 58,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1350,
+     "endTime": 1440,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 58,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 76,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1445,
+     "endTime": 1535,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 58,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 109,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1540,
+     "endTime": 1630,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 58,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1255,
+     "endTime": 1345,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 58,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1100,
+     "endTime": 1150,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 58,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 855,
+     "endTime": 945,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 58,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 76,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 800,
+     "endTime": 850,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 58,
+       "orgId": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 94,
+   "name": "StT",
+   "periods": [
+    {
+     "startTime": 1150,
+     "endTime": 1200,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 94,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 133,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 945,
+     "endTime": 1000,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 91,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 94,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1255,
+     "endTime": 1345,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 94,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1200,
+     "endTime": 1250,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 94,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1350,
+     "endTime": 1440,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 94,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1445,
+     "endTime": 1535,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 94,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1000,
+     "endTime": 1050,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 94,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1445,
+     "endTime": 1535,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 94,
+       "orgId": 25
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 103,
+   "name": "VoA",
+   "periods": [
+    {
+     "startTime": 1050,
+     "endTime": 1100,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 103,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 124,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1445,
+     "endTime": 1535,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 73,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 103,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1350,
+     "endTime": 1440,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 103,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 800,
+     "endTime": 850,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 103,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1350,
+     "endTime": 1440,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 103,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 106,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1445,
+     "endTime": 1535,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 103,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 106,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1100,
+     "endTime": 1150,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 73,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 103,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1000,
+     "endTime": 1050,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 103,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 112,
+       "orgId": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 106,
+   "name": "VöV",
+   "periods": [
+    {
+     "startTime": 850,
+     "endTime": 855,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 0,
+       "orgId": 46
+      },
+      {
+       "type": 2,
+       "id": 106,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 945,
+     "endTime": 1000,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 0,
+       "orgId": 4
+      },
+      {
+       "type": 2,
+       "id": 19,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 106,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1150,
+     "endTime": 1200,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 1,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 64,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 106,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1350,
+     "endTime": 1440,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 103,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 106,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1445,
+     "endTime": 1535,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 103,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 106,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1540,
+     "endTime": 1630,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 106,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1000,
+     "endTime": 1050,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 73,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 106,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 800,
+     "endTime": 850,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 73,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 106,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 855,
+     "endTime": 945,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 70,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 106,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1200,
+     "endTime": 1250,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 7,
+       "orgId": 25
+      },
+      {
+       "type": 2,
+       "id": 106,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1255,
+     "endTime": 1345,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 19,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 106,
+       "orgId": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 109,
+   "name": "WeN",
+   "periods": [
+    {
+     "startTime": 945,
+     "endTime": 1000,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 0,
+       "orgId": 46
+      },
+      {
+       "type": 2,
+       "id": 109,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 855,
+     "endTime": 945,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 64,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 109,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1445,
+     "endTime": 1535,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 58,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 109,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1100,
+     "endTime": 1150,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 109,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1000,
+     "endTime": 1050,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 91,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 109,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 800,
+     "endTime": 850,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 109,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 112,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1350,
+     "endTime": 1440,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 91,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 109,
+       "orgId": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 112,
+   "name": "WoF",
+   "periods": [
+    {
+     "startTime": 745,
+     "endTime": 800,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 112,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1250,
+     "endTime": 1255,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 112,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 855,
+     "endTime": 945,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 112,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1000,
+     "endTime": 1050,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 103,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 112,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1100,
+     "endTime": 1150,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 112,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 800,
+     "endTime": 850,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 109,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 112,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1200,
+     "endTime": 1250,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 112,
+       "orgId": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 115,
+   "name": "WöR",
+   "periods": [
+    {
+     "startTime": 1050,
+     "endTime": 1100,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 37,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 115,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 130,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1150,
+     "endTime": 1200,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 37,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 67,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 115,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1440,
+     "endTime": 1445,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 70,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 115,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1100,
+     "endTime": 1150,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 37,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 70,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 115,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 855,
+     "endTime": 945,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 115,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1000,
+     "endTime": 1050,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 115,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1445,
+     "endTime": 1535,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 115,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1350,
+     "endTime": 1440,
+     "cellState": "STANDARD",
+     "elements": [
+      {
+       "type": 2,
+       "id": 115,
+       "orgId": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 118,
+   "name": "YiE",
+   "periods": [
+    {
+     "startTime": 850,
+     "endTime": 855,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 118,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 945,
+     "endTime": 1000,
+     "cellState": "BREAKSUPERVISION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 1,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 58,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 118,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1100,
+     "endTime": 1150,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 4,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 118,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1200,
+     "endTime": 1250,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 118,
+       "orgId": 91
+      }
+     ]
+    },
+    {
+     "startTime": 1000,
+     "endTime": 1050,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 31,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 118,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1000,
+     "endTime": 1050,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 118,
+       "orgId": 4
+      }
+     ]
+    },
+    {
+     "startTime": 855,
+     "endTime": 945,
+     "cellState": "CANCEL",
+     "elements": [
+      {
+       "type": 2,
+       "id": 4,
+       "orgId": 0
+      },
+      {
+       "type": 2,
+       "id": 118,
+       "orgId": 0
+      }
+     ]
+    },
+    {
+     "startTime": 1100,
+     "endTime": 1150,
+     "cellState": "SUBSTITUTION",
+     "elements": [
+      {
+       "type": 2,
+       "id": 118,
+       "orgId": 31
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

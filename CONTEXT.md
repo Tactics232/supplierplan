@@ -59,6 +59,28 @@ are **not** labelled and never appear in the line.
 _Avoid_: naming weekends here; relying on the Untis `longName` (it is a stale,
 wrong-year date string).
 
+**Absence bar (Abwesenheits-Leiste)**:
+The "Abwesende Lehrer / Abwesende Klassen" line at the top of each day section.
+A name alone means absent all day; `(ab 7)`, `(5–6)`, `(2, 4)` name the board
+periods of the absence windows. Shows the whole day — past windows are not hidden.
+When the source fails it reads `nicht verfügbar`, which is distinct from `—`
+(nobody absent).
+_Avoid_: rendering a failed fetch as an empty bar.
+
+**Absence source (Abwesenheits-Quelle)**:
+Where the Absence bar's data comes from, chosen via `ABSENCE_SOURCE`. **Monitor**
+(default): the school's real absence records, read from the WebUntis monitor view
+(`MONITOR_URL`). **Weekly**: an estimate derived from every teacher's and class's
+timetable; it only sees absences that touch a lesson. Neither silently falls back
+to the other.
+_Avoid_: calling the weekly estimate "authoritative".
+
+**Absence window (Abwesenheitsfenster)**:
+One time span of an absence record (`ALL_DAY`, `FROM`, `FROM_TO`, …), given by
+clock times and converted to board periods. A teacher can have several per day.
+_Avoid_: using monitor unit numbers directly — they count one higher than the
+board's `Std` (0th period).
+
 **DisplaySettings**:
 The immutable bundle of **display** configuration, derived once from `config.env`
 by `DisplaySettings.from_config` and threaded explicitly into `generate_html`,
@@ -112,8 +134,9 @@ _Avoid_: "refresh" alone — it does not refresh absences.
 
 **Abwesenheits-Lauf (absence run)**:
 A full board render that additionally **forces a fresh weekly/data sweep**,
-rewriting the absence cache. The expensive run (~94 element calls). Fires on a
-small fixed set of clock times and on the manual "Abwesenheiten aktualisieren"
-trigger. A Regulärer Lauf falls back to one self-healing sweep only when the
-cache is missing the day it needs.
+rewriting the absence cache. The expensive run (~94 element calls). Only exists
+for the **Weekly** Absence source — with **Monitor**, every Regulärer Lauf fetches
+absences fresh and there is no cache. Fires on a small fixed set of clock times and
+on the manual "Abwesenheiten aktualisieren" trigger. A Regulärer Lauf falls back to
+one self-healing sweep only when the cache is missing the day it needs.
 _Avoid_: "sweep" used for the whole run — the sweep is the absence step inside it.

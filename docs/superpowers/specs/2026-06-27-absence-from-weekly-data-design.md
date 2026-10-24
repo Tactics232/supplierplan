@@ -1,6 +1,11 @@
 # Abwesende Lehrer & Klassen — autoritativ aus `weekly/data`
 
 **Datum:** 2026-06-27
+> ⚠️ **Abgelöst als Default durch ADR 0003** (`docs/adr/0003-absences-from-webuntis-monitor.md`):
+> Abwesenheiten kommen jetzt aus dem WebUntis-Monitor. Die hier beschriebene
+> `cellState`-Lehrerregel war falsch (`SUBSTITUTION` gilt auch für Vertreter) und ist
+> im `weekly`-Modus durch eine `orgId`-Regel ersetzt.
+
 **Status:** ✅ Umgesetzt (2026-06-27). Kern: `sweep_absences`, `teacher_absence_entry`,
 `class_absence_entry`, `get_element_periods`; Cache `data/absences.json`; CLI
 `--refresh-absences`. Tests: `tests/test_absences.py`.

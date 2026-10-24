@@ -48,21 +48,31 @@ class Service:
         except (ValueError, TypeError):
             return default
 
+    def absence_source(self):
+        """"monitor"/"weekly" aus der aktuellen config.env (Abwesenheits-Lauf und
+        sein Button/Timer gibt es nur bei weekly)."""
+        from scripts.fetch_untis import parse_absence_source
+        return parse_absence_source(read_config_env(self.config_path).get("ABSENCE_SOURCE"))
+
     def run_untis_once(self, refresh_absences=False):
         """Ein Untis-Lauf. refresh_absences=True erzwingt den weekly/data-Sweep
         (Abwesenheits-Lauf), sonst Cache-lesend (regulärer Lauf). Das Run-Lock
-        serialisiert: nie schreiben zwei Läufe gleichzeitig index.html/absences.json."""
+        serialisiert: nie schreiben zwei Läufe gleichzeitig index.html/absences.json.
+        Warnungen des Laufs (z.B. Monitor nicht abrufbar) landen im Status."""
         with self._busy_lock:
             self._busy += 1
         try:
             from scripts import fetch_untis
             with self._run_lock:
                 self._apply_env()
-                fetch_untis.main(refresh_absences=refresh_absences)
+                result = fetch_untis.main(refresh_absences=refresh_absences) or {}
             with self._lock:
                 self.last_update = datetime.now().strftime("%H:%M")
                 label = "Abwesenheiten · " if refresh_absences else ""
-                self.last_status = f"Läuft · {label}Stand {self.last_update}"
+                status = f"Läuft · {label}Stand {self.last_update}"
+                for w in result.get("warnings", []):
+                    status += f" · ⚠ {w}"
+                self.last_status = status
         except Exception as e:
             self._record_error("Untis", e)
         finally:
@@ -78,8 +88,8 @@ class Service:
 
     def refresh_absences_now(self):
         """Manueller Abwesenheits-Lauf (Button), nicht-blockierend. No-op bei
-        bereits aktivem Lauf."""
-        if self.busy:
+        bereits aktivem Lauf oder ABSENCE_SOURCE=monitor (dort holt jeder Lauf frisch)."""
+        if self.busy or self.absence_source() != "weekly":
             return
         threading.Thread(target=self.run_untis_once,
                          kwargs={"refresh_absences": True}, daemon=True).start()
@@ -116,7 +126,9 @@ class Service:
     def _schedule_absences(self):
         """Plant den nächsten Abwesenheits-Lauf zur nächsten festen Lokalzeit
         (07:35/11:00/16:00). Feuert NICHT beim Start — der erste reguläre Lauf
-        self-healt einen kalten Cache. Nach jedem Lauf wird neu scharf gestellt."""
+        self-healt einen kalten Cache. Nach jedem Lauf wird neu scharf gestellt.
+        Bei ABSENCE_SOURCE=monitor wird nur neu geplant, nicht gesweept (die Quelle
+        kann sich per Einstellungen ändern, ohne den Dienst neu zu starten)."""
         if not self.running:
             return
         now = datetime.now()
@@ -125,7 +137,8 @@ class Service:
         def fire():
             if not self.running:
                 return
-            self.run_untis_once(refresh_absences=True)
+            if self.absence_source() == "weekly":
+                self.run_untis_once(refresh_absences=True)
             self._schedule_absences()
 
         t = threading.Timer(delay, fire)

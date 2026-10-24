@@ -23,6 +23,9 @@ TABS = [
         ("UNTIS_PASSWORD", "Passwort", "password", None),
         ("UNTIS_DEPARTMENT_ID", "Abteilungs-ID", "text", None),
         ("SKIP_TEACHERS", "Pseudo-Lehrer (Komma)", "text", None),
+        ("ABSENCE_SOURCE", "Abwesenheits-Quelle", "choice",
+         (["monitor", "weekly"], "monitor")),
+        ("MONITOR_URL", "Monitor-Link", "text", None),
     ]),
     ("Schule", [
         ("SCHOOL_NAME", "Schulname", "text", None),
@@ -71,6 +74,14 @@ TABS = [
         ("TRAIN_INTERVAL_SECONDS", "Zug-Intervall (s)", "text", None),
     ]),
 ]
+
+
+ABSENCE_HINTS = {
+    "monitor": "Abwesenheiten wie in der WebUntis-Monitor-Ansicht. Monitor-Link "
+               "aus dem Browser einfügen (muss format=… enthalten).",
+    "weekly": "Schätzung aus den Stundenplänen: erkennt Abwesenheiten nur, wo "
+              "Unterricht betroffen ist. Für Schulen ohne Monitor-Ansicht.",
+}
 
 
 def _make_widget(frame, kind, extra, current_value):
@@ -230,16 +241,30 @@ def open_config_window(config_path, template_path=None, on_saved=None,
             elif key == "TRAIN_STATION" and station_search:
                 ttk.Button(cell, text="Suchen…", command=open_station_search
                            ).pack(side="left", padx=(4, 0))
+            elif key == "ABSENCE_SOURCE":
+                hint = ttk.Label(frame, foreground="#a9690a", wraplength=480)
+                hint.grid(row=len(fields) + 1, column=0, columnspan=2,
+                          sticky="w", padx=6, pady=(8, 4))
+
+                def update_hint(*_, var=var, hint=hint):
+                    hint.config(text=ABSENCE_HINTS.get(var.get(), ""))
+                var.trace_add("write", update_hint)
+                update_hint()
         frame.columnconfigure(1, weight=1)
 
     status.pack(fill="x", padx=8)
 
     state = {"testing": False, "prev_sb": False}
     action_btns = []
+    weekly_only_btns = []   # nur sinnvoll bei ABSENCE_SOURCE=weekly (Cache-Sweep)
 
     def set_actions(stt):
         for b in action_btns:
             b.config(state=stt)
+        src = vars_by_key.get("ABSENCE_SOURCE")
+        if src is not None and src.get() != "weekly":
+            for b in weekly_only_btns:
+                b.config(state="disabled")
 
     def collect():
         return {k: v.get().strip() for k, v in vars_by_key.items()}
@@ -290,7 +315,7 @@ def open_config_window(config_path, template_path=None, on_saved=None,
     if on_refresh_absences:
         b = ttk.Button(btns, text="Abwesenheiten aktualisieren",
                        command=lambda: do_trigger(on_refresh_absences))
-        b.pack(side="left", padx=6); action_btns.append(b)
+        b.pack(side="left", padx=6); action_btns.append(b); weekly_only_btns.append(b)
     if help_url:
         ttk.Button(btns, text="Hilfe", command=open_help).pack(side="left", padx=6)
     ttk.Button(btns, text="Speichern", command=do_save).pack(side="right")

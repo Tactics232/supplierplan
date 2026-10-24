@@ -78,6 +78,9 @@ Konfiguration in `config.env` über `TRAIN_*`-Variablen. Wenn `TRAIN_STATION` le
 - `TEXT_BADGES` (Default `b,ub,MA`): Bemerkungs-Codes, die als Badge gerendert werden.
   Bekannte (b/ub/MA) behalten ihre Farbe, neue bekommen neutrales `.text-badge`.
 - `UNTIS_DEPARTMENT_ID` (Default 0): Abteilungs-Filter für `getSubstitutions`.
+- `ABSENCE_SOURCE` (`monitor` Default / `weekly`) + `MONITOR_URL` (Link der
+  WebUntis-Monitor-Ansicht, `format=…` zählt): Quelle der Abwesenheits-Leisten, siehe
+  „Abwesenheits-Leisten" und ADR 0003.
 - `CANCEL_PLACEMENT` (`section` Default / `inline`): Platzierung der Entfall-Zeilen
   (Vokabular in `CONTEXT.md`, „Cancel placement"). `section` = alle Entfälle in eigener
   „Entfallende Stunden"-Sektion am Tagesende (cancel-only-Lehrer ohne eigenen Block).
@@ -361,41 +364,42 @@ in der Cancel-Sektion mit dem Kürzel in der Lehrer-Spalte (durchgestrichen).
 
 ### Abwesenheits-Leisten (oben in jeder Section)
 
-**Autoritative Quelle = `weekly/data` pro Element**, NICHT der Supplierplan. Ein
-Voll-Sweep (`sweep_absences`) fragt `weekly/data` für **alle** Lehrer- und Klassen-IDs
-ab und bestimmt Abwesenheit aus dem `cellState` der Perioden. Logik + verifizierte
-Daten: `docs/superpowers/specs/2026-06-27-absence-from-weekly-data-design.md`,
-testbare Kern-Funktionen `teacher_absence_entry` / `class_absence_entry` (Tests in
-`tests/test_absences.py`).
+**Quelle wählbar via `ABSENCE_SOURCE`** (`monitor` Default / `weekly`). Entscheidung +
+Messwerte: `docs/adr/0003-absences-from-webuntis-monitor.md`. Vokabular: CONTEXT.md
+„Absence bar / Absence source / Absence window". **Kein** automatischer Wechsel
+zwischen den Quellen.
 
-**Lehrer** (`teacher_absence_entry`, `elementType=2`):
-- anwesend = `cellState ∈ {STANDARD, BREAKSUPERVISION}`; weg = `{SUBSTITUTION, CANCEL}`
-- **keine anwesende Stunde → komplett abwesend → nur Kürzel** (keine Range)
-- sonst teil-abwesend → Range `min–max` der Weg-Stunden (`SaI (6)`, `WöR (5–9)`)
-- Pseudo-Lehrer (`SKIP_NAMES`, z.B. `Z Entfall`) werden ausgelassen
-- ⚠️ Behebt den alten Bug: ein ganztägig abwesender Lehrer, der nur Std 4–7 Unterricht
-  hätte, wurde fälschlich als `(4–7)` statt nur als Kürzel gezeigt (alte Quelle war der
-  Supplierplan).
+**`monitor` (Default) — echte Abwesenheits-Einträge:** `POST
+/WebUntis/monitor/substitution/data` (`get_monitor_absences`) mit dem Format-Namen der
+WebUntis-Monitor-Ansicht, gelesen aus `MONITOR_URL` (`parse_monitor_url`, bei uns
+Format `Roda Roda 2`). `absentElements` liefert Lehrer (Typ 2) und Klassen (Typ 1) mit
+Fenstern `ALL_DAY`/`FROM`/`FROM_TO`/… + Uhrzeiten → `monitor_absence_entries` /
+`format_absence_windows`. 1 Call pro Tag, jeder reguläre Lauf frisch, kein Cache.
+- Anzeige: `AlM` (ganztägig) · `ChC (ab 7)` · `SeM (5–6)` · `BoB (2, 4)` · `(bis 4)`
+- ⚠️ **Board-Zählung:** Monitor-Units zählen Untis-`name` (eins höher wegen 0. Stunde).
+  Umrechnung daher über Uhrzeiten (`window_periods`), nie über `startUnit`.
+- ⚠️ Der Endpunkt braucht den **vollständigen** Body der Monitor-Seite (Minimal-Body →
+  kein `payload`). `-8520 access not allowed` = Format-Name falsch/nicht freigegeben.
+- Fehler/kein Link → Leiste `nicht verfügbar` (`ABSENCES_UNAVAILABLE`, `.sum-unavailable`),
+  bewusst anders als `—`. Details nur im Log + Tray-Status (`main()` gibt
+  `{"warnings": [...]}` zurück). Vergangene Fenster bleiben den ganzen Tag stehen.
 
-**Klassen** (`class_absence_entry`, `elementType=1`):
-- weg = `cellState == CANCEL`; anwesend = `{STANDARD, SUBSTITUTION, ADDITIONAL}`
-  (vertretene Stunde = Klasse ist da)
-- Klasse erscheint **nur bei einem zusammenhängenden Block von ≥2 CANCEL-Stunden**
-  (eine einzelne Ausfallstunde ist kein „Klasse weg"-Signal) → Range des Blocks
-
-⚠️ **`cellState`, nicht `state`:** Das `state`/`REGULAR`-Feld am Element ist unbrauchbar
-(steht auch bei Entfall auf `REGULAR`). Maßgeblich ist `cellState` der Periode.
-
-⚠️ **`elementId=0` ist ein Phantom** (leer/falscher Tag) — immer **echte** Element-IDs.
-`get_element_periods(elementType, id, date)` kapselt den Call.
-
-**Zeitentkopplung (Cache):** Der Voll-Sweep ist teuer (~14 Klassen + ~80 Lehrer ≈ 94
-Calls), läuft daher **nicht** alle 5 min, sondern nur bei `fetch_untis.py
---refresh-absences` (per Cron 3×/Tag, siehe Cron-Setup). Ergebnis liegt in
-`data/absences.json` (nach Datum). Der reguläre 5-min-Run **liest** den Cache (Lehrer-/
-Klassen-Override an `generate_html`); fehlt ein benötigter Tag, holt er ihn **einmalig
-selbst** (Self-Heal). Schul-Hintergrund: Abwesenheiten sind morgens bis ~7:30 eingetragen
-und ändern sich tagsüber nicht. Alte Cache-Tage (< heute) werden beim Schreiben gepruned.
+**`weekly` — Schätzung aus den Stundenplänen** (`sweep_absences` über `weekly/data` für
+**alle** Lehrer- und Klassen-IDs, ~94 Calls). Erkennt Abwesenheit nur, wo Unterricht
+betroffen ist (Fenster ohne Unterricht sind unsichtbar). Tests: `tests/test_absences.py`
+(inkl. echtem Tag 03.11.2026 als Fixture).
+- **Lehrer** (`teacher_absence_entry`): weg = ein **anderer** Lehrer steht mit
+  `orgId`=ich in der Stunde. ⚠️ `SUBSTITUTION` allein heißt nichts — auch der
+  **Vertreter** hat es im eigenen Plan (alter Bug: 10 Anwesende als abwesend).
+  `CANCEL` zählt nur bei ≥1 ersetzter Stunde oder 0 gehaltenen Stunden (sonst eher
+  Klasse weg). 0 gehaltene → nur Kürzel. Pausenaufsichten (Startzeit nicht im Raster)
+  zählen nicht (alter Bug: übernommene Aufsicht → „ganztägig weg").
+- **Klassen** (`class_absence_entry`): Block von ≥2 zusammenhängenden `CANCEL`-Stunden.
+- ⚠️ `elementId=0` ist ein Phantom — immer echte Element-IDs (`get_element_periods`).
+- **Cache:** `data/absences.json`, nur bei `fetch_untis.py --refresh-absences` neu
+  gesweept (Cron 3×/Tag); reguläre Läufe lesen, Self-Heal bei fehlendem Tag. Im
+  `monitor`-Modus sind `--refresh-absences`-Läufe einfach normale Läufe; Tray-Timer und
+  „Abwesenheiten aktualisieren" sind dort inaktiv.
 
 ---
 
@@ -450,6 +454,7 @@ via `set_timezone()` → `ZoneInfo`.
 SUPPLIERPLAN_CONFIG=/etc/supplierplan/config.env
 # Regulärer Run: Supplierplan → index.html, liest den Abwesenheits-Cache
 */5  * * * *  cd /var/www/supplierplan && python3 scripts/fetch_untis.py  >> /var/log/supplierplan-untis.log 2>&1
+# Nur bei ABSENCE_SOURCE=weekly nötig (bei monitor einfach ein normaler Lauf):
 # Abwesenheits-Voll-Sweep (Lehrer + Klassen via weekly/data) → data/absences.json, 3×/Tag.
 # Abwesenheiten sind morgens bis ~7:30 eingetragen; Nachmittag fängt den nächsten Tag ab.
 35   7  * * *  cd /var/www/supplierplan && python3 scripts/fetch_untis.py --refresh-absences >> /var/log/supplierplan-untis.log 2>&1
@@ -543,10 +548,8 @@ Code Prompt mit `!`-Präfix ausführen, dann landet der Output direkt im Chat.
    oder „Entfall" bedeutet.
 2. **Bedeutung unklar:** `txt='a'` (4× im Dump), `txt='t'` (2× im Dump). Werden aktuell
    einfach als Text durchgereicht. Bei Bedarf Badges definieren.
-3. ~~**`weekly/data`-Migration** für „Abwesende Lehrer" **und Klassen**~~ ✅ erledigt:
-   beide Leisten kommen jetzt autoritativ aus `weekly/data` pro echter Element-ID
-   (`sweep_absences`, gecached in `data/absences.json`, 3×/Tag via `--refresh-absences`).
-   Siehe „Abwesenheits-Leisten" + Spec `2026-06-27-absence-from-weekly-data-design.md`.
+3. ~~**Abwesenheits-Leisten**~~ ✅ erledigt: Default-Quelle ist der WebUntis-Monitor
+   (ADR 0003); `weekly/data`-Schätzung bleibt als wählbarer Modus.
 4. **Sonder-Modi für `lstype`:** `ex` (Prüfung), `oh` (Sprechstunde), `sb` (Standby)
    sind im Code nicht behandelt — Verhalten unklar bis sie auftauchen.
 5. ~~Automatisches Cloudflare Cache-Purge~~ ✅ implementiert (siehe oben).

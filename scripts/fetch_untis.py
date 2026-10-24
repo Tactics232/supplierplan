@@ -105,13 +105,27 @@ def load_config():
                 config[key.strip()] = val.strip()
     return config
 
-# cellState-Klassifikation aus weekly/data — verifiziert gegen die Schul-API, siehe
-# docs/superpowers/specs/2026-06-27-absence-from-weekly-data-design.md
-# Lehrer (elementType=2): anwesend = Unterricht/Pausenaufsicht; weg = vertreten/entfallen.
-PRESENT_CELLSTATES      = {"STANDARD", "BREAKSUPERVISION"}
-TEACHER_ABSENT_STATES   = {"SUBSTITUTION", "CANCEL"}
-# Klasse (elementType=1): anwesend = Stunde findet statt (auch vertreten); weg = entfällt.
-CLASS_PRESENT_STATES    = {"STANDARD", "SUBSTITUTION", "ADDITIONAL"}
+# Abwesenheits-Quelle (ADR 0003): "monitor" = echte Abwesenheits-Einträge aus der
+# WebUntis-Monitor-Ansicht (Default), "weekly" = Schätzung aus den Stundenplänen.
+ABSENCE_SOURCES = ("monitor", "weekly")
+
+
+def parse_absence_source(value):
+    """config.env ABSENCE_SOURCE → "monitor"/"weekly" (Müll/leer → "monitor")."""
+    v = (value or "").strip().lower()
+    return v if v in ABSENCE_SOURCES else "monitor"
+
+
+class _Unavailable:
+    """Marker: Abwesenheiten konnten nicht geholt werden → Leiste "nicht verfügbar"
+    (bewusst verschieden von [] = niemand abwesend)."""
+    def __repr__(self):
+        return "ABSENCES_UNAVAILABLE"
+
+
+ABSENCES_UNAVAILABLE = _Unavailable()
+
+# Klasse (elementType=1) in weekly/data: weg = Stunde entfällt (cellState).
 CLASS_ABSENT_STATES     = {"CANCEL"}
 
 # ── WebUntis JSON-RPC Client ──────────────────────────
@@ -172,12 +186,13 @@ class WebUntis:
         return self._rpc("getKlassen")
 
     def get_element_periods(self, element_type, element_id, date_obj):
-        """REST weekly/data für EIN Element an `date_obj` → [(startTime, cellState), …]
-        der an dem Tag verplanten Perioden. `element_type`: 2=Lehrer, 1=Klasse.
+        """REST weekly/data für EIN Element an `date_obj` → Liste der an dem Tag
+        verplanten Perioden als {"startTime", "endTime", "cellState", "elements"}
+        mit elements = [{"type", "id", "orgId"}, …]. `element_type`: 2=Lehrer, 1=Klasse.
 
         ⚠️ `elementId=0` ist ein Phantom (leer/falscher Tag) — immer echte ID.
-        ⚠️ Maßgeblich ist `cellState` der Periode, NICHT das `state`-Feld am Element
-        (das steht selbst bei Entfall auf REGULAR)."""
+        ⚠️ Das `state`-Feld am Element ist für Entfall unbrauchbar (REGULAR); wer wen
+        ersetzt, steht in `orgId` (Lehrer-Element mit orgId=X → X wird ersetzt)."""
         date_str = date_obj.strftime("%Y-%m-%d")
         url = (f"{self.base_url}/WebUntis/api/public/timetable/weekly/data"
                f"?elementType={element_type}&elementId={element_id}&date={date_str}")
@@ -189,8 +204,53 @@ class WebUntis:
         out = []
         for p in periods.get(str(element_id), []):
             if p.get("date") == target_int:
-                out.append((p.get("startTime"), p.get("cellState")))
+                out.append({
+                    "startTime": p.get("startTime"),
+                    "endTime":   p.get("endTime"),
+                    "cellState": p.get("cellState"),
+                    "elements":  [{"type": e.get("type"), "id": e.get("id"),
+                                   "orgId": e.get("orgId", 0)}
+                                  for e in p.get("elements", [])],
+                })
         return out
+
+    def get_monitor_absences(self, school, format_name, date_obj):
+        """`absentElements` der WebUntis-Monitor-Ansicht (Vertretungsplan-Format
+        `format_name`) für `date_obj`. Der Endpunkt will den vollständigen Body der
+        Monitor-Seite — ein Minimal-Body liefert kein `payload`.
+        ⚠️ `-8520 access not allowed` heißt meist: Format-Name falsch/nicht freigegeben."""
+        body = {
+            "formatName": format_name, "schoolName": school,
+            "date": int(date_obj.strftime("%Y%m%d")), "dateOffset": 0,
+            "strikethrough": True, "mergeBlocks": True, "showOnlyFutureSub": False,
+            "showBreakSupervisions": True, "showTeacher": True, "showClass": True,
+            "showHour": True, "showInfo": True, "showRoom": True, "showSubject": True,
+            "groupBy": 1, "hideAbsent": False, "departmentIds": [],
+            "departmentElementType": -1, "hideCancelWithSubstitution": True,
+            "hideCancelCausedByEvent": False, "showTime": True, "showSubstText": True,
+            "showAbsentElements": [1, 2], "showAffectedElements": [1],
+            "showUnitTime": True, "showMessages": True, "showStudentgroup": False,
+            "enableSubstitutionFrom": False, "showSubstitutionFrom": 0,
+            "showTeacherOnEvent": False, "showAbsentTeacher": True,
+            "strikethroughAbsentTeacher": True, "activityTypeIds": [],
+            "showEvent": True, "showCancel": True, "showOnlyCancel": False,
+            "showSubstTypeColor": False, "showExamSupervision": False,
+            "showUnheraldedExams": False,
+        }
+        url = (f"{self.base_url}/WebUntis/monitor/substitution/data"
+               f"?school={urllib.parse.quote(school)}")
+        req = urllib.request.Request(
+            url, data=json.dumps(body).encode(), method="POST",
+            headers={"Content-Type": "application/json", "Accept": "application/json"})
+        with self.opener.open(req, timeout=15) as resp:
+            data = json.loads(resp.read())
+        if "error" in data:
+            err = data["error"] or {}
+            raise RuntimeError(f"Monitor [{err.get('code')}]: {err.get('message')}")
+        payload = data.get("payload")
+        if not isinstance(payload, dict):
+            raise RuntimeError("Monitor: Antwort ohne payload")
+        return payload.get("absentElements") or []
 
     def get_latest_import_time(self):
         ms = self._rpc("getLatestImportTime")
@@ -381,24 +441,122 @@ def configure_skip_teachers(value):
         if name:
             SKIP_NAMES.add(name)
 
-# ── Abwesenheit autoritativ aus weekly/data (siehe Spec 2026-06-27) ───
-def teacher_absence_entry(periods, timegrid):
-    """`periods` = [(startTime, cellState), …] eines Lehrers an einem Tag.
-    Returns None (nicht abwesend) oder eine Range-Angabe:
-      ""        = komplett abwesend (keine anwesende Stunde) → nur Kürzel anzeigen
-      "n"/"a–b" = teil-abwesend → Spanne der weg-Stunden (vertreten/entfallen)."""
-    if not periods:
+# ── Abwesenheiten (ADR 0003) ──────────────────────────
+def window_periods(start, end, timegrid):
+    """Uhrzeit-Fenster → (erste, letzte) Board-Stunde. Erste = erste Stunde, die nach
+    `start` endet; letzte = letzte Stunde, die vor `end` beginnt. So landen Fenster,
+    die mitten in einer Stunde/Pause beginnen, richtig. None, wenn keine Stunde
+    überlappt."""
+    nrs = [nr for nr, us, ue in timegrid.values() if ue > start and us < end]
+    if not nrs:
         return None
-    present = any(cs in PRESENT_CELLSTATES for _, cs in periods)
-    absent_starts = [st for st, cs in periods if cs in TEACHER_ABSENT_STATES]
-    if not absent_starts:
-        return None                      # voll anwesend
-    if not present:
-        return ""                        # komplett abwesend → nur Kürzel
-    nums = sorted({timegrid[st][0] for st in absent_starts if st in timegrid})
-    if not nums:
+    return min(nrs), max(nrs)
+
+
+def format_period_list(nums):
+    """Stundennummern → "3" / "5–6" / "1, 3" / "1–2, 5" (Läufe getrennt, nichts
+    Anwesendes dazwischen verschlucken)."""
+    parts = []
+    for run in _consecutive_runs(sorted(set(nums))):
+        parts.append(str(run[0]) if len(run) == 1 else f"{run[0]}–{run[-1]}")
+    return ", ".join(parts)
+
+
+_UNTIL_TYPES = {"TO", "UNTIL", "TILL"}
+
+
+def format_absence_windows(absences, timegrid):
+    """Abwesenheitsfenster eines Elements (Monitor `absences`) → Range-Angabe:
+      ""                = ganztägig (ALL_DAY) → nur Kürzel
+      "ab 7"            = FROM (bis Tagesende)
+      "bis 4"           = TO/UNTIL (ab Tagesbeginn)
+      "5–6" / "2"       = FROM_TO
+      "2, 4"            = mehrere Fenster
+    Unbekannte Typen fallen auf die Spanne aus den Uhrzeiten zurück (+ Log)."""
+    if any(a.get("type") == "ALL_DAY" for a in absences):
         return ""
-    return str(nums[0]) if len(nums) == 1 else f"{nums[0]}–{nums[-1]}"
+    parts = []
+    for a in sorted(absences, key=lambda a: a.get("startTime") or 0):
+        w = window_periods(a.get("startTime") or 0, a.get("endTime") or 0, timegrid)
+        if w is None:
+            continue
+        lo, hi = w
+        typ = a.get("type")
+        if typ == "FROM":
+            part = f"ab {lo}"
+        elif typ in _UNTIL_TYPES:
+            part = f"bis {hi}"
+        else:
+            if typ != "FROM_TO":
+                print(f"  ⚠️  Unbekannter Abwesenheits-Typ {typ!r} – als Spanne gezeigt", flush=True)
+            part = str(lo) if lo == hi else f"{lo}–{hi}"
+        if part not in parts:
+            parts.append(part)
+    return ", ".join(parts)
+
+
+def monitor_absence_entries(absent_elements, timegrid):
+    """Monitor-`absentElements` → {"teachers": [[name, range], …], "classes": […]}
+    (sortiert). elementType 2 = Lehrer, 1 = Klasse. Pseudo-Lehrer (SKIP_NAMES) fallen weg."""
+    teachers, classes = [], []
+    for e in absent_elements or []:
+        name = (e.get("elementName") or "").strip()
+        if not name:
+            continue
+        rng = format_absence_windows(e.get("absences") or [], timegrid)
+        if e.get("elementType") == 2 and name not in SKIP_NAMES:
+            teachers.append([name, rng])
+        elif e.get("elementType") == 1:
+            classes.append([name, rng])
+    teachers.sort(); classes.sort()
+    return {"teachers": teachers, "classes": classes}
+
+
+def parse_monitor_url(url):
+    """Monitor-Link aus dem Browser → (school, format_name). ValueError mit
+    lesbarer Ursache, wenn Link oder Parameter fehlen."""
+    url = (url or "").strip()
+    if not url:
+        raise ValueError("Monitor-Link fehlt (MONITOR_URL)")
+    q = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)
+    school = (q.get("school") or [""])[0].strip()
+    fmt = (q.get("format") or [""])[0].strip()
+    if not school or not fmt:
+        raise ValueError("Monitor-Link ohne school=… oder format=…")
+    return school, fmt
+
+
+# ── Abwesenheit geschätzt aus weekly/data (ABSENCE_SOURCE=weekly) ───
+def teacher_absence_entry(periods, teacher_id, timegrid):
+    """`periods` = weekly/data-Perioden eines Lehrers an einem Tag (siehe
+    get_element_periods). Returns None (nicht abwesend), "" (ganztägig → nur Kürzel)
+    oder eine Stundenliste ("3", "5–6", "1, 3").
+
+    Regel (ADR 0003, gemessen gegen den Monitor):
+    - weg = ein ANDERER Lehrer steht mit orgId=ich in der Stunde (ich werde ersetzt).
+      `SUBSTITUTION` allein heißt nichts — auch der Vertreter hat es im Plan.
+    - CANCEL zählt nur, wenn ich am Tag auch ersetzt werde oder gar keine Stunde
+      halte (sonst ist eher die Klasse weg).
+    - Pausenaufsichten (Startzeit nicht im Raster) zählen weder als weg noch als
+      gehalten."""
+    away, cancelled, held = set(), set(), False
+    for p in periods or []:
+        st = p.get("startTime")
+        if st not in timegrid:
+            continue
+        nr = timegrid[st][0]
+        tes = [e for e in p.get("elements", []) if e.get("type") == 2]
+        if any(e.get("orgId") == teacher_id and e.get("id") != teacher_id for e in tes):
+            away.add(nr)
+        elif p.get("cellState") == "CANCEL":
+            cancelled.add(nr)
+        elif any(e.get("id") == teacher_id for e in tes):
+            held = True
+    if not held:
+        return "" if (away or cancelled) else None
+    if not away:
+        return None
+    return format_period_list(away | cancelled)
 
 
 def _consecutive_runs(nums):
@@ -417,12 +575,13 @@ def _consecutive_runs(nums):
 
 
 def class_absence_entry(periods, timegrid, min_block=2):
-    """`periods` = [(startTime, cellState), …] einer Klasse an einem Tag.
+    """`periods` = weekly/data-Perioden einer Klasse an einem Tag.
     Eine Klasse gilt nur als abwesend, wenn sie einen zusammenhängenden Block von
     >= `min_block` CANCEL-Stunden hat (eine einzelne Ausfallstunde ist kein
     'Klasse weg'-Signal). Returns None oder 'a–b' (Spanne der qualifizierenden Blöcke)."""
-    cancel_nrs = sorted({timegrid[st][0] for st, cs in periods
-                         if cs in CLASS_ABSENT_STATES and st in timegrid})
+    cancel_nrs = sorted({timegrid[p["startTime"]][0] for p in periods
+                         if p.get("cellState") in CLASS_ABSENT_STATES
+                         and p.get("startTime") in timegrid})
     if not cancel_nrs:
         return None
     qual = [r for r in _consecutive_runs(cancel_nrs) if len(r) >= min_block]
@@ -434,7 +593,8 @@ def class_absence_entry(periods, timegrid, min_block=2):
 
 
 def sweep_absences(untis, teachers, klassen, date_obj, timegrid):
-    """Voll-Sweep via weekly/data über ALLE Lehrer + Klassen für `date_obj`.
+    """Voll-Sweep via weekly/data über ALLE Lehrer + Klassen für `date_obj`
+    (nur ABSENCE_SOURCE=weekly).
     Returns {"teachers": [[name, range], …], "classes": [[name, range], …]}.
     Pseudo-Lehrer (SKIP_NAMES) werden ausgelassen. Pro Element try/except →
     ein Fehler überspringt nur dieses Element (sichere Rückfallebene)."""
@@ -445,7 +605,7 @@ def sweep_absences(untis, teachers, klassen, date_obj, timegrid):
         if not name or not tid or name in SKIP_NAMES:
             continue
         try:
-            r = teacher_absence_entry(untis.get_element_periods(2, tid, date_obj), timegrid)
+            r = teacher_absence_entry(untis.get_element_periods(2, tid, date_obj), tid, timegrid)
         except Exception as e:
             print(f"weekly/data Lehrer {name} ({date_obj}): {e}", flush=True)
             continue
@@ -734,13 +894,20 @@ def compute_absent(groups, full_absent_kuerzel=None):
 
 
 def render_summary_bar(teachers, classes):
+    """`teachers`/`classes` = [(name, range), …] oder ABSENCES_UNAVAILABLE (Quelle
+    nicht abrufbar → "nicht verfügbar", sichtbar anders als "—" = niemand)."""
     def fmt(name, periods):
         s = esc(name)
         if periods:
             s += f'<span class="sum-period"> ({esc(periods)})</span>'
         return s
-    teachers_str = ", ".join(fmt(n, p) for n, p in teachers) if teachers else "—"
-    classes_str  = ", ".join(fmt(n, p) for n, p in classes)  if classes  else "—"
+
+    def items(entries):
+        if entries is ABSENCES_UNAVAILABLE:
+            return '<span class="sum-unavailable">nicht verfügbar</span>'
+        return ", ".join(fmt(n, p) for n, p in entries) if entries else "—"
+    teachers_str = items(teachers)
+    classes_str  = items(classes)
     return (
         f'<div class="summary-bar">'
         f'<span class="sum-item"><span class="sum-label">Abwesende Lehrer:</span> {teachers_str}</span>'
@@ -1547,10 +1714,13 @@ s     {{ color: #888; }}
 
 # ── Main ──────────────────────────────────────────────
 def main(refresh_absences=None):
-    """refresh_absences: True erzwingt einen frischen weekly/data-Sweep (sonst Cache).
+    """refresh_absences: True erzwingt einen frischen weekly/data-Sweep (sonst Cache;
+    nur bei ABSENCE_SOURCE=weekly relevant, monitor holt ohnehin jeden Lauf frisch).
     None (Default) = aus sys.argv ableiten — so funktioniert der Cron-Aufruf
     `--refresh-absences` unverändert, während die Tray-App den Parameter setzt
-    (kein thread-racy sys.argv)."""
+    (kein thread-racy sys.argv).
+    Returns {"warnings": [...]} — nicht-fatale Probleme (z.B. Monitor nicht abrufbar)."""
+    result = {"warnings": []}   # für die Tray-App: nicht-fatale Probleme dieses Laufs
     config = load_config()
     # Gesamte Anzeige-Config in EIN unveränderliches Paket (Klemmen/Fallbacks dort).
     settings = DisplaySettings.from_config(config)
@@ -1606,21 +1776,45 @@ def main(refresh_absences=None):
         today_rows   = [r for r in today_rows if r["end_time"] >= now_t]
         groups_today = group_by_teacher(today_rows)
 
-        # ── Abwesende Lehrer & Klassen: autoritativ aus weekly/data, per Cache
-        #    (data/absences.json) 3×/Tag gesweept via --refresh-absences, dazwischen
-        #    nur gelesen. Self-Heal: fehlt ein Tag im Cache, wird er einmalig geholt.
-        #    Siehe docs/superpowers/specs/2026-06-27-absence-from-weekly-data-design.md
+        # ── Abwesende Lehrer & Klassen (ADR 0003), Quelle via ABSENCE_SOURCE:
+        #    monitor (Default): echte Abwesenheits-Einträge aus der WebUntis-Monitor-
+        #      Ansicht, 1 Call pro Tag, jeder Lauf frisch, kein Cache. Fehler →
+        #      Leiste "nicht verfügbar" (KEIN stiller Rückfall auf die Schätzung).
+        #    weekly: Schätzung aus weekly/data, per Cache (data/absences.json) 3×/Tag
+        #      gesweept via --refresh-absences, dazwischen nur gelesen. Self-Heal:
+        #      fehlt ein Tag im Cache, wird er einmalig geholt.
+        absence_source = parse_absence_source(config.get("ABSENCE_SOURCE"))
         if refresh_absences is None:
             refresh_absences = "--refresh-absences" in sys.argv
-        absence_cache    = load_absence_cache()
+        absence_cache    = load_absence_cache() if absence_source == "weekly" else {}
         _cache_state     = {"dirty": False}
+        try:
+            monitor_school, monitor_format = parse_monitor_url(config.get("MONITOR_URL"))
+            monitor_error = None
+        except ValueError as e:
+            monitor_school = monitor_format = None
+            monitor_error = str(e)
 
         def absences_for(date_obj):
-            key = date_obj.isoformat()
-            if refresh_absences or key not in absence_cache:
-                absence_cache[key] = sweep_absences(untis, teachers, klassen_raw, date_obj, timegrid)
-                _cache_state["dirty"] = True
-            entry = absence_cache.get(key, {})
+            if absence_source == "monitor":
+                try:
+                    if monitor_error:
+                        raise RuntimeError(monitor_error)
+                    entry = monitor_absence_entries(
+                        untis.get_monitor_absences(monitor_school, monitor_format, date_obj),
+                        timegrid)
+                except Exception as e:
+                    msg = f"Abwesenheiten nicht verfügbar: {e}"
+                    print(f"  ⚠️  {msg} ({date_obj})", flush=True)
+                    if msg not in result["warnings"]:
+                        result["warnings"].append(msg)
+                    return ABSENCES_UNAVAILABLE, ABSENCES_UNAVAILABLE
+            else:
+                key = date_obj.isoformat()
+                if refresh_absences or key not in absence_cache:
+                    absence_cache[key] = sweep_absences(untis, teachers, klassen_raw, date_obj, timegrid)
+                    _cache_state["dirty"] = True
+                entry = absence_cache.get(key, {})
             return ([tuple(x) for x in entry.get("teachers", [])],
                     [tuple(x) for x in entry.get("classes", [])])
 
@@ -1712,6 +1906,7 @@ def main(refresh_absences=None):
 
     finally:
         untis.logout()
+    return result
 
 if __name__ == "__main__":
     main()

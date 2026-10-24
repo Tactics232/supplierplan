@@ -1,0 +1,637 @@
+{
+ "timegrid": [
+  {
+   "name": "1",
+   "startTime": 700,
+   "endTime": 745
+  },
+  {
+   "name": "2",
+   "startTime": 800,
+   "endTime": 850
+  },
+  {
+   "name": "3",
+   "startTime": 855,
+   "endTime": 945
+  },
+  {
+   "name": "4",
+   "startTime": 1000,
+   "endTime": 1050
+  },
+  {
+   "name": "5",
+   "startTime": 1100,
+   "endTime": 1150
+  },
+  {
+   "name": "6",
+   "startTime": 1200,
+   "endTime": 1250
+  },
+  {
+   "name": "7",
+   "startTime": 1255,
+   "endTime": 1345
+  },
+  {
+   "name": "8",
+   "startTime": 1350,
+   "endTime": 1440
+  },
+  {
+   "name": "9",
+   "startTime": 1445,
+   "endTime": 1535
+  },
+  {
+   "name": "10",
+   "startTime": 1540,
+   "endTime": 1630
+  },
+  {
+   "name": "11",
+   "startTime": 1635,
+   "endTime": 1725
+  }
+ ],
+ "days": {
+  "20261021": [
+   {
+    "elementType": 2,
+    "elementName": "Ala",
+    "absences": [
+     {
+      "type": "FROM_TO",
+      "startTime": 855,
+      "endTime": 1250,
+      "isEvent": false,
+      "startUnit": "3",
+      "endUnit": "6"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "BoB",
+    "absences": [
+     {
+      "type": "FROM_TO",
+      "startTime": 855,
+      "endTime": 945,
+      "isEvent": false,
+      "startUnit": "3",
+      "endUnit": "3"
+     },
+     {
+      "type": "FROM_TO",
+      "startTime": 1100,
+      "endTime": 1150,
+      "isEvent": false,
+      "startUnit": "5",
+      "endUnit": "5"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "ChC",
+    "absences": [
+     {
+      "type": "FROM",
+      "startTime": 1100,
+      "endTime": 1725,
+      "isEvent": false,
+      "startUnit": "5",
+      "endUnit": "11"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "DaS",
+    "absences": [
+     {
+      "type": "FROM",
+      "startTime": 1255,
+      "endTime": 1725,
+      "isEvent": false,
+      "startUnit": "7",
+      "endUnit": "11"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "GuM",
+    "absences": [
+     {
+      "type": "FROM_TO",
+      "startTime": 855,
+      "endTime": 1250,
+      "isEvent": false,
+      "startUnit": "3",
+      "endUnit": "6"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "LaI",
+    "absences": [
+     {
+      "type": "FROM_TO",
+      "startTime": 800,
+      "endTime": 1250,
+      "isEvent": false,
+      "startUnit": "2",
+      "endUnit": "6"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "MaM",
+    "absences": [
+     {
+      "type": "ALL_DAY",
+      "startTime": 700,
+      "endTime": 1725,
+      "isEvent": false,
+      "startUnit": "1",
+      "endUnit": "11"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "PoK",
+    "absences": [
+     {
+      "type": "FROM_TO",
+      "startTime": 800,
+      "endTime": 1250,
+      "isEvent": false,
+      "startUnit": "2",
+      "endUnit": "6"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "SeM",
+    "absences": [
+     {
+      "type": "FROM_TO",
+      "startTime": 855,
+      "endTime": 1250,
+      "isEvent": false,
+      "startUnit": "3",
+      "endUnit": "6"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "StR",
+    "absences": [
+     {
+      "type": "FROM_TO",
+      "startTime": 855,
+      "endTime": 1250,
+      "isEvent": false,
+      "startUnit": "3",
+      "endUnit": "6"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "WeN",
+    "absences": [
+     {
+      "type": "ALL_DAY",
+      "startTime": 700,
+      "endTime": 1725,
+      "isEvent": false,
+      "startUnit": "1",
+      "endUnit": "11"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "YiE",
+    "absences": [
+     {
+      "type": "ALL_DAY",
+      "startTime": 700,
+      "endTime": 1725,
+      "isEvent": false,
+      "startUnit": "1",
+      "endUnit": "11"
+     }
+    ]
+   }
+  ],
+  "20261022": [
+   {
+    "elementType": 2,
+    "elementName": "AlC",
+    "absences": [
+     {
+      "type": "FROM_TO",
+      "startTime": 800,
+      "endTime": 1150,
+      "isEvent": false,
+      "startUnit": "2",
+      "endUnit": "5"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "AlM",
+    "absences": [
+     {
+      "type": "ALL_DAY",
+      "startTime": 700,
+      "endTime": 1725,
+      "isEvent": false,
+      "startUnit": "1",
+      "endUnit": "11"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "BoB",
+    "absences": [
+     {
+      "type": "FROM_TO",
+      "startTime": 800,
+      "endTime": 1150,
+      "isEvent": false,
+      "startUnit": "2",
+      "endUnit": "5"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "DaS",
+    "absences": [
+     {
+      "type": "ALL_DAY",
+      "startTime": 700,
+      "endTime": 1725,
+      "isEvent": false,
+      "startUnit": "1",
+      "endUnit": "11"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "FiB",
+    "absences": [
+     {
+      "type": "FROM_TO",
+      "startTime": 800,
+      "endTime": 1150,
+      "isEvent": false,
+      "startUnit": "2",
+      "endUnit": "5"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "FiL",
+    "absences": [
+     {
+      "type": "FROM_TO",
+      "startTime": 800,
+      "endTime": 1150,
+      "isEvent": false,
+      "startUnit": "2",
+      "endUnit": "5"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "GuM",
+    "absences": [
+     {
+      "type": "FROM_TO",
+      "startTime": 1200,
+      "endTime": 1345,
+      "isEvent": false,
+      "startUnit": "6",
+      "endUnit": "7"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "NeS",
+    "absences": [
+     {
+      "type": "FROM_TO",
+      "startTime": 800,
+      "endTime": 1150,
+      "isEvent": false,
+      "startUnit": "2",
+      "endUnit": "5"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "PrA",
+    "absences": [
+     {
+      "type": "FROM_TO",
+      "startTime": 1200,
+      "endTime": 1345,
+      "isEvent": false,
+      "startUnit": "6",
+      "endUnit": "7"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "VöV",
+    "absences": [
+     {
+      "type": "FROM_TO",
+      "startTime": 800,
+      "endTime": 1150,
+      "isEvent": false,
+      "startUnit": "2",
+      "endUnit": "5"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "YiE",
+    "absences": [
+     {
+      "type": "ALL_DAY",
+      "startTime": 700,
+      "endTime": 1725,
+      "isEvent": false,
+      "startUnit": "1",
+      "endUnit": "11"
+     }
+    ]
+   }
+  ],
+  "20261023": [
+   {
+    "elementType": 2,
+    "elementName": "AlC",
+    "absences": [
+     {
+      "type": "ALL_DAY",
+      "startTime": 700,
+      "endTime": 1725,
+      "isEvent": false,
+      "startUnit": "1",
+      "endUnit": "11"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "AlM",
+    "absences": [
+     {
+      "type": "ALL_DAY",
+      "startTime": 700,
+      "endTime": 1725,
+      "isEvent": false,
+      "startUnit": "1",
+      "endUnit": "11"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "BaP",
+    "absences": [
+     {
+      "type": "ALL_DAY",
+      "startTime": 700,
+      "endTime": 1725,
+      "isEvent": false,
+      "startUnit": "1",
+      "endUnit": "11"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "DaS",
+    "absences": [
+     {
+      "type": "ALL_DAY",
+      "startTime": 700,
+      "endTime": 1725,
+      "isEvent": false,
+      "startUnit": "1",
+      "endUnit": "11"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "FaM",
+    "absences": [
+     {
+      "type": "ALL_DAY",
+      "startTime": 700,
+      "endTime": 1725,
+      "isEvent": false,
+      "startUnit": "1",
+      "endUnit": "11"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "NeS",
+    "absences": [
+     {
+      "type": "ALL_DAY",
+      "startTime": 700,
+      "endTime": 1725,
+      "isEvent": false,
+      "startUnit": "1",
+      "endUnit": "11"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "SeA",
+    "absences": [
+     {
+      "type": "ALL_DAY",
+      "startTime": 700,
+      "endTime": 1725,
+      "isEvent": false,
+      "startUnit": "1",
+      "endUnit": "11"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "YiE",
+    "absences": [
+     {
+      "type": "ALL_DAY",
+      "startTime": 700,
+      "endTime": 1725,
+      "isEvent": false,
+      "startUnit": "1",
+      "endUnit": "11"
+     }
+    ]
+   }
+  ],
+  "20261103": [
+   {
+    "elementType": 2,
+    "elementName": "AlM",
+    "absences": [
+     {
+      "type": "ALL_DAY",
+      "startTime": 700,
+      "endTime": 1725,
+      "isEvent": false,
+      "startUnit": "1",
+      "endUnit": "11"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "BrH",
+    "absences": [
+     {
+      "type": "ALL_DAY",
+      "startTime": 700,
+      "endTime": 1725,
+      "isEvent": false,
+      "startUnit": "1",
+      "endUnit": "11"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "ChC",
+    "absences": [
+     {
+      "type": "FROM",
+      "startTime": 1350,
+      "endTime": 1725,
+      "isEvent": false,
+      "startUnit": "8",
+      "endUnit": "11"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "DeF",
+    "absences": [
+     {
+      "type": "ALL_DAY",
+      "startTime": 700,
+      "endTime": 1725,
+      "isEvent": false,
+      "startUnit": "1",
+      "endUnit": "11"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "FaM",
+    "absences": [
+     {
+      "type": "ALL_DAY",
+      "startTime": 700,
+      "endTime": 1725,
+      "isEvent": false,
+      "startUnit": "1",
+      "endUnit": "11"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "GrM",
+    "absences": [
+     {
+      "type": "ALL_DAY",
+      "startTime": 700,
+      "endTime": 1725,
+      "isEvent": false,
+      "startUnit": "1",
+      "endUnit": "11"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "PrA",
+    "absences": [
+     {
+      "type": "ALL_DAY",
+      "startTime": 700,
+      "endTime": 1725,
+      "isEvent": false,
+      "startUnit": "1",
+      "endUnit": "11"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "SeM",
+    "absences": [
+     {
+      "type": "FROM_TO",
+      "startTime": 1200,
+      "endTime": 1345,
+      "isEvent": false,
+      "startUnit": "6",
+      "endUnit": "7"
+     }
+    ]
+   },
+   {
+    "elementType": 2,
+    "elementName": "WeN",
+    "absences": [
+     {
+      "type": "FROM_TO",
+      "startTime": 1200,
+      "endTime": 1345,
+      "isEvent": false,
+      "startUnit": "6",
+      "endUnit": "7"
+     }
+    ]
+   }
+  ]
+ }
+}

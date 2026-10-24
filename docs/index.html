@@ -216,7 +216,7 @@
 │                                                              │
 │  Schedule */5 min → scripts/fetch_untis.py                   │
 │    ├─→ WebUntis JSON-RPC  (login as service account)         │
-│    ├─→ weekly/data REST   (per-teacher / class absence)      │
+│    ├─→ monitor REST       (absences; weekly/data if chosen)  │
 │    ├─→ index.html         (the display)                      │
 │    └─→ data/last_overview.html + last_raw.json  (diagnostics)│
 │                                                              │
@@ -367,7 +367,8 @@ python tray/build.py
   <tr><td><code>getTimegridUnits</code></td><td>Period grid (clock times of periods 0–10).</td></tr>
   <tr><td><code>getLatestImportTime</code></td><td>Untis' own timestamp of the last change.</td></tr>
   <tr><td><code>getSubstitutions(start, end, departmentId)</code></td><td><strong>The main data: the substitution plan.</strong></td></tr>
-  <tr><td><code>weekly/data</code> (REST)</td><td>Per-element (teacher/class) day detail — the authoritative absence source, see below.</td></tr>
+  <tr><td><code>monitor/substitution/data</code> (REST)</td><td>Absence records of the WebUntis monitor view — the default absence source, see below.</td></tr>
+  <tr><td><code>weekly/data</code> (REST)</td><td>Per-element (teacher/class) day detail — absence estimate when <code>ABSENCE_SOURCE=weekly</code>.</td></tr>
 </table>
 <h4>Processed fields from <code>getSubstitutions</code></h4>
 <ul>
@@ -443,47 +444,60 @@ python tray/build.py
   <li><code> - </code> for <code>txt = "Vtr. ohne Lehrer"</code> (no real substitute; the teacher is only the class's form teacher)</li>
 </ul>
 
-<h3 id="absence">Absence bars (full vs. partial)</h3>
+<h3 id="absence">Absence bars (source, windows, fallback)</h3>
 <p>
-  Each section shows an “absent teachers” and “absent classes” bar at the top. The data is
-  <strong>authoritative from <code>weekly/data</code> per real element ID</strong> — not
-  derived from the substitution plan. A full sweep (<code>sweep_absences</code>) queries
-  every teacher and class and classifies absence from each period's <code>cellState</code>.
+  Each section shows an “absent teachers” and “absent classes” bar at the top. The source is
+  chosen with <code>ABSENCE_SOURCE</code> — <code>monitor</code> (default) or
+  <code>weekly</code> — and neither silently falls back to the other
+  (see <code>docs/adr/0003-absences-from-webuntis-monitor.md</code>).
 </p>
-<p><strong>Teachers</strong> (<code>teacher_absence_entry</code>, <code>elementType=2</code>):
-   present = <code>cellState ∈ {STANDARD, BREAKSUPERVISION}</code>; away =
-   <code>{SUBSTITUTION, CANCEL}</code>.</p>
+<h4><code>monitor</code> — the school's real absence records</h4>
+<p>
+  <code>get_monitor_absences</code> POSTs to <code>/WebUntis/monitor/substitution/data</code>
+  with the format name of the school's WebUntis monitor view, parsed from the pasted
+  <code>MONITOR_URL</code> (<code>parse_monitor_url</code>). The payload's
+  <code>absentElements</code> list teachers (type 2) and classes (type 1) with typed
+  <em>absence windows</em> (<code>ALL_DAY</code>, <code>FROM</code>, <code>FROM_TO</code>, …)
+  and clock times. One call per shown day, fresh on every run, no cache.
+</p>
 <ul>
-  <li><strong>No present period → fully absent → short code only</strong> (no range). School convention.</li>
-  <li><strong>Otherwise → range <code>min–max</code></strong> of the away periods
-      (e.g. <code>WöR&nbsp;(5–9)</code>, <code>SaI&nbsp;(6)</code>).</li>
-  <li>Pseudo teachers (<code>SKIP_NAMES</code>, e.g. <code>Z&nbsp;Entfall</code>) are excluded.</li>
+  <li><code>ALL_DAY</code> → short code only (<code>AlM</code>); <code>FROM</code> →
+      <code>ChC&nbsp;(ab&nbsp;7)</code>; <code>FROM_TO</code> → <code>SeM&nbsp;(5–6)</code>;
+      several windows → <code>BoB&nbsp;(2,&nbsp;4)</code>; <code>TO</code> → <code>(bis&nbsp;4)</code>.</li>
+  <li>Windows are mapped to <strong>board periods via clock times</strong>
+      (<code>window_periods</code>): first period ending after the start, last period
+      starting before the end. The monitor's own unit numbers count one higher (0th period).</li>
+  <li>On error or a missing link the bar reads <em>nicht verfügbar</em>
+      (<code>ABSENCES_UNAVAILABLE</code>) — deliberately distinct from <code>—</code> (nobody
+      absent). Details go to the log and the tray status only.</li>
 </ul>
-<p><strong>Classes</strong> (<code>class_absence_entry</code>, <code>elementType=1</code>):
-   away = <code>cellState == CANCEL</code>; present = <code>{STANDARD, SUBSTITUTION,
-   ADDITIONAL}</code> (a substituted lesson means the class <em>is</em> there). A class
-   appears only when it has a <strong>consecutive block of ≥2 CANCEL periods</strong> — a
-   single cancelled lesson is not a “class is away” signal — shown as the block's range.</p>
+<div class="note">
+  <strong>Endpoint gotchas.</strong> It needs the monitor page's <em>full</em> request body
+  (a minimal body returns no <code>payload</code>). <code>-8520 access not allowed</code>
+  means a wrong or unpublished format name, not missing user rights.
+</div>
+<h4><code>weekly</code> — an estimate from the timetables</h4>
+<p>
+  <code>sweep_absences</code> queries <code>weekly/data</code> for every teacher and class
+  (~94 calls), so it is cached in <code>data/absences.json</code> and refreshed only by
+  <code>fetch_untis.py --refresh-absences</code> (cron 3×/day; regular runs read the cache
+  and self-heal a missing day). It can only see absences that touch a lesson.
+</p>
+<ul>
+  <li><strong>Teachers</strong> (<code>teacher_absence_entry</code>): a period is away when
+      <em>another</em> teacher carries <code>orgId</code> = this teacher. A
+      <code>CANCEL</code> period only counts when the teacher is also replaced somewhere
+      that day or holds no lesson at all. No lesson held → short code only. Break
+      supervisions are ignored.</li>
+  <li><strong>Classes</strong> (<code>class_absence_entry</code>): a consecutive block of
+      ≥2 <code>CANCEL</code> periods, shown as the block's range.</li>
+</ul>
 <div class="why">
-  <strong>Why not from the substitution plan.</strong> The plan only contains periods
-  <em>with a change</em>, not the whole day — so it can't tell whether <code>4–7</code> is
-  the full day or just the afternoon. This caused the old bug: a teacher absent all day
-  who only had lessons in periods 4–7 was shown as <code>(4–7)</code> instead of code-only.
-  <code>weekly/data</code> sees the whole day, so “no present period” reliably means fully
-  absent.
-</div>
-<div class="note">
-  <strong>Two field gotchas.</strong> Use <code>cellState</code>, <em>not</em>
-  <code>state</code> — the element-level <code>state</code> reads <code>REGULAR</code> even
-  for cancelled periods. And <code>elementId=0</code> is a phantom (empty / arbitrary day) —
-  always pass the real element ID (<code>get_element_periods</code> wraps the call).
-</div>
-<div class="note">
-  <strong>Time-decoupled cache.</strong> The sweep (~14 classes + ~80 teachers ≈ 94 calls)
-  is expensive, so it runs only on <code>fetch_untis.py --refresh-absences</code> (cron
-  3×/day) and writes <code>data/absences.json</code> keyed by date. The regular 5-minute
-  run just reads that cache (self-healing once if a needed date is missing). Rationale:
-  absences are entered by ~07:30 and don't change during the day.
+  <strong>Why not <code>cellState</code>.</strong> <code>SUBSTITUTION</code> in a teacher's own
+  timetable means “is replaced” <em>or</em> “is the replacement”; counting it as away listed
+  every covering teacher as absent (14 false absences on 2026-11-03). The <code>orgId</code>
+  rule had 1 false alarm over four measured days.
+  Also: <code>elementId=0</code> is a phantom — always pass the real element ID.
 </div>
 
 <h3 id="render">Render pipeline</h3>

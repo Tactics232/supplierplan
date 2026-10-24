@@ -525,6 +525,12 @@ html, body {
     color: var(--c-muted);
 }
 
+/* Quelle nicht abrufbar — bewusst anders als "—" (= niemand abwesend) */
+.sum-unavailable {
+    font-style: italic;
+    color: var(--c-amber);
+}
+
 .day-title-bar {
     flex-shrink: 0;
     padding: 6px 2px 5px;
