@@ -124,7 +124,7 @@ Konfiguration in `config.env` über `TRAIN_*`-Variablen. Wenn `TRAIN_STATION` le
 - **Datenquelle:** WebUntis JSON-RPC API
 - **Webserver:** `python3 -m http.server 8080` als systemd-Dienst auf Proxmox LXC
 - **Hosting:** LXC `192.168.10.134`, erreichbar via Cloudflare Tunnel
-- **Deployment:** `rsync` von WSL auf den LXC, danach Cron übernimmt
+- **Deployment:** `rsync` vom Entwicklungs-Server `herdr` auf den LXC, danach Cron übernimmt
 
 ### Lokaler Betrieb (Windows-Tray-App, Alternative zum LXC/Cron)
 `tray/` ist eine Windows-Tray-App (PyInstaller-`.exe`), die `fetch_untis.py`/
@@ -496,26 +496,35 @@ Pfad auf den Projekt-Root zurück — das ist nur für lokale Entwicklung gedach
 - Login-Cookie via `http.cookiejar`, Logout am Ende garantiert
 
 ### Git-Workflow
-- Commits immer mit `git commit -m "kurze Nachricht"` (kein Heredoc, keine WSL-Eigenheiten)
+- Commits immer mit `git commit -m "kurze Nachricht"` (kein Heredoc)
+- Remote läuft über SSH (`git@github.com:Tactics232/supplierplan.git`)
+- Der pre-commit-Hook (CODEMAP + JS-Layout-Tests) sucht `node` im `PATH`. Node kommt über
+  nvm: in nicht-interaktiven Shells vorher `. ~/.nvm/nvm.sh` laden, sonst werden die
+  JS-Tests nur laut übersprungen
 - Nach jedem Commit: `git push`
 
 ### Deployment auf den LXC
 ```
 rsync -avz --exclude='.claude' --exclude='Screenshot*' --exclude='.git' \
       --exclude='config.env' \
-      /mnt/c/Users/Admin/Onedrive/Programming/Claude/Supplier/ \
+      ~/Programming/Claude/Supplier/ \
       root@192.168.10.134:/var/www/supplierplan/
 ```
 ⚠️ `--exclude='config.env'` ist **Sicherheits-relevant**: die Datei darf nicht in den
 ausgelieferten Webroot. Auf dem Server liegt sie unter `/etc/supplierplan/config.env`
 (einmalig dorthin kopieren, `chmod 600`). Wird über `SUPPLIERPLAN_CONFIG` gefunden.
 
-SSH-Auth läuft nur im echten Terminal (kein ssh-askpass in WSL).
-Im Claude Code Prompt mit `!`-Präfix ausführen, dann landet Output direkt im Chat.
+Entwickelt wird auf dem Debian-Server `herdr` (User `claude`, Projekt unter
+`~/Programming/Claude/Supplier`). SSH-Zugang von dort auf den LXC (`root@192.168.10.134`)
+muss per Key eingerichtet sein. Braucht SSH eine Passwort-/Passphrase-Eingabe, im Claude
+Code Prompt mit `!`-Präfix ausführen, dann landet der Output direkt im Chat.
 
 ### Python-Setup
-- WSL hat kein Python: nutzen wir `/mnt/c/Users/Admin/AppData/Local/Python/bin/python.exe`
-- Für UTF-8-Output unter Windows: `PYTHONIOENCODING=utf-8` voranstellen, sonst CP1252-Fehler
+- System-Python `python3` (Debian 13, 3.13) reicht, keine Pakete und kein venv nötig
+- Tests: `python3 -m unittest discover -s tests` (inkl. JS-Tests, wenn `node` im `PATH`)
+- Die Tray-App (`tray/`) ist Windows-only: Tests der testbaren Logik laufen hier,
+  bauen (PyInstaller) und GUI/Tray prüfen nur auf Windows. Dort für UTF-8-Output
+  `PYTHONIOENCODING=utf-8` voranstellen, sonst CP1252-Fehler
 
 ---
 
@@ -548,9 +557,9 @@ Im Claude Code Prompt mit `!`-Präfix ausführen, dann landet Output direkt im C
 ## Schnell-Referenzen
 
 - Lokal testen:
-  `PYTHONIOENCODING=utf-8 /mnt/c/Users/Admin/AppData/Local/Python/bin/python.exe scripts/fetch_untis.py`
+  `python3 scripts/fetch_untis.py`
 - Daten-Übersicht öffnen: `data/last_overview.html` im Browser
-- API-Discovery erneut: `python scripts/discover_api.py` → schreibt nach `scripts/api_dump/`
+- API-Discovery erneut: `python3 scripts/discover_api.py` → schreibt nach `scripts/api_dump/`
 - Server-Datei prüfen:
   `ssh root@192.168.10.134 'ls -la /var/www/supplierplan/index.html'`
 - WebUntis API-Doku (PDF): https://untis-sr.ch/wp-content/uploads/2019/11/2018-09-20-WebUntis_JSON-RPC_API.pdf
