@@ -1,7 +1,8 @@
 // js/layout.js — Client-JS des Supplierplans (aus generate_html ausgelagert).
 // PWA-SW-Registrierung, Uhr-Tick, Auto-Refresh, Multi-Column Layout-DRIVER,
 // Theme-Umschalter, Train-Widget. Reine Layout-Mathematik lebt in layout-core.js.
-// Config via window.TZ / window.MAX_COLUMNS / window.COMPACT_COL_WIDTH / window.OVERFLOW.
+// Config via window.TZ / window.MAX_COLUMNS / window.COMPACT_COL_WIDTH / window.OVERFLOW /
+// window.CURSOR_HIDE_SECONDS.
 
 // ── PWA: Service-Worker registrieren ──
 if ('serviceWorker' in navigator) {
@@ -22,6 +23,31 @@ if ('serviceWorker' in navigator) {
     if (ct) ct.textContent = new Intl.DateTimeFormat('de-DE', tOpt).format(now);
     if (cd) cd.textContent = new Intl.DateTimeFormat('de-DE', dOpt).format(now);
     setTimeout(tick, 1000);
+})();
+
+// Mauszeiger nach CURSOR_HIDE_SECONDS ohne Bewegung ausblenden (0 = nie).
+// Startzustand (Klasse cursor-hidden auf <html>) setzt der Server, damit der
+// Zeiger beim 60-s-Reload nicht aufblitzt. Chromium feuert auch künstliche
+// mousemove-Events, wenn sich Inhalt unter dem ruhenden Zeiger verschiebt (z.B.
+// Spaltenverteilung nach dem Laden) → nur echte Positionsänderungen zählen; das
+// erste Event merkt sich nur die Position (nach dem Reload ist sie unbekannt).
+(function () {
+    var secs = window.CURSOR_HIDE_SECONDS;
+    if (!(secs > 0)) return;
+    var root = document.documentElement;
+    var timer = null;
+    var lastX = null, lastY = null;
+    document.addEventListener('mousemove', function (e) {
+        var moved = lastX !== null && (e.screenX !== lastX || e.screenY !== lastY);
+        lastX = e.screenX;
+        lastY = e.screenY;
+        if (!moved) return;
+        root.classList.remove('cursor-hidden');
+        clearTimeout(timer);
+        timer = setTimeout(function () {
+            root.classList.add('cursor-hidden');
+        }, secs * 1000);
+    }, {passive: true});
 })();
 
 // Auto-Refresh: 60s soft-reload, alle 5 min Hard-Reload mit Cache-Bust

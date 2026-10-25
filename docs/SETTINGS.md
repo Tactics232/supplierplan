@@ -61,6 +61,7 @@ Optionales Zug-Widget im Kopf. Leer lassen oder **Deaktiviert = true** blendet e
 | **Max. Spalten** | Obergrenze der Spaltenzahl im Layout (1–4). Niedriger = breitere Spalten. |
 | **Entfall-Platzierung** | `section` = alle Entfälle gesammelt am Tagesende; `inline` = beim jeweiligen Lehrer. |
 | **PWA-Orientierung** | Bildschirm-Sperre der installierten Handy-/Tablet-App. `any` = frei drehbar. |
+| **Mauszeiger ausblenden (s)** | Nach so vielen Sekunden ohne Mausbewegung verschwindet der Zeiger (Standard `2`, `0` = nie). Gedacht für Monitor/TV, wo er sonst dauerhaft im Bild steht. |
 
 ---
 

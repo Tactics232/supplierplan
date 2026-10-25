@@ -56,6 +56,7 @@ TABS = [
         ("PWA_ORIENTATION", "PWA-Orientierung", "choice",
          (["any", "natural", "portrait", "landscape", "portrait-primary",
            "portrait-secondary", "landscape-primary", "landscape-secondary"], "any")),
+        ("CURSOR_HIDE_SECONDS", "Mauszeiger ausblenden (s)", "text", None),
     ]),
     ("Überlauf", [
         ("OVERFLOW_SCALE", "Skalieren", "bool", "true"),

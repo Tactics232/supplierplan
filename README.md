@@ -310,13 +310,32 @@ Tests for the pure-logic functions in `fetch_trains.py`:
 
 ---
 
-## PWA install on the Smart-TV
+## Smart-TV setup
 
-1. Open the URL in the TV browser.
-2. Browser menu → *Add to home screen* / *Install as app*.
-3. The app icon appears → launch → runs fullscreen, no address bar.
+1. Open the URL in the TV browser (a LAN address like `http://<ip>:<port>` works).
+2. **Screensaver:** switch the TV's burn-in protection off — on Samsung TVs
+   *Auto Protection Time → Off* (depending on the model year under
+   *Settings → General → System Manager* or *→ Panel Care / Eco Solution*).
+   Only do this on LED/QLED panels; on an OLED keep it on.
+3. **School hours:** set the TV's own *On Timer* / *Off Timer* (Mon–Fri), so it is
+   off outside school hours instead of showing a screensaver.
+4. **Mouse pointer:** hidden after `CURSOR_HIDE_SECONDS` (default 2 s) without
+   movement; `0` disables it.
 
-Requirement: served over HTTPS (the Cloudflare Tunnel is enough).
+Why not from the page (Screen Wake Lock): see
+[`docs/adr/0005-screensaver-via-tv-settings.md`](docs/adr/0005-screensaver-via-tv-settings.md).
+
+Known limitation: depending on the model, the TV may start on live TV or the home
+screen after the *On Timer* instead of the browser — then open the browser by hand
+in the morning.
+
+### Optional: install as PWA (fullscreen)
+
+1. Browser menu → *Add to home screen* / *Install as app*.
+2. The app icon appears → launch → runs fullscreen, no address bar.
+
+Requirement: served over **HTTPS** (the Cloudflare Tunnel is enough) — not possible
+via a plain-HTTP LAN address.
 
 ---
 

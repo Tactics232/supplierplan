@@ -108,6 +108,14 @@ Konfiguration in `config.env` über `TRAIN_*`-Variablen. Wenn `TRAIN_STATION` le
   `any` lässt drehbare Geräte frei und lässt den fixen Monitor unberührt. Andere Schulen
   mit drehbarem Tablet-Kiosk können `portrait`/`landscape` setzen. Gültige Werte: `any`,
   `natural`, `portrait`, `landscape` (+ `-primary`/`-secondary`).
+- `CURSOR_HIDE_SECONDS` (Default 2, `0` = nie): Mauszeiger nach N s ohne Bewegung
+  ausblenden (`parse_cursor_hide_seconds`, Müll/negativ → 2). Der Server setzt
+  `class="cursor-hidden"` schon auf `<html>` (sonst blitzt der Zeiger bei jedem
+  60-s-Reload auf), `js/layout.js` blendet ihn bei `mousemove` ein und nach N s aus.
+  Bewusst **ohne** `hover`/`pointer`-Media-Query (Touch hat keinen Zeiger, und der TV
+  könnte sich sonst selbst aussperren). **Bildschirmschoner** dagegen nicht im Code:
+  Samsung-TV über LAN-HTTP → kein Wake Lock, gelöst über TV-Einstellungen (ADR 0005,
+  README „Smart-TV setup").
 
 **Viewport-Stufen (Media Queries, unabhängig vom spaltenbreiten-basierten
 `compact-mode` der Tabelle):**

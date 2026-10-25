@@ -94,7 +94,7 @@ by `DisplaySettings.from_config` and threaded explicitly into `generate_html`,
 `build_day_content`, `render_row`/`render_text` and `write_manifest`. It is the
 single home for every presentation knob (theme, school labels, column/overflow
 behaviour, Plan title, logo, Cancel placement, text badges, PWA orientation, the
-clock's timezone string). No render function reads a mutable module global any
+clock's timezone string, cursor hiding). No render function reads a mutable module global any
 more.
 _Scope_: display only. It deliberately excludes the **data-pipeline** skip list
 (`SKIP_NAMES`, set by `configure_skip_teachers`) and the **process-wide**
@@ -102,6 +102,14 @@ timezone object (`TZ`, set by `set_timezone`); `tz_name` here is only the string
 handed to the client-side clock, not the `ZoneInfo`.
 _Avoid_: calling it "the config" (that is the raw `config.env` dict) or a
 "context"/"state" object; folding data-pipeline or timezone concerns into it.
+
+**Display device (Anzeigegerät)**:
+The screen the board is shown on in the staff room — currently a Samsung Smart TV
+using its built-in browser over a LAN address (plain HTTP). Device-level behaviour
+(screensaver, on/off times) is configured on the device itself, not by the page
+(ADR 0005).
+_Avoid_: "the monitor" when the WebUntis **monitor view** (Absence source) could be
+meant; "kiosk" (no kiosk mode is involved).
 
 **Layout core (`js/layout-core.js`)**:
 The **pure** browser layout math — `fitScale`, `distributeUncapped`,

@@ -1228,6 +1228,19 @@ def parse_overflow_config(config):
     }
 
 
+def parse_cursor_hide_seconds(config):
+    """CURSOR_HIDE_SECONDS → Sekunden ohne Mausbewegung bis zum Ausblenden des
+    Zeigers (0 = nie). Leer/Müll/negativ → Default 2. Inline-Kommentare tolerant."""
+    raw = config.get("CURSOR_HIDE_SECONDS", "").split("#")[0].strip()
+    if raw == "":
+        return 2
+    try:
+        secs = int(raw)
+    except ValueError:
+        return 2
+    return secs if secs >= 0 else 2
+
+
 @dataclass(frozen=True)
 class DisplaySettings:
     """Unveränderliches Bündel der ANZEIGE-Config (siehe CONTEXT.md „DisplaySettings").
@@ -1255,6 +1268,7 @@ class DisplaySettings:
     pwa_orientation: str
     text_badges: dict
     text_pattern: "re.Pattern"
+    cursor_hide_seconds: int
 
     @classmethod
     def from_config(cls, config):
@@ -1313,6 +1327,7 @@ class DisplaySettings:
             pwa_orientation=pwa_orientation,
             text_badges=text_badges,
             text_pattern=text_pattern,
+            cursor_hide_seconds=parse_cursor_hide_seconds(config),
         )
 
 
@@ -1339,6 +1354,7 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
     overflow_cfg      = settings.overflow
     PLAN_TITLE        = settings.plan_title
     LOGO_FILE         = settings.logo_file
+    cursor_hide       = settings.cursor_hide_seconds
 
     logo_html = f'<div class="logo"><img src="{esc(LOGO_FILE)}" alt="Logo"></div>\n            ' if show_logo else ''
     train_widget_html = render_train_widget(train_enabled)
@@ -1506,7 +1522,7 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
         plan_tag_html = '<span class="plan-tag">Heute</span>'
 
     return f"""<!DOCTYPE html>
-<html lang="de" data-theme="{esc(theme)}">
+<html lang="de" data-theme="{esc(theme)}"{' class="cursor-hidden"' if cursor_hide > 0 else ''}>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1530,6 +1546,7 @@ def generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date,
     <script>window.MAX_COLUMNS = {max_columns};</script>
     <script>window.OVERFLOW = {json.dumps(overflow_cfg)};</script>
     <script>window.TZ = {tz_js};</script>
+    <script>window.CURSOR_HIDE_SECONDS = {cursor_hide};</script>
     <script>
     // Theme-Auflösung: Breit/Schmal folgen der Config, Mobil-Ansicht darf via
     // localStorage überschreiben. Läuft früh im <head> → minimiert Flackern.

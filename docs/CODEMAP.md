@@ -1,6 +1,6 @@
 # Code Map
 
-_181 functions across 18 modules._
+_182 functions across 18 modules._
 
 > **Auto-generated** by `scripts/gen_codemap.py` — do not edit by hand.
 > Regenerated on every commit (git pre-commit hook). The narrative *why*
@@ -188,13 +188,14 @@ _fetch_untis.py – WebUntis Supplierplan Fetcher_
 | 1114 | `build_day_content(groups, teacher_lookup, day, settings)` | Rendert eine flache Tabelle pro Tag. Die Aufteilung in 1–4 Spalten |
 | 1178 | `render_train_widget(enabled: bool)` | Liefert den HTML-Stub für das Zug-Widget im Header. |
 | 1195 | `parse_overflow_config(config)` | Liest die OVERFLOW_*-Keys aus config.env und liefert ein dict für die |
-| 1232 | **`class DisplaySettings`** | Unveränderliches Bündel der ANZEIGE-Config (siehe CONTEXT.md „DisplaySettings"). |
-| 1260 | &nbsp;&nbsp;`DisplaySettings.from_config(cls, config)` | Baut das Paket aus dem rohen config.env-dict. Alle Klemmen/Validierungen/ |
-| 1319 | `generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date, teacher_lookup, indicator, settings, import_time=None, today_classes_override=None, tomorrow_classes_override=None, today_teachers_override=None, tomorrow_teachers_override=None, today_full_absent=None, tomorrow_full_absent=None, tomorrow_skipped=None)` | — |
-| 1599 | `purge_cloudflare_cache(zone_id, token, host=None)` | Löscht den Cloudflare-Cache nach dem Generieren der index.html. |
-| 1620 | `write_manifest(settings)` | Erzeugt manifest.json passend zu Schulname, Logo, Plan-Titel und Theme. |
-| 1656 | `write_data_dump(today_substs, tomorrow_substs, today_rows, tomorrow_rows, holidays, import_time, today_date, tomorrow_date)` | Schreibt zwei Dateien ins data/-Verzeichnis: |
-| 1750 | `main(refresh_absences=None)` | refresh_absences: True erzwingt einen frischen weekly/data-Sweep (sonst Cache; |
+| 1231 | `parse_cursor_hide_seconds(config)` | CURSOR_HIDE_SECONDS → Sekunden ohne Mausbewegung bis zum Ausblenden des |
+| 1245 | **`class DisplaySettings`** | Unveränderliches Bündel der ANZEIGE-Config (siehe CONTEXT.md „DisplaySettings"). |
+| 1274 | &nbsp;&nbsp;`DisplaySettings.from_config(cls, config)` | Baut das Paket aus dem rohen config.env-dict. Alle Klemmen/Validierungen/ |
+| 1334 | `generate_html(groups_today, groups_tomorrow, today_date, tomorrow_date, teacher_lookup, indicator, settings, import_time=None, today_classes_override=None, tomorrow_classes_override=None, today_teachers_override=None, tomorrow_teachers_override=None, today_full_absent=None, tomorrow_full_absent=None, tomorrow_skipped=None)` | — |
+| 1616 | `purge_cloudflare_cache(zone_id, token, host=None)` | Löscht den Cloudflare-Cache nach dem Generieren der index.html. |
+| 1637 | `write_manifest(settings)` | Erzeugt manifest.json passend zu Schulname, Logo, Plan-Titel und Theme. |
+| 1673 | `write_data_dump(today_substs, tomorrow_substs, today_rows, tomorrow_rows, holidays, import_time, today_date, tomorrow_date)` | Schreibt zwei Dateien ins data/-Verzeichnis: |
+| 1767 | `main(refresh_absences=None)` | refresh_absences: True erzwingt einen frischen weekly/data-Sweep (sonst Cache; |
 
 <h2 id="scriptsgencodemappy">scripts/gen_codemap.py</h2>
 
@@ -271,9 +272,9 @@ _tkinter-Konfigurationsfenster. Liest/schreibt config.env über config_io._
 
 | Line | Definition | Summary |
 |---:|---|---|
-| 88 | `_make_widget(frame, kind, extra, current_value)` | Erzeugt das passende Eingabe-Widget + StringVar. Auswahlfelder (bool/choice) |
-| 109 | `_station_dialog(parent, search_fn, target_var)` | Modaler Such-Dialog: Teilname tippen → HAFAS-Treffer anklicken → exakter |
-| 178 | `open_config_window(config_path, template_path=None, on_saved=None, test_connection=None, on_refresh=None, on_refresh_absences=None, busy_getter=None, status_getter=None, station_search=None, help_url=None, on_close=None, focus_requested=None)` | Öffnet das Einstellungen-Fenster. |
+| 89 | `_make_widget(frame, kind, extra, current_value)` | Erzeugt das passende Eingabe-Widget + StringVar. Auswahlfelder (bool/choice) |
+| 110 | `_station_dialog(parent, search_fn, target_var)` | Modaler Such-Dialog: Teilname tippen → HAFAS-Treffer anklicken → exakter |
+| 179 | `open_config_window(config_path, template_path=None, on_saved=None, test_connection=None, on_refresh=None, on_refresh_absences=None, busy_getter=None, status_getter=None, station_search=None, help_url=None, on_close=None, focus_requested=None)` | Öffnet das Einstellungen-Fenster. |
 
 <h2 id="trayiconspy">tray/icons.py</h2>
 
